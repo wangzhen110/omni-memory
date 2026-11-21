@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 65 次提交；更新记录自身的提交不计入列表。
+> 共 66 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-21
 
+- 23:18:26 `1b6a9a23` — fix(cold-start): keep polling for late webServer/systemPrompt (3.10.2) — [提交](https://github.com/wangzhen110/omni-memory/commit/1b6a9a238f634d2714ca8481a38d7c65f972b966)
 - 22:28:59 `76f465f8` — fix(scope): restore late host routes and canonical project keys (3.10.2) — [提交](https://github.com/wangzhen110/omni-memory/commit/76f465f87ba674be4986cce8d4dde64b1d82195c)
 - 22:02:49 `91cdac64` — docs: make Doubao integration zero-config by default — [提交](https://github.com/wangzhen110/omni-memory/commit/91cdac64914aacf547bda9d87163799f025d3c3d)
 - 20:32:35 `69c8d6cf` — docs: document Doubao Work MCP connector and HTTP fallback — [提交](https://github.com/wangzhen110/omni-memory/commit/69c8d6cf420db77afcf074ee3b88161f72d86cb2)
