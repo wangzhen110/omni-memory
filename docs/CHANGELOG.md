@@ -12,6 +12,7 @@
 - **dream 与热路径**：`coverageScore` 的证据 haystack 统一 `toLowerCase()`，避免 `Docker` 与 token `docker` 永远不匹配；schema v16 为 notes/facts/chunks/edges 补 scope+状态+时间复合索引，v16 迁移与 marker 修复路径都幂等创建。
 - **HTTP 边界**：`hosts/http/server.mjs` 的 `/health`、`/rules`、`/` 及所有静态 GET 在非 loopback 时返回 403，`0.0.0.0` 绑定不再泄露元数据或页面；`readJsonBody` 改为 `Buffer.concat` 后按字节截断再解码，跨 chunk 的 UTF-8 不再被 `String()` 破坏；`likeClause` 用 `ESCAPE '!'` 转义 `%` / `_` / `!`。
 - **日志与迁移清理**：路由注册 debug 日志只在 `OMNI_ROUTE_DEBUG=1` 时写，不再常驻；`migrateScopeAlias` 墓碑重复 chunk 时同步清理 FTS / bigram / vector / semantic 派生行，避免迁移留下幽灵索引。
+- **scope 语义写入文档**：项目键定位为同一用户本机数据的命名空间，不是认证边界；精确 `proj:*` 键允许读写，`scope=all` 只读或走显式审计写，HTTP 写必须 loopback + CSRF。R-13 的“键可达是否允许”从此有明确口径。
 
 ### 测试与发布
 - 新增 `test/review-3.10.3-p1.test.mjs`：HTTP 项目层 forget/restore、恢复后可见性、导入字段清洗与悬空 lineage、`link_entity` object 方向、跨 chunk UTF-8。

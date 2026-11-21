@@ -79,6 +79,8 @@ memory_write(kind, text, scope?)
 
 设计取向：**宁可把该升级为全局的规则先留在项目层，也不让项目细节泄漏到全局**。项目层的东西以后好找，泄漏出去的收不回来。
 
+`scope` 是同一用户本机数据的命名空间，不是权限边界：只要调用方（本机 CLI、loopback HTTP、DSH 工具）能给出精确 `proj:*` 键，就允许读该层；写工具也接受显式项目键，因为新工作区必须先能创建自己。跨层 `scope=all` 只允许读，或在 `memory_amend` / HTTP 写操作中显式请求并留下 `meta.audit:cross-scope` 审计；HTTP 写还要求 loopback + CSRF。项目键不是秘密，不要把它当认证令牌。
+
 ### 2.3 项目键
 
 ```

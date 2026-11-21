@@ -292,6 +292,8 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 
 > 平台约束（实测）：DSH 的 web server 在把请求交给路由处理函数之前**可能已消费掉请求体**（`req.complete=true`、`req.readable=false`，`data`/`end` 不再触发）。因此本插件的写操作参数一律走查询参数，请求体仅作兜底。
 
+> `scope` 语义（3.10.4 明确）：项目键是同一用户本机数据的命名空间，不是权限边界。调用方能给出精确 `proj:*` 键时，读工具允许读该层；写工具也接受显式项目键，因为新工作区必须先能创建自己。`scope=all` 只用于读，或在 `memory_amend` / HTTP 写操作中显式请求并写 `meta.audit:cross-scope`；HTTP 写还要求 loopback + CSRF。项目键不是秘密，不能当认证令牌。
+
 ### 5.3 界面
 
 - 左栏图标：`sidebar.panellist`，`id=omni-memory`，`order=20`，`label=记忆`，图标为内联 SVG。
