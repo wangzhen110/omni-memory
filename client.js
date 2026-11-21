@@ -241,19 +241,19 @@ const EMPTY_HIGHLIGHT = [];
       const forget = async () => {
         if (busy) return;
         setBusy(true);
-        try { await onForget(item.kind, item.id); } finally { setBusy(false); }
+        try { await onForget(item.kind, item.id, item.scope); } finally { setBusy(false); }
       };
 
       const restore = async () => {
         if (busy || !onRestore) return;
         setBusy(true);
-        try { await onRestore(item.kind, item.id); } finally { setBusy(false); }
+        try { await onRestore(item.kind, item.id, item.scope); } finally { setBusy(false); }
       };
 
       const rollback = async () => {
         if (busy || !onRollback) return;
         setBusy(true);
-        try { await onRollback(item.id); } finally { setBusy(false); }
+        try { await onRollback(item.id, item.scope); } finally { setBusy(false); }
       };
 
       return h('div', {
@@ -357,10 +357,11 @@ const EMPTY_HIGHLIGHT = [];
         }
       };
 
-      const restore = async (kind, id) => {
+      const restore = async (kind, id, scope) => {
         let error = '';
+        const layer = scope || 'global';
         try {
-          const response = await fetch(`/omni-memory/restore?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`, {
+          const response = await fetch(`/omni-memory/restore?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}&scope=${encodeURIComponent(layer)}`, {
             method: 'POST',
             headers: { accept: 'application/json', 'x-omni-csrf': '1' },
           });
@@ -374,9 +375,10 @@ const EMPTY_HIGHLIGHT = [];
         if (error) setState(prev => ({ ...prev, error }));
       };
 
-      const rollbackDream = async (noteId) => {
+      const rollbackDream = async (noteId, scope) => {
+        const layer = scope || 'global';
         try {
-          await fetch(`/omni-memory/dream/rollback?noteId=${encodeURIComponent(noteId)}`, {
+          await fetch(`/omni-memory/dream/rollback?noteId=${encodeURIComponent(noteId)}&scope=${encodeURIComponent(layer)}`, {
             method: 'POST',
             headers: { accept: 'application/json', 'x-omni-csrf': '1' },
           });
@@ -433,9 +435,14 @@ const EMPTY_HIGHLIGHT = [];
             const text = String(personaDraft[key] ?? '').trim();
             if (text) values[key] = text;
           }
-          await fetch(`/omni-memory/persona?values=${encodeURIComponent(JSON.stringify(values))}`, {
+          await fetch('/omni-memory/persona', {
             method: 'POST',
-            headers: { accept: 'application/json', 'x-omni-csrf': '1' },
+            headers: {
+              accept: 'application/json',
+              'content-type': 'application/json',
+              'x-omni-csrf': '1',
+            },
+            body: JSON.stringify({ values }),
           });
           setPersonaOpen(false);
         } finally {
@@ -460,9 +467,10 @@ const EMPTY_HIGHLIGHT = [];
         } catch { /* export is best effort */ }
       };
 
-      const forget = async (kind, id) => {
+      const forget = async (kind, id, scope) => {
+        const layer = scope || 'global';
         try {
-          await fetch(`/omni-memory/forget?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`, {
+          await fetch(`/omni-memory/forget?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}&scope=${encodeURIComponent(layer)}`, {
             method: 'POST',
             headers: { accept: 'application/json', 'x-omni-csrf': '1' },
           });
@@ -649,7 +657,7 @@ const EMPTY_HIGHLIGHT = [];
                       h('button', {
                         type: 'button',
                         style: ghostButton,
-                        onClick: () => { forget('note', selected.detail.id); setSelected(null); },
+                        onClick: () => { forget('note', selected.detail.id, selected.detail.scope); setSelected(null); },
                       }, t('forget'))))
                 : null,
               selected.detail && selected.detail.kind === 'entity'

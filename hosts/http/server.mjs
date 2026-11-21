@@ -253,6 +253,13 @@ export async function startHttpServer({
     const pathname = url.pathname;
 
     try {
+      // Health/rules/static are read surfaces too. When the adapter is explicitly
+      // bound to 0.0.0.0 they must not become an unauthenticated metadata leak.
+      if ((pathname === '/health' || pathname === '/rules' || pathname === '/') && !isLoopback(req)) {
+        sendJson(res, 403, { ok: false, error: 'forbidden' });
+        return;
+      }
+
       if (pathname === '/health') {
         sendJson(res, 200, { ok: true, version, project, sessionId, tools: host.tools.size() });
         return;
@@ -287,6 +294,10 @@ export async function startHttpServer({
       }
 
       if (req.method === 'GET' && (pathname === '/' || MIME[path.extname(pathname)])) {
+        if (!isLoopback(req)) {
+          sendJson(res, 403, { ok: false, error: 'forbidden' });
+          return;
+        }
         await serveStatic(req, res, pathname);
         return;
       }

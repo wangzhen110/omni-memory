@@ -341,6 +341,7 @@ function migrateScopeAlias(db, from, to, options = {}) {
     for (const row of prepareCached(db, 'SELECT id, hash, deleted_at FROM chunks WHERE scope = ?').all(source)) {
       if (row.deleted_at === null && targetHashes.has(row.hash)) {
         prepareCached(db, 'UPDATE chunks SET deleted_at = ? WHERE id = ?').run(now(), row.id);
+        dropDerivedRows(db, 'chunk', row.id);
         counts.chunksTombstoned += 1;
       } else {
         prepareCached(db, 'UPDATE chunks SET scope = ? WHERE id = ?').run(target, row.id);
@@ -819,7 +820,7 @@ function openStore() {
   return store;
 }
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 let hostCtx = null;
 
 function columnExists(db, table, column) {
@@ -843,6 +844,27 @@ function tableExists(db, table) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Indexes for the read hot paths: active lists, timeline, fact lookup and graph
+ * joins. They are deliberately not on full note text (which can exceed SQLite's
+ * index row limit); scope + ts + state covers the panel queries.
+ */
+function ensureHotIndexes(db) {
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS notes_scope_state_ts
+      ON notes(scope, deleted_at, superseded_by, ts);
+    CREATE INDEX IF NOT EXISTS notes_ts ON notes(ts);
+    CREATE INDEX IF NOT EXISTS facts_subject_relation_scope_valid
+      ON facts(subject, relation, scope, valid_to);
+    CREATE INDEX IF NOT EXISTS facts_object_scope_valid
+      ON facts(object, scope, valid_to);
+    CREATE INDEX IF NOT EXISTS chunks_scope_state_ts
+      ON chunks(scope, deleted_at, ts);
+    CREATE INDEX IF NOT EXISTS edges_src_rel_dst_scope
+      ON edges(src, rel, dst, scope);
+  `);
 }
 
 /**
@@ -1048,6 +1070,10 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS scope_aliases_canonical ON scope_aliases(canonical);
     `);
   },
+  // v16: read hot-path indexes. The panel's list/timeline/graph queries scan
+  // notes and facts by scope/state; without these 100k rows cross the 100ms
+  // budget even when the result set is tiny.
+  db => ensureHotIndexes(db),
 ];
 
 function migrate(db) {
@@ -1145,6 +1171,8 @@ function migrate(db) {
       CREATE INDEX IF NOT EXISTS scope_aliases_canonical ON scope_aliases(canonical);
     `);
   }
+  // Repair path for a marker that is already 16 but indexes were interrupted.
+  if (SCHEMA_VERSION >= 16) ensureHotIndexes(db);
   prepareCached(db, "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)")
     .run(String(SCHEMA_VERSION));
   return SCHEMA_VERSION;
@@ -1522,21 +1550,29 @@ function dropSemanticIndex(s, kind, id) {
     .run(kind, Number(id));
 }
 
-/** Remove every derived index for a row whose source data is gone or inactive. */
-function dropDerivedIndexes(s, kind, id) {
+/** Remove every derived index row for a source row, with only a bare db handle. */
+function dropDerivedRows(db, kind, id) {
   const table = { note: 'notes', fact: 'facts', chunk: 'chunks' }[String(kind)];
   if (!table) return;
-  dropSemanticIndex(s, kind, id);
+  if (tableExists(db, 'semantic_vectors')) {
+    prepareCached(db, 'DELETE FROM semantic_vectors WHERE kind = ? AND owner_id = ?')
+      .run(kind, Number(id));
+  }
+  if (tableExists(db, `${table}_fts`)) {
+    prepareCached(db, `DELETE FROM ${table}_fts WHERE rowid = ?`).run(Number(id));
+  }
+  if (tableExists(db, 'bigrams')) {
+    prepareCached(db, 'DELETE FROM bigrams WHERE layer = ? AND owner_id = ?').run(kind, Number(id));
+  }
+  if (tableExists(db, 'vectors')) {
+    prepareCached(db, 'DELETE FROM vectors WHERE kind = ? AND owner_id = ?').run(kind, Number(id));
+  }
+}
+
+/** Remove every derived index for a row whose source data is gone or inactive. */
+function dropDerivedIndexes(s, kind, id) {
   pendingVectors.delete(`${kind}:${Number(id)}`);
-  if (tableExists(s.db, `${table}_fts`)) {
-    prepareCached(s.db, `DELETE FROM ${table}_fts WHERE rowid = ?`).run(Number(id));
-  }
-  if (tableExists(s.db, 'bigrams')) {
-    prepareCached(s.db, 'DELETE FROM bigrams WHERE layer = ? AND owner_id = ?').run(kind, Number(id));
-  }
-  if (tableExists(s.db, 'vectors')) {
-    prepareCached(s.db, 'DELETE FROM vectors WHERE kind = ? AND owner_id = ?').run(kind, Number(id));
-  }
+  dropDerivedRows(s.db, kind, id);
 }
 
 /**
@@ -1994,6 +2030,22 @@ function forgetMemory(s, kind, id, scope = SCOPE_GLOBAL) {
 
 const EXPORT_FORMAT = 'omni-memory-backup';
 const EXPORT_VERSION = 1;
+const IMPORT_VERDICTS = new Set(['supported', 'weak', 'unsupported', 'contradicted']);
+const IMPORT_SOLUTION_STATUSES = new Set(['verified', 'unverified', 'failed', 'expired']);
+
+/** Clamp an imported number so a hand-edited backup cannot bypass ranking bounds. */
+function importNumber(value, fallback, min, max) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new Error('imported numeric field is not finite');
+  return Math.min(max, Math.max(min, number));
+}
+
+/** Keep lineage pointers inside the imported snapshot; unresolved ids become null. */
+function importLineage(value) {
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
 
 /** Build one portable snapshot of the store. Vectors are derived and excluded. */
 function snapshotStore(s, options = {}) {
@@ -2133,7 +2185,32 @@ function mergeSnapshot(s, snapshot, options = {}) {
   for (const note of Array.isArray(snapshot.notes) ? snapshot.notes : []) {
     if (!note?.text) { stats.skipped += 1; continue; }
     if (noteExists.get(note.scope ?? SCOPE_GLOBAL, note.text)) { stats.skipped += 1; continue; }
-    plan.notes.push(note);
+    const verification = IMPORT_VERDICTS.has(String(note.verification ?? '')) ? String(note.verification) : null;
+    const solutionStatus = IMPORT_SOLUTION_STATUSES.has(String(note.solution_status ?? note.solutionStatus ?? ''))
+      ? String(note.solution_status ?? note.solutionStatus) : null;
+    plan.notes.push({
+      ...note,
+      ts: importNumber(note.ts, now(), 0, Number.MAX_SAFE_INTEGER),
+      scope: String(note.scope ?? SCOPE_GLOBAL),
+      text: String(note.text),
+      importance: importNumber(note.importance, 0.5, 0, 1),
+      revision: Math.floor(importNumber(note.revision, 1, 1, 1_000_000)),
+      contested: importNumber(note.contested, 0, 0, 1) ? 1 : 0,
+      superseded_by: importLineage(note.superseded_by),
+      deleted_at: note.deleted_at == null ? null : importNumber(note.deleted_at, now(), 0, Number.MAX_SAFE_INTEGER),
+      verification,
+      verified_at: verification ? importNumber(note.verified_at, now(), 0, Number.MAX_SAFE_INTEGER) : null,
+      evidence: note.evidence ?? null,
+      problem_key: note.problem_key ?? note.problemKey ?? null,
+      solution_status: solutionStatus,
+      solution_verified_at: solutionStatus ? importNumber(note.solution_verified_at ?? note.solutionVerifiedAt, now(), 0, Number.MAX_SAFE_INTEGER) : null,
+      reuse_count: Math.floor(importNumber(note.reuse_count ?? note.reuseCount, 0, 0, 1_000_000_000)),
+      last_used_at: note.last_used_at == null ? null : importNumber(note.last_used_at ?? note.lastUsedAt, now(), 0, Number.MAX_SAFE_INTEGER),
+      recall_count: Math.floor(importNumber(note.recall_count ?? note.recallCount, 0, 0, 1_000_000_000)),
+      last_recall_at: note.last_recall_at == null ? null : importNumber(note.last_recall_at ?? note.lastRecallAt, now(), 0, Number.MAX_SAFE_INTEGER),
+      useful_count: Math.floor(importNumber(note.useful_count ?? note.usefulCount, 0, 0, 1_000_000_000)),
+      misleading_count: Math.floor(importNumber(note.misleading_count ?? note.misleadingCount, 0, 0, 1_000_000_000)),
+    });
   }
   for (const fact of Array.isArray(snapshot.facts) ? snapshot.facts : []) {
     if (!fact?.subject || !fact?.relation) { stats.skipped += 1; continue; }
@@ -2141,18 +2218,47 @@ function mergeSnapshot(s, snapshot, options = {}) {
       stats.skipped += 1;
       continue;
     }
-    plan.facts.push(fact);
+    plan.facts.push({
+      ...fact,
+      subject: String(fact.subject),
+      relation: String(fact.relation),
+      object: String(fact.object ?? ''),
+      text: String(fact.text ?? `${fact.subject} ${fact.relation} ${fact.object ?? ''}`),
+      scope: String(fact.scope ?? SCOPE_GLOBAL),
+      confidence: importNumber(fact.confidence, 0.7, 0, 1),
+      contested: importNumber(fact.contested, 0, 0, 1) ? 1 : 0,
+      valid_from: importNumber(fact.valid_from, now(), 0, Number.MAX_SAFE_INTEGER),
+      valid_to: fact.valid_to == null ? null : importNumber(fact.valid_to, now(), 0, Number.MAX_SAFE_INTEGER),
+      deleted_at: fact.deleted_at == null ? null : importNumber(fact.deleted_at, now(), 0, Number.MAX_SAFE_INTEGER),
+      cardinality: fact.cardinality === 'multi' ? 'multi' : (fact.cardinality === 'single' ? 'single' : undefined),
+      recall_count: Math.floor(importNumber(fact.recall_count ?? fact.recallCount, 0, 0, 1_000_000_000)),
+      last_recall_at: fact.last_recall_at == null ? null : importNumber(fact.last_recall_at ?? fact.lastRecallAt, now(), 0, Number.MAX_SAFE_INTEGER),
+      useful_count: Math.floor(importNumber(fact.useful_count ?? fact.usefulCount, 0, 0, 1_000_000_000)),
+      misleading_count: Math.floor(importNumber(fact.misleading_count ?? fact.misleadingCount, 0, 0, 1_000_000_000)),
+    });
   }
   for (const chunk of Array.isArray(snapshot.chunks) ? snapshot.chunks : []) {
     if (!chunk?.text) { stats.skipped += 1; continue; }
     const digest = hash(String(chunk.text));
     if (chunkExists.get(digest, chunk.scope ?? 'global')) { stats.skipped += 1; continue; }
-    plan.chunks.push(chunk);
+    plan.chunks.push({
+      ...chunk,
+      text: String(chunk.text),
+      ts: importNumber(chunk.ts, now(), 0, Number.MAX_SAFE_INTEGER),
+      importance: importNumber(chunk.importance, 0.5, 0, 1),
+      scope: chunk.scope == null ? null : String(chunk.scope),
+      deleted_at: chunk.deleted_at == null ? null : importNumber(chunk.deleted_at, now(), 0, Number.MAX_SAFE_INTEGER),
+    });
   }
   for (const edge of Array.isArray(snapshot.edges) ? snapshot.edges : []) {
     if (!edge?.src || !edge?.rel || !edge?.dst) { stats.skipped += 1; continue; }
     if (edgeExists.get(edge.src, edge.rel, edge.dst, edge.scope ?? SCOPE_GLOBAL)) { stats.skipped += 1; continue; }
-    plan.edges.push(edge);
+    plan.edges.push({
+      ...edge,
+      src: String(edge.src), rel: String(edge.rel), dst: String(edge.dst),
+      valid_from: importNumber(edge.valid_from, now(), 0, Number.MAX_SAFE_INTEGER),
+      valid_to: edge.valid_to == null ? null : importNumber(edge.valid_to, now(), 0, Number.MAX_SAFE_INTEGER),
+    });
   }
   for (const candidate of Array.isArray(snapshot.candidates) ? snapshot.candidates : []) {
     const text = String(candidate?.text ?? '').trim();
@@ -2231,13 +2337,18 @@ function mergeSnapshot(s, snapshot, options = {}) {
       indexBigrams(s.db, 'note', newId, String(note.text));
       upsertVector(s, 'note', newId, String(note.text));
     }
-    // Remap note lineage pointers to the ids assigned in this database.
+    // Remap note lineage pointers to the ids assigned in this database. A
+    // pointer outside the imported snapshot must become null; falling back to
+    // the source id would point at an unrelated local note with that id.
     for (const note of plan.notes) {
       const replacement = Number(note.superseded_by ?? 0);
       if (!replacement) continue;
       const newId = idMap.get(Number(note.id));
-      const target = idMap.get(replacement) ?? replacement;
-      if (newId) prepareCached(s.db, 'UPDATE notes SET superseded_by = ? WHERE id = ?').run(target, newId);
+      const target = idMap.get(replacement);
+      if (newId) {
+        prepareCached(s.db, 'UPDATE notes SET superseded_by = ? WHERE id = ?')
+          .run(target ?? null, newId);
+      }
     }
     plan.facts.sort((a, b) => Number(a.valid_from ?? 0) - Number(b.valid_from ?? 0));
     for (const fact of plan.facts) {
@@ -2381,7 +2492,27 @@ function restoreMemory(s, kind, id, scope = SCOPE_GLOBAL) {
       `).get(row.hash, row.scope, Number(id));
       if (active) return { restored: false, reason: 'active duplicate', activeId: Number(active.id) };
     }
-    prepareCached(s.db, `UPDATE ${table} SET deleted_at = NULL WHERE id = ?`).run(Number(id));
+    if (table === 'facts') {
+      // Facts use bi-temporal validity, not a tombstone-only model. Restoring an
+      // old version while a newer version of the same triple is active would
+      // create two concurrent truths. Refuse and report the active row.
+      const active = prepareCached(s.db, `
+        SELECT id FROM facts
+        WHERE subject = ? AND relation = ? AND object = ? AND scope = ?
+          AND valid_to IS NULL AND deleted_at IS NULL AND id <> ?
+      `).get(row.subject, row.relation, String(row.object ?? ''), row.scope ?? SCOPE_GLOBAL, Number(id));
+      if (active) return { restored: false, reason: 'active duplicate', activeId: Number(active.id) };
+    }
+    if (table === 'notes') {
+      // A tombstoned note may also have been superseded by a newer conclusion.
+      // Restoring it must clear both states, otherwise the row is visible in the
+      // audit list but still excluded from active search.
+      prepareCached(s.db, 'UPDATE notes SET deleted_at = NULL, superseded_by = NULL WHERE id = ?').run(Number(id));
+    } else if (table === 'facts') {
+      prepareCached(s.db, 'UPDATE facts SET deleted_at = NULL, valid_to = NULL WHERE id = ?').run(Number(id));
+    } else {
+      prepareCached(s.db, 'UPDATE chunks SET deleted_at = NULL WHERE id = ?').run(Number(id));
+    }
     if (table === 'notes') {
       if (s.fts.notes) {
         try { prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)').run(Number(id), row.text); } catch { /* already indexed */ }
@@ -2396,10 +2527,12 @@ function restoreMemory(s, kind, id, scope = SCOPE_GLOBAL) {
       indexBigrams(s.db, 'fact', Number(id), text);
       upsertVector(s, 'fact', Number(id), text);
       const edge = prepareCached(s.db, `
-        SELECT id FROM edges WHERE src = ? AND rel = ? AND dst = ? AND valid_to IS NULL
+        SELECT id FROM edges WHERE src = ? AND rel = ? AND dst = ?
           AND (scope = ? OR scope IS NULL)
       `).get(row.subject, row.relation, String(row.object ?? ''), row.scope ?? SCOPE_GLOBAL);
-      if (!edge) {
+      if (edge) {
+        prepareCached(s.db, 'UPDATE edges SET valid_to = NULL WHERE id = ?').run(Number(edge.id));
+      } else {
         prepareCached(s.db, 'INSERT INTO edges(src, rel, dst, valid_from, scope, source) VALUES (?, ?, ?, ?, ?, ?)')
           .run(row.subject, row.relation, String(row.object ?? ''), Number(row.valid_from ?? now()), row.scope ?? SCOPE_GLOBAL, row.source ?? null);
       }
@@ -2810,8 +2943,11 @@ function likeClause(columns, terms) {
   const params = [];
   for (const column of columns) {
     for (const term of terms) {
-      parts.push(`IFNULL(${column},'') LIKE ?`);
-      params.push(`%${term}%`);
+      // User text is not a LIKE pattern. Escape the wildcard characters so a
+      // query for "_" or "%" cannot turn into a full-table match.
+      const escaped = String(term).replace(/[!%_]/g, match => `!${match}`);
+      parts.push(`IFNULL(${column},'') LIKE ? ESCAPE '!'`);
+      params.push(`%${escaped}%`);
     }
   }
   return { sql: parts.length ? `(${parts.join(' OR ')})` : '1=1', params };
@@ -2978,20 +3114,28 @@ function linkEntity(s, aliasInput, canonicalInput, options = {}) {
   if (!alias || !canonical) throw new Error('alias and canonical are required');
   if (alias === canonical) throw new Error('alias and canonical are the same entity');
   const dryRun = options.apply !== true;
-  const affectedFacts = Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM facts WHERE subject = ?').get(alias)?.n ?? 0);
-  const affectedEdges = Number(prepareCached(s.db, "SELECT COUNT(*) AS n FROM edges WHERE src = ?").get(alias)?.n ?? 0);
-  if (dryRun) return { alias, canonical, affectedFacts, affectedEdges, applied: false };
+  const affectedFacts = Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM facts WHERE subject = ? COLLATE NOCASE').get(alias)?.n ?? 0);
+  const affectedObjectFacts = Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM facts WHERE object = ? COLLATE NOCASE').get(alias)?.n ?? 0);
+  const affectedEdges = Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM edges WHERE src = ? COLLATE NOCASE').get(alias)?.n ?? 0);
+  const affectedDstEdges = Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM edges WHERE dst = ? COLLATE NOCASE').get(alias)?.n ?? 0);
+  if (dryRun) return {
+    alias, canonical, affectedFacts, affectedObjectFacts, affectedEdges, affectedDstEdges, applied: false,
+  };
   transaction(s.db, () => {
     prepareCached(s.db, 'INSERT OR REPLACE INTO entity_aliases(alias, canonical, updated_at) VALUES (?, ?, ?)')
       .run(alias, canonical, now());
     prepareCached(s.db, 'INSERT OR IGNORE INTO entities(name) VALUES (?)').run(canonical);
-    prepareCached(s.db, 'UPDATE facts SET subject = ? WHERE subject = ?').run(canonical, alias);
-    prepareCached(s.db, 'UPDATE edges SET src = ? WHERE src = ?').run(canonical, alias);
+    prepareCached(s.db, 'UPDATE facts SET subject = ? WHERE subject = ? COLLATE NOCASE').run(canonical, alias);
+    prepareCached(s.db, 'UPDATE facts SET object = ? WHERE object = ? COLLATE NOCASE').run(canonical, alias);
+    prepareCached(s.db, 'UPDATE edges SET src = ? WHERE src = ? COLLATE NOCASE').run(canonical, alias);
+    prepareCached(s.db, 'UPDATE edges SET dst = ? WHERE dst = ? COLLATE NOCASE').run(canonical, alias);
     prepareCached(s.db, 'DELETE FROM entities WHERE name = ?').run(alias);
   });
   entityCache = { names: [], at: 0 };
   invalidateProfile();
-  return { alias, canonical, affectedFacts, affectedEdges, applied: true };
+  return {
+    alias, canonical, affectedFacts, affectedObjectFacts, affectedEdges, affectedDstEdges, applied: true,
+  };
 }
 
 function relationCardinality(db, name) {
@@ -3372,7 +3516,9 @@ function dreamEvidence(s, note, scope = note.scope ?? SCOPE_GLOBAL) {
 function coverageScore(noteText, evidenceText) {
   const tokens = [...new Set(tokenize(noteText))];
   if (!tokens.length) return 0;
-  const haystack = String(evidenceText ?? '');
+  // tokenize() lowercases latin tokens; the evidence haystack must be lowered
+  // too or "Docker" in the original text never matches "docker" in the token.
+  const haystack = String(evidenceText ?? '').toLowerCase();
   let hits = 0;
   for (const token of tokens) if (haystack.includes(token)) hits += 1;
   return hits / tokens.length;
@@ -6197,7 +6343,9 @@ function registerWhenAvailable(ctx, name, register) {
   let stopped = false;
   const started = Date.now();
   const timers = [];
+  const debugEnabled = String(process.env.OMNI_ROUTE_DEBUG ?? '') === '1';
   const debug = message => {
+    if (!debugEnabled) return;
     try {
       appendFileSync(
         path.join(process.env.TEMP || '.', 'omni-route-debug.log'),
@@ -6370,16 +6518,38 @@ function readJsonBody(req, limit = 8192) {
       resolve({});
       return;
     }
-    let raw = '';
+    const chunks = [];
+    let size = 0;
     let settled = false;
-    const done = () => { if (!settled) { settled = true; resolve(parse(raw)); } };
     const parse = text => {
       try { return JSON.parse(text || '{}'); } catch { return {}; }
     };
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      // Concatenate bytes before decoding: a multi-byte UTF-8 character may be
+      // split across TCP chunks, and String(chunk) would insert U+FFFD.
+      const bytes = Buffer.concat(chunks).subarray(0, limit);
+      resolve(parse(bytes.toString('utf8')));
+    };
     req.on('data', chunk => {
       if (settled) return;
-      raw += String(chunk);
-      if (raw.length > limit) { raw = raw.slice(0, limit); done(); }
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+      chunks.push(buffer);
+      size += buffer.length;
+      if (size > limit) {
+        let total = 0;
+        const bounded = [];
+        for (const item of chunks) {
+          if (total >= limit) break;
+          const remaining = limit - total;
+          bounded.push(item.subarray(0, remaining));
+          total += Math.min(item.length, remaining);
+        }
+        chunks.length = 0;
+        chunks.push(...bounded);
+        done();
+      }
     });
     req.on('end', done);
     req.on('error', done);
@@ -7202,9 +7372,18 @@ function registerRoutes(ctx) {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       let values;
       try {
-        values = JSON.parse(url.searchParams.get('values') ?? '{}');
+        const body = await readJsonBody(req);
+        const candidate = body?.values ?? body;
+        if (candidate && typeof candidate === 'object' && !Array.isArray(candidate) && Object.keys(candidate).length) {
+          values = candidate;
+        } else {
+          values = JSON.parse(url.searchParams.get('values') ?? '{}');
+        }
       } catch {
-        return json(res, 400, { ok: false, error: 'values must be JSON' });
+        return json(res, 400, { ok: false, error: 'values must be a JSON object' });
+      }
+      if (!values || typeof values !== 'object' || Array.isArray(values)) {
+        return json(res, 400, { ok: false, error: 'values must be a JSON object' });
       }
       try {
         return json(res, 200, { ok: true, persona: personaSet(s.db, values) });
@@ -7250,10 +7429,21 @@ function registerRoutes(ctx) {
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') return json(res, 405, { ok: false, error: 'replace requires POST' });
       if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const noteId = Number(url.searchParams.get('noteId') ?? 0);
+      let noteId = Number(url.searchParams.get('noteId') ?? 0);
+      let rawScope = normalizeScopeInput(url.searchParams.get('scope'));
+      if (!noteId) {
+        try {
+          const body = await readJsonBody(req);
+          noteId = Number(body.noteId ?? 0);
+          rawScope = rawScope || normalizeScopeInput(body.scope);
+        } catch { /* missing or consumed body: keep the query-string values */ }
+      }
       if (!noteId) return json(res, 400, { ok: false, error: 'noteId required' });
+      const s = openStore();
+      const scope = rawScope === 'all' ? null : (rawScope || SCOPE_GLOBAL);
       try {
-        return json(res, 200, { ok: true, ...dreamReplace(openStore(), noteId) });
+        if (rawScope === 'all') auditCrossScope(s.db, 'http:dream/replace', noteId);
+        return json(res, 200, { ok: true, ...dreamReplace(s, noteId, scope) });
       } catch (error) {
         return json(res, 400, { ok: false, error: String(error?.message ?? error) });
       }
@@ -7268,9 +7458,20 @@ function registerRoutes(ctx) {
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') return json(res, 405, { ok: false, error: 'rollback requires POST' });
       if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const noteId = Number(url.searchParams.get('noteId') ?? 0);
+      let noteId = Number(url.searchParams.get('noteId') ?? 0);
+      let rawScope = normalizeScopeInput(url.searchParams.get('scope'));
+      if (!noteId) {
+        try {
+          const body = await readJsonBody(req);
+          noteId = Number(body.noteId ?? 0);
+          rawScope = rawScope || normalizeScopeInput(body.scope);
+        } catch { /* missing or consumed body: keep the query-string values */ }
+      }
       if (!noteId) return json(res, 400, { ok: false, error: 'noteId required' });
-      return json(res, 200, { ok: true, ...dreamRollback(openStore(), noteId) });
+      const s = openStore();
+      const scope = rawScope === 'all' ? null : (rawScope || SCOPE_GLOBAL);
+      if (rawScope === 'all') auditCrossScope(s.db, 'http:dream/rollback', noteId);
+      return json(res, 200, { ok: true, ...dreamRollback(s, noteId, scope) });
     },
   });
 
@@ -7300,12 +7501,28 @@ function registerRoutes(ctx) {
       if (method !== 'POST') return json(res, 405, { ok: false, error: 'restore requires POST' });
       if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const kind = String(url.searchParams.get('kind') ?? '');
-      const id = Number(url.searchParams.get('id') ?? 0);
+      let kind = String(url.searchParams.get('kind') ?? '');
+      let id = Number(url.searchParams.get('id') ?? 0);
+      let rawScope = normalizeScopeInput(url.searchParams.get('scope'));
+      // The host server may pre-consume the request stream; the body is only a
+      // fallback for clients that send the parameters as JSON instead of a query.
+      if (!kind || !id) {
+        let body = {};
+        try {
+          body = await readJsonBody(req);
+        } catch {
+          return json(res, 400, { ok: false, error: 'kind and id required' });
+        }
+        kind = String(body.kind ?? kind);
+        id = Number(body.id ?? id);
+        rawScope = rawScope || normalizeScopeInput(body.scope);
+      }
       if (!kind || !id) return json(res, 400, { ok: false, error: 'kind and id required' });
       const s = openStore();
+      const scope = rawScope === 'all' ? null : (rawScope || SCOPE_GLOBAL);
       try {
-        return json(res, 200, { ok: true, ...restoreMemory(s, String(kind), id) });
+        if (rawScope === 'all') auditCrossScope(s.db, 'http:restore', id);
+        return json(res, 200, { ok: true, ...restoreMemory(s, String(kind), id, scope) });
       } catch (error) {
         return json(res, 400, { ok: false, error: String(error?.message ?? error) });
       }
@@ -7379,20 +7596,24 @@ function registerRoutes(ctx) {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       let kind = url.searchParams.get('kind') ?? '';
       let id = Number(url.searchParams.get('id') ?? 0);
+      let rawScope = normalizeScopeInput(url.searchParams.get('scope'));
       // The host server may pre-consume the request stream, so the body is only a
       // fallback: parameters travel in the query string.
       if (!kind || !id) {
         const body = await readJsonBody(req);
         kind = String(body.kind ?? kind);
         id = Number(body.id ?? id);
+        rawScope = rawScope || normalizeScopeInput(body.scope);
       }
       const table = { note: 'notes', fact: 'facts', chunk: 'chunks' }[kind];
       if (!table || !id) {
         return json(res, 400, { ok: false, error: 'kind and id required' });
       }
-      const forgotten = forgetMemory(s, kind, id);
+      const scope = rawScope === 'all' ? null : (rawScope || SCOPE_GLOBAL);
+      if (rawScope === 'all') auditCrossScope(s.db, 'http:forget', id);
+      const forgotten = forgetMemory(s, kind, id, scope);
       invalidateProfile();
-      return json(res, 200, { ok: true, forgotten });
+      return json(res, 200, { ok: true, forgotten, scope: rawScope || SCOPE_GLOBAL });
     },
   });
 

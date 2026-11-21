@@ -133,7 +133,7 @@ test('import rejects a snapshot with a wrong or missing format field', async (t)
   assert.deepEqual(tableCounts(target.home), before);
 });
 
-test('a type-invalid note aborts a mid-import transaction and rolls back every row', async (t) => {
+test('a type-invalid note is rejected before writing and leaves every row untouched', async (t) => {
   const { snapshot } = await exportedSeed(t, 'EdgePartial 基准');
   const target = await bootIsolated(t);
   await target.call('memory_write', { kind: 'note', scope: 'global', text: 'EdgePartial 保留' });
@@ -144,9 +144,9 @@ test('a type-invalid note aborts a mid-import transaction and rolls back every r
     ...snapshot,
     notes: [
       { ...base, id: 9101, text: 'EdgePartialGoodA' },
-      // 缺 text 的行只是在计划阶段被跳过，并不会让导入失败。
+      // 缺 text 的行在计划阶段跳过。
       { id: 9102, ts: base.ts, scope: 'global', importance: 0.5 },
-      // Number('not-a-number') -> NaN，绑定到 NOT NULL 的 importance 时触发约束错误。
+      // 非数字 importance 必须在写库前拒绝，而不是让 NaN 撞上 NOT NULL。
       { ...base, id: 9103, text: 'EdgePartialBad', importance: 'not-a-number' },
       { ...base, id: 9104, text: 'EdgePartialGoodB' },
     ],
@@ -154,18 +154,15 @@ test('a type-invalid note aborts a mid-import transaction and rolls back every r
     entityAliases: [], persona: [], candidates: [],
   });
 
-  const dry = await target.call('memory_import', { path: path.basename(file) });
-  assert.equal(dry.value.dryRun, true);
-  assert.equal(dry.value.notes, 3, '两条好行 + 类型错误行都会进入写入计划');
-  assert.equal(dry.value.skipped, 1, '缺 text 的行在计划阶段被跳过');
-  assert.deepEqual(tableCounts(target.home), before, 'dryRun 不写库');
-
+  await assert.rejects(
+    () => target.call('memory_import', { path: path.basename(file) }),
+    (error) => /imported numeric field is not finite/.test(error.message),
+  );
   await assert.rejects(
     () => target.call('memory_import', { path: path.basename(file), dryRun: false }),
-    (error) => /NOT NULL constraint failed: notes\.importance/.test(error.message),
-    '实际行为：写入阶段在坏行处抛出约束错误',
+    (error) => /imported numeric field is not finite/.test(error.message),
   );
-  assert.deepEqual(tableCounts(target.home), before, '实际行为：整体事务回滚，坏行之前插入的好行也不保留');
+  assert.deepEqual(tableCounts(target.home), before, '坏行不会部分写入，也不会留下前面的好行');
 
   const hits = await target.call('memory_search', { query: 'EdgePartialGoodA', scope: 'all' });
   assert.equal(hits.value.hits.filter(hit => hit.kind === 'note').length, 0);

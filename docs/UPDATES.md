@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 68 次提交；更新记录自身的提交不计入列表。
+> 共 69 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -13,11 +13,15 @@
 - [3.9.4 完成报告](./COMPLETION-3.9.4-2026-11-21.md)
 - [3.9.5 完成报告](./COMPLETION-3.9.5-2026-11-21.md)
 
+## 2026-11-22
+
+- 00:07:28 `da589a13` — fix: close 3.10.3 review P1/P2 (3.10.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/da589a13536159b50cfbaf84311c8bcee7b5148e)
+
 ## 2026-11-21
 
-- 23:35:11 `a1548a15` — chore(release): 3.10.3 — [提交](https://github.com/wangzhen110/omni-memory/commit/a1548a15ac2b5d29f8973f3c7446704cd25a4679)
-- 23:23:24 `3194c1b3` — docs: record cold-start polling fix in update log — [提交](https://github.com/wangzhen110/omni-memory/commit/3194c1b349206348a6cf2b81e8ddddfbd1f10d97)
-- 23:18:26 `1b6a9a23` — fix(cold-start): keep polling for late webServer/systemPrompt (3.10.2) — [提交](https://github.com/wangzhen110/omni-memory/commit/1b6a9a23c1497cb115ddecf76e906639eedee457)
+- 23:35:11 `be4f1e4f` — chore(release): 3.10.3 — [提交](https://github.com/wangzhen110/omni-memory/commit/be4f1e4f0a68a6435a0bae8b3e4318235a65c73f)
+- 23:23:24 `4448e1d5` — docs: record cold-start polling fix in update log — [提交](https://github.com/wangzhen110/omni-memory/commit/4448e1d599f1e95c7c869ab348bd69dc894ce7b9)
+- 23:18:26 `b1574d58` — fix(cold-start): keep polling for late webServer/systemPrompt (3.10.2) — [提交](https://github.com/wangzhen110/omni-memory/commit/b1574d588f634d2714ca8481a38d7c65f972b966)
 - 22:28:59 `76f465f8` — fix(scope): restore late host routes and canonical project keys (3.10.2) — [提交](https://github.com/wangzhen110/omni-memory/commit/76f465f87ba674be4986cce8d4dde64b1d82195c)
 - 22:02:49 `91cdac64` — docs: make Doubao integration zero-config by default — [提交](https://github.com/wangzhen110/omni-memory/commit/91cdac64914aacf547bda9d87163799f025d3c3d)
 - 20:32:35 `69c8d6cf` — docs: document Doubao Work MCP connector and HTTP fallback — [提交](https://github.com/wangzhen110/omni-memory/commit/69c8d6cf420db77afcf074ee3b88161f72d86cb2)

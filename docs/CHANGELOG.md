@@ -2,6 +2,23 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.10.4] — 2026-11-21
+
+### 修复 · 3.10.3 复审 P1/P2
+- **面板写操作回到项目层**：`/omni-memory/forget`、`/restore`、`/dream/replace`、`/dream/rollback` 现在读取 `scope`，缺省仍是 `global`，显式项目键时只操作该项目；`scope=all` 才跨层并写审计。`forget` / `restore` / `dream` 的 `kind`、`id`、`scope` 既支持查询参数，也支持 JSON body 兜底（宿主可能已消费请求体）。`client.js` 的遗忘、恢复、dream 回滚与人物设定都改为携带条目真实 `scope` / JSON body。
+- **恢复真正可见**：`restoreMemory` 恢复笔记时同时清 `superseded_by`，恢复事实时清 `valid_to`；若同三元组已有 active 行，返回 `{restored:false, reason:'active duplicate', activeId}`，不制造双活。边（edge）恢复时重新置为 active。
+- **导入不再信任快照**：`mergeSnapshot` 先做计划阶段校验——`verification` / `solution_status` 只接受白名单，`importance` / `confidence` 等数值必须有限并 clamp 到合法范围；非法数值直接抛 `imported numeric field is not finite`，写库前拒绝，库不变。`superseded_by` 只映射到本次导入的新 id，映射不到就置空，绝不回退源 id。`evidence` 保留原值。
+- **实体合并补全方向**：`linkEntity` 同时更新 `facts.subject`、`facts.object`、`edges.src`、`edges.dst`，并按 `COLLATE NOCASE` 匹配旧数据里未归一化的大小写，返回 `affectedObjectFacts` / `affectedDstEdges`。
+- **dream 与热路径**：`coverageScore` 的证据 haystack 统一 `toLowerCase()`，避免 `Docker` 与 token `docker` 永远不匹配；schema v16 为 notes/facts/chunks/edges 补 scope+状态+时间复合索引，v16 迁移与 marker 修复路径都幂等创建。
+- **HTTP 边界**：`hosts/http/server.mjs` 的 `/health`、`/rules`、`/` 及所有静态 GET 在非 loopback 时返回 403，`0.0.0.0` 绑定不再泄露元数据或页面；`readJsonBody` 改为 `Buffer.concat` 后按字节截断再解码，跨 chunk 的 UTF-8 不再被 `String()` 破坏；`likeClause` 用 `ESCAPE '!'` 转义 `%` / `_` / `!`。
+- **日志与迁移清理**：路由注册 debug 日志只在 `OMNI_ROUTE_DEBUG=1` 时写，不再常驻；`migrateScopeAlias` 墓碑重复 chunk 时同步清理 FTS / bigram / vector / semantic 派生行，避免迁移留下幽灵索引。
+
+### 测试与发布
+- 新增 `test/review-3.10.3-p1.test.mjs`：HTTP 项目层 forget/restore、恢复后可见性、导入字段清洗与悬空 lineage、`link_entity` object 方向、跨 chunk UTF-8。
+- 完整 `npm test` **367/367** 通过；`npm run check` 同步为 23 个内核工具、25 个 MCP 工具、21 路由、31 ADR、schema v16、3.10.4。
+- **热重载边界**：DSH 更新插件后新实例不会自动接管旧实例的路由，必须重启 DSH；本版不声称热重载可用。
+- **性能口径**：本轮未重跑 100k 基准，不沿用 3.10.1 的延迟数字作为 3.10.4 实测。
+
 ## [3.10.3] — 2026-11-21
 
 ### 修复 · 把冷启动轮询真正纳入发布

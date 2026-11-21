@@ -384,10 +384,10 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 参数：`noteId` number（原笔记 id）。撤销 dream 替代。
 
 ### 5.17 memory_export
-参数：`path` string（默认落到 `$DSH_HOME/memory/` 的时间戳文件）、`activeOnly` boolean（默认 false，含墓碑与全部候选；true 时只导活跃行和 pending 候选）。向量是派生数据，不导出。
+参数：`path` string（可选，**单个 basename、必须以 `.json` 结尾**，不允许绝对路径/目录分隔符/`..`；默认写到 `$OMNI_HOME/memory/backups/omni-backup-<时间戳>.json`，已存在同名文件时拒绝覆盖）、`activeOnly` boolean（默认 false，含墓碑与全部候选；true 时只导活跃行和 pending 候选）。向量是派生数据，不导出。
 
 ### 5.18 memory_import
-参数：`path` 必填、`dryRun` boolean（默认 true）。按内容去重合并。
+参数：`path` 必填（同样只接受 `$OMNI_HOME/memory/backups/` 下的单个 `.json` basename，最大 64 MiB）、`dryRun` boolean（默认 true）。按内容去重合并；导入前先校验所有数值字段与枚举，非法数值直接拒绝，不进入写库阶段。`verification` / `solution_status` 只接受白名单值，`superseded_by` 只映射到本次导入的新 id，映射不到时置空。
 
 ### 5.19 memory_reindex
 参数：`limit` number（默认 200，最大 1000）、`bigrams` boolean、`vectors` boolean、`semantic` boolean、`semanticForce` boolean。换嵌入模型、恢复旧库或模型升级后使用。`semantic=true` 只跑本地语义回填（`backend:"local"`，返回 `{processed,pending,backfillDone,forced,...}`）；`semanticForce=true` 需与 `semantic=true` 同用，先删除当前模型签名再按源文本重建，用于修复陈旧向量；`semantic=true, vectors=true` 同时跑两套向量。顶层 `processed` 只表示**当前向量后端实际写入的行数**，语义回填数量另见 `semantic.processed`；两套同时运行时不把两个口径相加，避免把“条目”和“向量行”混成同一个数字。`bigrams=true` 单独触发中文二元索引全量重建。
@@ -595,8 +595,9 @@ memory_dream_replace(noteId, confirm=true)   // 单条确认替代
 ### 11.7 迁移 / 换机器
 
 ```
-memory_export(path="D:\\backup\\omni.json")
-memory_import(path="...", dryRun=false)
+memory_export()                                      // 默认在 $OMNI_HOME/memory/backups/ 生成时间戳文件
+memory_export(path="omni-before-upgrade.json")       // 只接受备份目录内的单个 .json basename
+memory_import(path="omni-before-upgrade.json", dryRun=false)
 memory_reindex(bigrams=true, vectors=true)
 ```
 

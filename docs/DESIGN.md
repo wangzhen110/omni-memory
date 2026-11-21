@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.10.3 |
-| 插件版本 | 3.10.3 |
+| 文档版本 | 3.10.4 |
+| 插件版本 | 3.10.4 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-21 |
@@ -94,9 +94,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足 |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 362/362（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 367/367（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 362 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 367 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -219,7 +219,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 ### 4.3 迁移策略
 
 `meta.schema_version` 记录整数版本；启动时按序执行 `MIGRATIONS[n]`。
-**当前版本 15**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。
+**当前版本 16**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。
 
 | 版本 | 变更 | 迁移动作 |
 |---|---|---|
@@ -238,6 +238,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 | 13 | 会话候选 | `note_candidates(kind, text, scope, status, hash, ...)`；pending 候选不参与正式检索 |
 | 14 | 本地语义向量 | `semantic_vectors(kind, owner_id, model, dim, vec)`；`semantic_vectors_model` 索引；不触碰旧 `vectors` |
 | 15 | 项目 scope alias | `scope_aliases(alias PRIMARY KEY, canonical, created_at)`；`scope_aliases_canonical` 索引；打开路径时迁移旧键 |
+| 16 | 热查询索引 | 为 notes/facts/chunks/edges 补 scope+状态+时间复合索引；幂等 `CREATE INDEX IF NOT EXISTS`，不改变数据 |
 
 未带版本的旧库按 v1 处理，自动补齐到当前版本；旧行不受影响（迁移只加列、不删数据）。
 
@@ -280,7 +281,8 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 | `/omni-memory/packet` | GET | `q` `scope` `cwd` `limit`(1..10, 默认 5) `budget`(400..4000, 默认 1800) `format`(`json`\|`text`) | `{ok, format, scope, query, text, chars, hits, truncated, memories[], generatedAt}`；`format=text` 直接输出纯文本 |
 | `/omni-memory/openapi.json` | GET | — | OpenAPI 3.0 描述：10 条 path（packet/search/list/node/status/tool/ingest/candidates/candidate/consolidate） |
 | `/omni-memory/tool` | POST | body `name` `arguments`；header `x-omni-csrf: 1` | `{ok, name, value, text}`；仅允许 write/search/solution_report/feedback/get/amend/profile/timeline |
-| `/omni-memory/forget` | **POST**（GET 兼容） | `kind`, `id`（**查询参数**；宿主可能已读空 body） | `{ok, forgotten}` |
+| `/omni-memory/forget` | **POST**（GET 兼容） | `kind`, `id`, `scope`（查询参数优先；空 body 时从 JSON body 兜底） | `{ok, forgotten, scope}` |
+| `/omni-memory/restore` | POST | `kind`, `id`, `scope`（查询参数优先，JSON body 兜底） | `{ok, restored, reason?, activeId?}` |
 | `/omni-memory/ingest` | POST | `text`（必填）, `role`, `scope`, `cwd`, `sessionId`, `source`, `importance`, `extract` | `{ok,id,deduped,scope,sessionId,chars,truncated,candidates[]}` |
 | `/omni-memory/candidates` | GET | `status`(pending/accepted/rejected/all), `scope`, `cwd`, `limit` | `{ok,action:'list',total,candidates[]}` |
 | `/omni-memory/candidate` | POST | `id`, `action`(accept/reject), `scope`, `cwd`, `reason` | `{ok,id,action,noteId?,reason?}` |
