@@ -2,6 +2,17 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.10.3] — 2026-11-21
+
+### 修复 · 把冷启动轮询真正纳入发布
+- **发布包不再只有一次性 `ctx.inject`**：3.10.2 工作区的 `registerWhenAvailable()` 已包含 250ms 轮询（最多 60s），但此前 Git/GitHub 的发布提交只含 `ctx.inject` 分支；干净安装或从仓库更新后，DSH 冷启动仍可能在 `webServer` 晚到时静默 404。3.10.3 将轮询段纳入版本发布，`not ready at apply` 后会继续等待并注册路由。
+- **冷启动可观测**：注册成功/失败继续写 `%TEMP%\omni-route-debug.log`，并通过 `/omni-memory/status` 的 `routes.status/count/at/error` 与 `lastInjection.routes` 暴露；真实 DSH 冷启动实测 `not ready at apply → inject fired → registered after 277ms`，路由数 21。
+- **DSH Desktop 端口不要写死**：`dsh-desktop-host` 固定以 `--host 127.0.0.1 --port 0` 启动 Web 应用，端口由操作系统每次随机分配；`9230` 是 inspector ingest，`59273` 是上一进程的旧 GUI 端口，均不是插件 `/omni-memory/*` 的验收入口。固定可见入口用独立 `http://127.0.0.1:7788/` 仪表盘，或 DSH 客户端侧栏（内部相对请求，不依赖端口）。
+
+### 测试与发布
+- 测试基线保持 **362/362**；`npm run check` 为 23 个内核工具、25 个 MCP 工具、21 路由、31 ADR、3.10.3。
+- 真实库项目键修复保持生效：`proj:全息记忆#767039` 的 10 条转录已并入 `proj:全息记忆#604dba`，旧键 0 行，`scope_alias_repair_version='1'`。
+
 ## [3.10.2] — 2026-11-21
 
 ### 修复 · DSH 冷启动与项目键分裂

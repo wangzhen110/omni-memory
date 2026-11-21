@@ -248,7 +248,7 @@ DSH 外（MCP 等）：没有注入点，改为 `memory_context` 显式调用，
 
 可选服务：`llm`（模型复核、persona 提炼）、`systemPrompt`（DSH 注入）、`webServer`（挂 REST 路由）。
 
-3.10.2 起路由和画像 section 不再只做一次 `ctx.get()`：有 `ctx.inject` 时等待服务就绪，没有 `inject` 的轻量测试宿主回退到一次立即注册；`/omni-memory/status` 的 `routes` 会显示 `pending/registered/disposed`、注册数量和最后错误，画像注入失败也会记录到 `lastInjection.routes`。
+3.10.2 起路由和画像 section 不再只做一次 `ctx.get()`：有 `ctx.inject` 时等待服务就绪，没有 `inject` 的轻量测试宿主回退到一次立即注册；`/omni-memory/status` 的 `routes` 会显示 `pending/registered/disposed`、注册数量和最后错误，画像注入失败也会记录到 `lastInjection.routes`。3.10.3 起发布包同时包含 `ctx.inject` 之后的 250ms 轮询（最多 60s）：`not ready at apply` 不再等于放弃，真实 DSH 冷启动会继续尝试注册。
 
 ### 4.2 启动顺序（重要）
 

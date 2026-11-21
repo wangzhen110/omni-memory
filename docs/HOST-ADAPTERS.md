@@ -44,7 +44,7 @@ node hosts\cli.mjs write --dir <repo> --kind note --text "..."
 环境变量：OMNI_HOME=<用户目录>\.dsh；OMNI_PROJECT_DIR=<repo>
 ```
 
-实测：`initialize` 返回 `omni-memory 3.10.2`，`tools/list` 25 个工具。连接器只是可选增强，由豆包客户端管理；Agent 不应自动改豆包设置、配置或注册表。
+实测：`initialize` 返回 `omni-memory 3.10.3`，`tools/list` 25 个工具。连接器只是可选增强，由豆包客户端管理；Agent 不应自动改豆包设置、配置或注册表。
 
 #### 宿主瞬断（2026-11-21 实测）
 
@@ -52,6 +52,16 @@ node hosts\cli.mjs write --dir <repo> --kind note --text "..."
 - 根因：`agent_infra` 下的临时脚本目录被客户端清理，工具写入的脚本在执行前被删；不是 CLI、MCP 或参数错误。
 - 处置：重启豆包客户端可恢复；CLI 首次失败等 2 秒重试一次，仍失败再走 `GET /omni-memory/packet?cwd=<项目>&q=<任务>` 只读兜底。不要连续重试三次，也不要改客户端配置/注册表绕过。
 - 常态化：原生 MCP 连接器由客户端托管 Node 进程，不依赖 PowerShell 临时脚本；但它仍需用户在客户端保存一次，是可选增强。
+
+### 1.2 DSH Desktop 的端口与验收（3.10.3）
+
+DSH Desktop 的 `dsh-desktop-host` 启动 Web 应用时固定使用 `--host 127.0.0.1 --port 0`，因此 Web GUI / 插件路由端口由操作系统每次启动随机分配，重启后会变化。
+
+- `http://127.0.0.1:9230/omni-memory/status` 返回 404 是正常的：`9230` 是 DSH 的 inspector ingest（`__DSH_INSPECTOR__`），不是插件路由。
+- `59273` / `59325` 是历史进程的旧 GUI 端口，进程退出后不再监听；不要把它们写死为验收地址。
+- 找当前端口：用 DSH 客户端侧栏打开「全息记忆」（内部相对请求，不依赖端口），或扫描 loopback 端口里 `/omni-memory/status` 返回 200 的那个；状态里的 `routes.status=registered`、`routes.count=21` 表示插件路由已挂载。
+- 需要固定地址时用独立服务 `node hosts/cli.mjs serve --port 7788`，访问 `http://127.0.0.1:7788/`；它和 DSH 共用同一个 `omni.db`，但不依赖 DSH 的随机端口。
+- 冷启动排查读 `%TEMP%\omni-route-debug.log`：出现 `not ready at apply; polling` 后应跟随 `inject fired` 或 `registered after Nms`；若 60 秒内都没有 `registered`，再看 `/status` 的 `routes.error`。
 
 ### 2. CLI context（hook / sidecar）
 
