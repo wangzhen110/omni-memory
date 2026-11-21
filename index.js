@@ -20,7 +20,7 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { DIM, embedText, dot, toBlob, fromBlob, tokenize } from './lib/embed.mjs';
@@ -6193,26 +6193,90 @@ function serviceFrom(ctx, name) {
  * immediate lookup.
  */
 function registerWhenAvailable(ctx, name, register) {
-  if (ctx && typeof ctx.inject === 'function') {
-    let dispose;
-    let off;
+  let dispose;
+  let stopped = false;
+  const started = Date.now();
+  const timers = [];
+  const debug = message => {
+    try {
+      appendFileSync(
+        path.join(process.env.TEMP || '.', 'omni-route-debug.log'),
+        `${new Date().toISOString()} ${name}: ${message}\n`,
+      );
+    } catch { /* diagnostics must never break apply */ }
+  };
+
+  const attach = candidate => {
+    if (stopped || typeof dispose === 'function') return true;
+    let service;
+    try {
+      // Never read service members from the context proxy without injection:
+      // Cordis guards those reads. A context exposes `get`; a service does not.
+      service = (candidate && typeof candidate.get === 'function')
+        ? serviceFrom(candidate, name)
+        : candidate;
+    } catch { return false; }
+    if (!service) return false;
+    try {
+      const value = register(service);
+      if (typeof value === 'function') {
+        dispose = value;
+        debug(`registered after ${Date.now() - started}ms`);
+        return true;
+      }
+      debug('register returned no disposer');
+    } catch (error) {
+      debug(`register failed: ${error?.message ?? error}`);
+    }
+    return false;
+  };
+
+  // The service may already be active when the plugin is (re)loaded.
+  attach(ctx);
+
+  let off;
+  if (typeof dispose !== 'function' && ctx && typeof ctx.inject === 'function') {
     try {
       off = ctx.inject([name], inner => {
-        try {
-          if (typeof dispose === 'function') dispose();
-          dispose = register(inner);
-        } catch { /* optional surface must not break apply */ }
+        debug('inject fired');
+        attach(inner);
       });
-      return () => {
-        try { off?.(); } catch { /* already gone */ }
-        try { dispose?.(); } catch { /* already gone */ }
-        dispose = undefined;
-      };
-    } catch {
-      /* Fall through to the immediate path below. */
+    } catch (error) {
+      debug(`inject threw: ${error?.message ?? error}`);
     }
   }
-  return register(ctx);
+
+  // Cold start: the host may activate the service well after this plugin.
+  // Poll for up to a minute; the host is fully booted long before that and the
+  // first successful attach stops the loop.
+  const schedule = delay => {
+    const timer = setTimeout(() => {
+      if (stopped || typeof dispose === 'function') return;
+      if (attach(ctx)) return;
+      const elapsed = Date.now() - started;
+      if (elapsed < 60_000) schedule(500);
+      else debug(`gave up after ${elapsed}ms`);
+    }, delay);
+    if (typeof timer.unref === 'function') timer.unref();
+    timers.push(timer);
+  };
+  if (typeof dispose !== 'function') {
+    debug('not ready at apply; polling');
+    schedule(250);
+  }
+
+  return () => {
+    stopped = true;
+    for (const timer of timers) {
+      try { clearTimeout(timer); } catch { /* already gone */ }
+    }
+    try {
+      if (typeof off === 'function') off();
+      else off?.dispose?.();
+    } catch { /* already gone */ }
+    try { dispose?.(); } catch { /* already gone */ }
+    dispose = undefined;
+  };
 }
 
 function isLoopback(req) {
