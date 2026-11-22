@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { boot } from './helpers.mjs';
 import { SCHEMA_VERSION } from '../index.js';
 
@@ -127,4 +128,44 @@ test('D-03 backfill indexes rows that predate the FTS tables', async () => {  co
   const row = db.prepare("SELECT COUNT(*) AS n FROM notes_fts WHERE notes_fts MATCH '\"backfill-me\"'").get();
   assert.equal(Number(row.n), 1);
   db.close();
+});
+
+test('v17 adds notes.text_hash, backfills legacy rows and keeps collisions distinct', async () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-v17-'));
+  const first = await boot({ home });
+  await first.call('memory_write', { kind: 'note', text: 'v17 legacy note' });
+  const legacy = openDb(home);
+  legacy.exec('DROP INDEX IF EXISTS notes_scope_text_hash');
+  legacy.exec('ALTER TABLE notes DROP COLUMN text_hash');
+  legacy.prepare("UPDATE meta SET value = '16' WHERE key = 'schema_version'").run();
+  legacy.close();
+
+  const second = await boot({ home });
+  await second.call('memory_profile');
+  const db = openDb(home);
+  assert.equal(String(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), '17');
+  assert.ok(db.prepare('PRAGMA table_info(notes)').all().some(row => row.name === 'text_hash'));
+  assert.equal(Number(db.prepare('SELECT COUNT(*) AS n FROM notes WHERE text_hash IS NULL').get().n), 0);
+  assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='notes_scope_text_hash'").get());
+
+  const deduped = await second.call('memory_write', { kind: 'note', text: 'v17 legacy note' });
+  assert.equal(deduped.value.deduped, true);
+
+  // Same hash, different text: the indexed lookup still compares text and must
+  // insert a new row instead of reporting a duplicate.
+  const collisionHash = createHash('sha256').update('collision other text').digest('hex').slice(0, 32);
+  db.prepare('INSERT INTO notes(ts, scope, text, text_hash, importance) VALUES (?, ?, ?, ?, ?)')
+    .run(Date.now(), 'global', 'collision first text', collisionHash, 0.5);
+  const collision = await second.call('memory_write', { kind: 'note', text: 'collision other text' });
+  assert.equal(collision.value.deduped, false);
+  assert.equal(Number(db.prepare("SELECT COUNT(*) AS n FROM notes WHERE text IN ('collision first text', 'collision other text')").get().n), 2);
+  db.close();
+
+  // Reopening a current store reruns the repair path; it must stay a no-op.
+  const third = await boot({ home });
+  await third.call('memory_profile');
+  const stable = openDb(home);
+  assert.equal(String(stable.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), '17');
+  assert.equal(Number(stable.prepare('SELECT COUNT(*) AS n FROM notes WHERE text_hash IS NULL').get().n), 0);
+  stable.close();
 });

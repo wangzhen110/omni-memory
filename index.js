@@ -627,6 +627,18 @@ function hash(text) {
   return createHash('sha256').update(String(text)).digest('hex').slice(0, 32);
 }
 
+/**
+ * Dedupe lookup through the (scope, text_hash) index. Matching text is part of
+ * the predicate, not just the hash: a collision between two different texts can
+ * never be reported as a duplicate.
+ */
+function findNoteByTextIndex(db, scope, text, extraSql = '', extraParams = []) {
+  return prepareCached(db, `
+    SELECT id, problem_key, solution_status, evidence FROM notes
+    WHERE scope = ? AND text_hash = ? AND text = ? ${extraSql}
+  `).get(scope, hash(text), text, ...extraParams);
+}
+
 function openStore() {
   if (store) return store;
   mkdirSync(DB_DIR, { recursive: true });
@@ -737,7 +749,7 @@ function openStore() {
   return store;
 }
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 let hostCtx = null;
 
 function columnExists(db, table, column) {
@@ -782,6 +794,26 @@ function ensureHotIndexes(db) {
     CREATE INDEX IF NOT EXISTS edges_src_rel_dst_scope
       ON edges(src, rel, dst, scope);
   `);
+}
+
+/**
+ * v17: hash note text so write dedupe and restore/import prechecks can use the
+ * `(scope, text_hash)` index instead of scanning every row in the scope. The
+ * hash is only a filter; every hit is still compared against the original text.
+ * Reentrant: interrupted backfills resume from the remaining NULL rows.
+ */
+function ensureNoteTextHash(db) {
+  addColumn(db, 'notes', 'text_hash', 'TEXT');
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS notes_scope_text_hash
+      ON notes(scope, text_hash);
+  `);
+  const missing = prepareCached(db, 'SELECT id, text FROM notes WHERE text_hash IS NULL').all();
+  if (!missing.length) return;
+  transaction(db, () => {
+    const update = prepareCached(db, 'UPDATE notes SET text_hash = ? WHERE id = ?');
+    for (const row of missing) update.run(hash(row.text), Number(row.id));
+  });
 }
 
 /**
@@ -991,6 +1023,10 @@ const MIGRATIONS = [
   // notes and facts by scope/state; without these 100k rows cross the 100ms
   // budget even when the result set is tiny.
   db => ensureHotIndexes(db),
+  // v17: notes.text_hash + (scope, text_hash) index. Dedupe still compares the
+  // original text after the indexed candidate lookup, so a hash collision can
+  // never merge two different notes.
+  db => ensureNoteTextHash(db),
 ];
 
 function migrate(db) {
@@ -1090,6 +1126,8 @@ function migrate(db) {
   }
   // Repair path for a marker that is already 16 but indexes were interrupted.
   if (SCHEMA_VERSION >= 16) ensureHotIndexes(db);
+  // Repair path for a marker that is already 17 but the backfill stopped early.
+  if (SCHEMA_VERSION >= 17) ensureNoteTextHash(db);
   prepareCached(db, "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)")
     .run(String(SCHEMA_VERSION));
   return SCHEMA_VERSION;
@@ -2074,11 +2112,13 @@ function importBackup(s, options = {}) {
 /** Plan note rows from a snapshot; validation stays in the import path. */
 function planImportNotes(db, snapshot, stats) {
   const rows = Array.isArray(snapshot.notes) ? snapshot.notes : [];
-  const noteExists = prepareCached(db, 'SELECT id FROM notes WHERE scope = ? AND text = ? AND superseded_by IS NULL');
+  const noteExists = prepareCached(db, `
+    SELECT id FROM notes WHERE scope = ? AND text_hash = ? AND text = ? AND superseded_by IS NULL
+  `);
   const plan = [];
   for (const note of rows) {
     if (!note?.text) { stats.skipped += 1; continue; }
-    if (noteExists.get(note.scope ?? SCOPE_GLOBAL, note.text)) { stats.skipped += 1; continue; }
+    if (noteExists.get(note.scope ?? SCOPE_GLOBAL, hash(String(note.text)), String(note.text))) { stats.skipped += 1; continue; }
     const verification = IMPORT_VERDICTS.has(String(note.verification ?? '')) ? String(note.verification) : null;
     const solutionStatus = IMPORT_SOLUTION_STATUSES.has(String(note.solution_status ?? note.solutionStatus ?? ''))
       ? String(note.solution_status ?? note.solutionStatus) : null;
@@ -2239,13 +2279,13 @@ function insertSnapshotNotes(s, notes) {
   for (const note of notes) {
     const info = prepareCached(s.db, `
       INSERT INTO notes(
-        ts, scope, text, importance, source, revision, superseded_by, contested, deleted_at,
+        ts, scope, text, text_hash, importance, source, revision, superseded_by, contested, deleted_at,
         verification, verified_at, evidence, problem_key, solution_status,
         solution_verified_at, reuse_count, last_used_at,
         recall_count, last_recall_at, useful_count, misleading_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      Number(note.ts ?? now()), note.scope ?? SCOPE_GLOBAL, String(note.text),
+      Number(note.ts ?? now()), note.scope ?? SCOPE_GLOBAL, String(note.text), hash(String(note.text)),
       Number(note.importance ?? 0.5), note.source ?? null, Number(note.revision ?? 1),
       note.superseded_by ?? null, Number(note.contested ?? 0), note.deleted_at ?? null,
       note.verification ?? null, note.verified_at ?? null, note.evidence ?? null,
@@ -2516,14 +2556,15 @@ function restoreMemory(s, kind, id, scope = SCOPE_GLOBAL) {
       // in the same scope would recreate the duplicate FR-01 forbids.
       const activeText = prepareCached(s.db, `
         SELECT id FROM notes
-        WHERE IFNULL(scope, 'global') = ? AND text = ?
+        WHERE IFNULL(scope, 'global') = ? AND text_hash = ? AND text = ?
           AND deleted_at IS NULL AND superseded_by IS NULL AND id <> ?
-      `).get(row.scope ?? SCOPE_GLOBAL, row.text, Number(id));
+      `).get(row.scope ?? SCOPE_GLOBAL, hash(row.text), row.text, Number(id));
       if (activeText) return { restored: false, reason: 'active duplicate', activeId: Number(activeText.id) };
       // A tombstoned note may also have been superseded by a newer conclusion.
       // Restoring it must clear both states, otherwise the row is visible in the
       // audit list but still excluded from active search.
-      prepareCached(s.db, 'UPDATE notes SET deleted_at = NULL, superseded_by = NULL WHERE id = ?').run(Number(id));
+      prepareCached(s.db, 'UPDATE notes SET deleted_at = NULL, superseded_by = NULL, text_hash = ? WHERE id = ?')
+        .run(hash(row.text), Number(id));
     } else if (table === 'facts') {
       prepareCached(s.db, 'UPDATE facts SET deleted_at = NULL, valid_to = NULL WHERE id = ?').run(Number(id));
     } else {
@@ -2736,10 +2777,7 @@ function writeCandidateNoteInTransaction(s, row) {
   const text = String(row.text ?? '').trim();
   const scope = String(row.scope ?? SCOPE_GLOBAL);
   if (!text) throw new Error('candidate text is empty');
-  const existing = prepareCached(s.db, `
-    SELECT id FROM notes
-    WHERE scope = ? AND text = ? AND deleted_at IS NULL AND superseded_by IS NULL
-  `).get(scope, text);
+  const existing = findNoteByTextIndex(s.db, scope, text, 'AND deleted_at IS NULL AND superseded_by IS NULL');
   if (existing) return { id: Number(existing.id), deduped: true };
   const candidateTs = Number(row.ts);
   const ts = Number.isFinite(candidateTs) && candidateTs > 0 ? candidateTs : now();
@@ -2748,15 +2786,12 @@ function writeCandidateNoteInTransaction(s, row) {
     ? Number(Math.min(0.9, Math.max(0.3, 0.4 + confidence * 0.4)).toFixed(3))
     : 0.55;
   const source = row.source ? `${row.source} · candidate:${row.id}` : `candidate:${row.id}`;
-  const raced = prepareCached(s.db, `
-    SELECT id FROM notes
-    WHERE scope = ? AND text = ? AND deleted_at IS NULL AND superseded_by IS NULL
-  `).get(scope, text);
+  const raced = findNoteByTextIndex(s.db, scope, text, 'AND deleted_at IS NULL AND superseded_by IS NULL');
   if (raced) return { id: Number(raced.id), deduped: true };
   const info = prepareCached(s.db, `
-    INSERT INTO notes(ts, scope, text, importance, source)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(ts, scope, text, importance, source);
+    INSERT INTO notes(ts, scope, text, text_hash, importance, source)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(ts, scope, text, hash(text), importance, source);
   const noteId = Number(info.lastInsertRowid);
   reindexRow(s, 'note', noteId, text);
   return { id: noteId, deduped: false };
@@ -2851,12 +2886,12 @@ export function consolidateProblemNotes(problemKey, options = {}, toolContext = 
     const importance = Math.min(1, Math.max(...active.map(row => Number(row.importance ?? 0.35))) + 0.1);
     const info = prepareCached(s.db, `
       INSERT INTO notes(
-        ts, scope, text, importance, source, problem_key, solution_status,
+        ts, scope, text, text_hash, importance, source, problem_key, solution_status,
         solution_verified_at, reuse_count, last_used_at, evidence,
         recall_count, last_recall_at, useful_count, misleading_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      ts, scope, summaryText, importance,
+      ts, scope, summaryText, hash(summaryText), importance,
       `consolidate:${activeIds.join(',')}`, key,
       hasVerified ? 'verified' : allFailed ? 'failed' : 'unverified',
       hasVerified ? ts : null,
@@ -3563,8 +3598,8 @@ function dreamRun(s, apply, options = {}) {
           if (!commit) return;
           const replacementText = action.proposedText;
           const info = prepareCached(s.db,
-            'INSERT INTO notes(ts, scope, text, importance, source, revision) VALUES (?, ?, ?, ?, ?, ?)'
-          ).run(now(), note.scope, replacementText, 0.5, `dream:${note.id}`, Number(note.revision ?? 1) + 1);
+            'INSERT INTO notes(ts, scope, text, text_hash, importance, source, revision) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          ).run(now(), note.scope, replacementText, hash(replacementText), 0.5, `dream:${note.id}`, Number(note.revision ?? 1) + 1);
           const replacementId = Number(info.lastInsertRowid);
           prepareCached(s.db, 'UPDATE notes SET superseded_by = ? WHERE id = ?').run(replacementId, Number(note.id));
           dropDerivedIndexes(s, 'note', note.id);
@@ -3613,8 +3648,8 @@ function dreamReplace(s, noteId, scope = SCOPE_GLOBAL) {
     if (!evidence) throw new Error('no evidence to build a replacement');
     const replacementText = String(evidence.text).slice(0, 600);
     const info = prepareCached(s.db,
-      'INSERT INTO notes(ts, scope, text, importance, source, revision) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(now(), note.scope, replacementText, 0.5, `dream:${note.id}`, Number(note.revision ?? 1) + 1);
+      'INSERT INTO notes(ts, scope, text, text_hash, importance, source, revision) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(now(), note.scope, replacementText, hash(replacementText), 0.5, `dream:${note.id}`, Number(note.revision ?? 1) + 1);
     const replacementId = Number(info.lastInsertRowid);
     prepareCached(s.db, 'UPDATE notes SET superseded_by = ?, contested = 1 WHERE id = ?').run(replacementId, Number(note.id));
     dropDerivedIndexes(s, 'note', note.id);
@@ -5248,9 +5283,7 @@ function defineWriteReadTools(ctx, registerLocalTool) {
       }
       // Scope is part of a note's identity: the same wording in two layers is two
       // deliberate records (a global rule and its project-specific restatement).
-      const prev = prepareCached(s.db,
-        'SELECT id, problem_key, solution_status, evidence FROM notes WHERE scope = ? AND text = ? AND deleted_at IS NULL AND superseded_by IS NULL'
-      ).get(scope, text);
+      const prev = findNoteByTextIndex(s.db, scope, text, 'AND deleted_at IS NULL AND superseded_by IS NULL');
       if (prev) {
         const updates = [];
         const values = [];
@@ -5291,17 +5324,15 @@ function defineWriteReadTools(ctx, registerLocalTool) {
         // Re-check inside the write transaction. Two hosts can both miss the
         // earlier lookup and then queue up here; the loser of the race would
         // otherwise insert a second identical note.
-        const raced = prepareCached(s.db,
-          'SELECT id FROM notes WHERE scope = ? AND text = ? AND deleted_at IS NULL AND superseded_by IS NULL'
-        ).get(scope, text);
+        const raced = findNoteByTextIndex(s.db, scope, text, 'AND deleted_at IS NULL AND superseded_by IS NULL');
         if (raced) return { noteId: Number(raced.id), raced: true, contestedWith: [] };
         const info = prepareCached(s.db, `
           INSERT INTO notes(
-            ts, scope, text, importance, source, problem_key, solution_status,
+            ts, scope, text, text_hash, importance, source, problem_key, solution_status,
             solution_verified_at, reuse_count, last_used_at, evidence
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?)
         `).run(
-          ts, scope, text, importance, args.source ?? null,
+          ts, scope, text, hash(text), importance, args.source ?? null,
           problemKey || null, requestedStatus,
           requestedStatus === 'verified' ? ts : null,
           evidence || null,
@@ -5748,10 +5779,9 @@ function defineWriteReadTools(ctx, registerLocalTool) {
       `).get(id, ...filter.params);
       if (!old) throw new Error(`note ${id} not found, inactive, or outside the current project`);
       if (String(old.text ?? '') === text) throw new Error('new text is identical to the current revision');
-      const duplicate = prepareCached(s.db, `
-        SELECT id FROM notes
-        WHERE scope = ? AND text = ? AND deleted_at IS NULL AND superseded_by IS NULL AND id <> ?
-      `).get(old.scope, text, id);
+      const duplicate = findNoteByTextIndex(
+        s.db, old.scope, text, 'AND deleted_at IS NULL AND superseded_by IS NULL AND id <> ?', [id],
+      );
       if (duplicate) throw new Error(`an active note with the same text already exists: #${duplicate.id}`);
       const reason = String(args.reason ?? '').trim();
       const evidence = reason
@@ -5761,12 +5791,12 @@ function defineWriteReadTools(ctx, registerLocalTool) {
       const result = transaction(s.db, () => {
         const info = prepareCached(s.db, `
           INSERT INTO notes(
-            ts, scope, text, importance, source, revision, contested,
+            ts, scope, text, text_hash, importance, source, revision, contested,
             problem_key, solution_status, solution_verified_at, reuse_count, last_used_at, evidence,
             verification, verified_at, recall_count, last_recall_at, useful_count, misleading_count
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-          ts, old.scope, text, Number(old.importance ?? 0.5), old.source ?? null,
+          ts, old.scope, text, hash(text), Number(old.importance ?? 0.5), old.source ?? null,
           Number(old.revision ?? 1) + 1, Number(old.contested ?? 0),
           old.problem_key ?? null, old.solution_status ?? null, old.solution_verified_at ?? null,
           Number(old.reuse_count ?? 0), old.last_used_at ?? null, evidence,
