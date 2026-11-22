@@ -2,6 +2,24 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.11.0] — 2026-11-22
+
+### 结构整改 · 3.10.4 复审第 6/7 节
+- **HTTP 路由收敛（M-01/M-02/M-07）**：新增 `httpScope()` 统一 scope 解析；所有 21 条路由经统一守卫处理 loopback、方法、CSRF 与 Host/Origin；`registerRoutes` 从 1100 行降到 70 行，按 read/admin/write/persona 拆成四组；`importLineage` 改为语义明确的 `positiveIdOrNull`。
+- **工具注册拆分（M-03）**：`defineTools` 从 1336 行降到 18 行，23 个内核工具按 capture / write-read / maintenance / graph 四组注册；工具名、参数 schema 与 execute 行为不变。
+- **数据层拆分（M-04/M-05/M-06）**：`mergeSnapshot` 317→41 行，按 notes/facts/chunks/edges/candidates/meta 拆 planner 与 writer，保留单事务、`idMap` 血缘重映射和 edge 失效；`openStore` 205→109 行，抽出 `lib/schema.mjs` 的 `createBaseSchema()` / `createFtsTables()`；新增 `reindexRow()` 统一 FTS + bigram + vector 重建，dream rollback 也恢复完整派生索引。
+
+### 性能与数据
+- **`/overview` SQL 聚合（M-08）**：周序列、84 日热力图与窗口基线改由 SQL 分组计数，不再全量 `SELECT ts` 到 JS；100k 临时库与旧实现逐字段一致。
+- **`notes.text_hash`（M-09，schema v17）**：新增 `text_hash` 与 `(scope, text_hash)` 索引；`memory_write`、候选写入、导入预筛、restore、amend 先走索引再比对原文。迁移回填 NULL，重开幂等；哈希碰撞不会误判重复。
+- **100k/1M 复测（M-10）**：新增 `bench/release.mjs`，隔离临时库 5 次取中位数。100k：写入 **4.4ms**（旧 45.8ms）、`/list` 96.4ms、`/overview` 187.2ms（旧 321ms）、搜索 2.8ms（旧 12ms）。1M：写入 4.4ms、`/list` 966.4ms、`/overview` 2026ms、搜索 2.8ms。1M 面板全库统计超出 300ms 交互预算，检索/写入不受影响；原始值见 `docs/BENCH-3.11.0-2026-11-22.md`。
+
+### 测试与发布
+- 新增 v17 迁移测试：旧库回填 `text_hash`、重开幂等、哈希碰撞按原文区分。
+- 新增 `/overview` SQL 分桶与旧实现逐字段对照测试。
+- 完整 `npm test` **376/376** 通过；`npm run check` 同步为 23 个内核工具、25 个 MCP 工具、21 路由、31 ADR、schema v17、3.11.0。
+- 不改变 21 条路由路径/响应字段、23 个内核工具/25 个 MCP 工具名称与权限，不改变 scope 语义。
+
 ## [3.10.5] — 2026-11-22
 
 ### 修复 · 3.10.4 复查 B-1 至 B-4

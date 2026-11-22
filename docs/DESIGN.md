@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.10.5 |
-| 插件版本 | 3.10.5 |
+| 文档版本 | 3.11.0 |
+| 插件版本 | 3.11.0 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-22 |
@@ -85,7 +85,7 @@
 
 | 编号 | 需求 | 指标 | 当前实测 |
 |---|---|---|---|
-| NFR-01 | 单次检索延迟 | p95 < 300ms（1 万行以内） | **本机复核（Node 22.23.2）：p95 = 2.4ms @ 10,000 行；2.4ms @ 100,000 行；6.0ms @ 1,000,000 行；116.8ms @ 1M + 5 万向量 + 100 万 bigram**（`bench/bench.mjs`，标准 bench 使用 global scope 并断言 `hitTotal > 0`；两段式有界检索见 ADR-020） |
+| NFR-01 | 单次检索延迟 | p95 < 300ms（1 万行以内） | **本机复核（Node 22.23.2）：p95 = 2.4ms @ 10,000 行；2.4ms @ 100,000 行；6.0ms @ 1,000,000 行；116.8ms @ 1M + 5 万向量 + 100 万 bigram**（`bench/bench.mjs`，标准 bench 使用 global scope 并断言 `hitTotal > 0`；两段式有界检索见 ADR-020）。3.11.0 发布基准（`bench/release.mjs`）检索：100k 2.8ms、1M 2.8ms；写入 4.4ms；1M `/list` 966.4ms、`/overview` 2026ms，面板全库统计超出 300ms 交互预算但检索/写入不受影响（[基准](BENCH-3.11.0-2026-11-22.md)） |
 | NFR-02 | 注入开销 | 每次装配 ≤ 1 次 SQLite 读；缓存命中时 0 次 | 满足（30s 缓存） |
 | NFR-03 | 写入不阻塞回合 | 捕获写入耗时 p99 < 5ms | 满足（单条 insert + 索引） |
 | NFR-04 | 崩溃一致性 | 进程被强杀后数据库可打开、已提交行可读 | 满足（WAL + synchronous=NORMAL） |
@@ -94,9 +94,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足 |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 374/374（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 376/376（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 374 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 376 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -159,7 +159,7 @@
 
 ```
 DSH Host 进程
-├── 本插件 Host 半边（index.js，~5896 行）
+├── 本插件 Host 半边（index.js，~7900 行；路由/工具/导入/store schema 已按组拆分）
 │   ├── store         SQLite 句柄与 schema/迁移（唯一写入口）
 │   ├── capture       session/event → chunks
 │   ├── recall        agent/inbox/claimed → 异步预取 top-3（TTL 120s）
@@ -219,7 +219,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 ### 4.3 迁移策略
 
 `meta.schema_version` 记录整数版本；启动时按序执行 `MIGRATIONS[n]`。
-**当前版本 16**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。
+**当前版本 17**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。v17 为 notes 增加 `text_hash` 与 `(scope, text_hash)` 索引，写入去重、导入与 restore 先走哈希候选、再比对原文；旧库启动时回填全部 NULL，重开可续跑。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。
 
 | 版本 | 变更 | 迁移动作 |
 |---|---|---|
@@ -239,6 +239,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 | 14 | 本地语义向量 | `semantic_vectors(kind, owner_id, model, dim, vec)`；`semantic_vectors_model` 索引；不触碰旧 `vectors` |
 | 15 | 项目 scope alias | `scope_aliases(alias PRIMARY KEY, canonical, created_at)`；`scope_aliases_canonical` 索引；打开路径时迁移旧键 |
 | 16 | 热查询索引 | 为 notes/facts/chunks/edges 补 scope+状态+时间复合索引；幂等 `CREATE INDEX IF NOT EXISTS`，不改变数据 |
+| 17 | 笔记文本哈希 | `notes.text_hash`、`notes_scope_text_hash(scope, text_hash)`；启动回填 NULL，去重仍比对原文，碰撞不合并 |
 
 未带版本的旧库按 v1 处理，自动补齐到当前版本；旧行不受影响（迁移只加列、不删数据）。
 

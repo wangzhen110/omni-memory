@@ -7,7 +7,7 @@
 > **源码/架构**后做商业替代、竞品或商业服务；且**必须署名作者**。
 > 商用请走 [商业授权](#商业授权) 流程。
 
-[![tests](https://img.shields.io/badge/tests-374%2F374-brightgreen)](#测试)
+[![tests](https://img.shields.io/badge/tests-376%2F376-brightgreen)](#测试)
 [![license](https://img.shields.io/badge/license-Personal%20Use%201.1-lightgrey)](LICENSE)
 
 ---
@@ -59,7 +59,7 @@
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 374 个用例
+npm test          # 376 个用例
 npm run check     # 语法、文档计数与模型资产完整性校验
 ```
 
@@ -162,8 +162,9 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**374 / 374 通过**
+- 自动化用例：**376 / 376 通过**
 - 检索延迟（本机复核，**3.10.1 数据；3.10.4 未重跑，不作为 3.10.4 实测**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **116.8ms**（两段式有界检索，见 ADR-020）
+- 3.11.0 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数）：100k 写入 **4.4ms** / `/list` 96.4ms / `/overview` 187.2ms / 检索 2.8ms；1M 写入 **4.4ms** / `/list` 966.4ms / `/overview` 2026ms / 检索 **2.8ms**。1M 的面板全库统计已超出 300ms 交互预算，检索与写入不受影响；原始值与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
 
 ```bash
@@ -235,3 +236,4 @@ https://github.com/wangzhen110/omni-memory/issues
 **备用渠道**：64271785@qq.com（标题请注明「商业授权 + 用途」）
 
 作者会在 3 个工作日内回复授权范围与费用。
+

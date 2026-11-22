@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 3.10.0 · 生成日期 2026-11-21 · 依据源码与真实 schema v15 核对
+> 版本 3.11.0 · 生成日期 2026-11-22 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -182,7 +182,7 @@ DSH 外（MCP 等）：没有注入点，改为 `memory_context` 显式调用，
 
 ---
 
-## 3. 数据模型（schema v15，实测）
+## 3. 数据模型（schema v17，实测）
 
 共 13 张业务表（不含 FTS 影子表）。字段按真实 `PRAGMA table_info` 导出。
 
@@ -195,7 +195,9 @@ DSH 外（MCP 等）：没有注入点，改为 `memory_context` 显式调用，
 唯一索引 `chunks_hash_active(hash, scope) WHERE deleted_at IS NULL`——同一层同内容只留一份。单条入库上限 4000 字符。
 
 ### 3.3 notes（结论）
-`id`(pk), `ts`, `scope`, `text`, `importance`, `source`, `revision`, `superseded_by`, `contested`, `deleted_at`, `problem_key`, `solution_status`, `solution_verified_at`, `reuse_count`, `last_used_at`, `verified_at`, `verification`, `evidence`
+`id`(pk), `ts`, `scope`, `text`, `text_hash`, `importance`, `source`, `revision`, `superseded_by`, `contested`, `deleted_at`, `problem_key`, `solution_status`, `solution_verified_at`, `reuse_count`, `last_used_at`, `verified_at`, `verification`, `evidence`, `recall_count`, `last_recall_at`, `useful_count`, `misleading_count`
+
+`text_hash` 是 `sha256(text)` 前 32 位十六进制，索引 `notes_scope_text_hash(scope, text_hash)`。去重查询同时比对 `text`，哈希碰撞不会合并不同笔记；旧库 v17 迁移回填 NULL，失败重开可续跑。
 
 `scope` 为 NOT NULL，因此项目查询不把 NULL 当 global；`facts` / `chunks` / `edges` 的历史列允许 NULL，只有这些旧行按 `global` 兼容可见。这个口径由 `scopeClause(..., nulls)` 显式表达，不靠查询条件隐式决定。
 
@@ -628,3 +630,4 @@ scripts/check-docs.mjs  文档漂移闸门
 scripts/check-semantic-assets.mjs  模型与运行时完整性闸门
 test/*.test.mjs         289 个用例
 ```
+
