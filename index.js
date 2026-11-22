@@ -4959,17 +4959,9 @@ function scopeForSession(session) {
   }
 }
 
-function defineTools(ctx) {
+/** Capture: transcript ingest, candidate review and consolidation. */
+function defineCaptureTools(ctx, registerLocalTool) {
   const disposers = [];
-
-  const registerLocalTool = definition => {
-    localToolDefinitions.set(definition.name, definition);
-    const dispose = ctx.tools.register(definition);
-    return () => {
-      if (localToolDefinitions.get(definition.name) === definition) localToolDefinitions.delete(definition.name);
-      if (typeof dispose === 'function') dispose();
-    };
-  };
 
   disposers.push(registerLocalTool({
     name: 'memory_ingest',
@@ -5052,6 +5044,13 @@ function defineTools(ctx) {
       return consolidateProblemNotes(args.problemKey, args, toolContext);
     },
   }));
+
+  return disposers;
+}
+
+/** Write/read: durable writes, search, feedback and amendments. */
+function defineWriteReadTools(ctx, registerLocalTool) {
+  const disposers = [];
 
   disposers.push(registerLocalTool({
     name: 'memory_write',
@@ -5791,6 +5790,13 @@ function defineTools(ctx) {
     },
   }));
 
+  return disposers;
+}
+
+/** Maintenance: reindex, persona, graph links, backup and forgetting. */
+function defineMaintenanceTools(ctx, registerLocalTool) {
+  const disposers = [];
+
   disposers.push(registerLocalTool({
     name: 'memory_reindex',
     description: 'Rebuild derived indexes. Vectors: backfill for the active embedding backend (after switching OMNI_EMBED_URL/model or restoring an old database). semantic: backfill the bundled local semantic index. bigrams: rebuild the whole CJK two-character index in one call (a large legacy store otherwise needs many restarts).',
@@ -5915,67 +5921,6 @@ function defineTools(ctx) {
   }));
 
   disposers.push(registerLocalTool({
-    name: 'memory_dream_proposals',
-    description: 'List replacement candidates produced by dream: flagged notes plus the evidence text that would replace them. Read-only.',
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: { limit: { type: 'number', description: 'Maximum proposals, default 50, max 200.' } },
-    },
-    output: {
-      schema: { type: 'object', properties: { proposals: { type: 'array', items: { type: 'object' } } } },
-      render: (_args, value) => {
-        if (!value.proposals.length) return textBlock('no replacement proposals');
-        const lines = value.proposals.map(item => `#${item.noteId} [${item.verdict}] <- ${item.evidence}: ${item.proposedText.slice(0, 120)}`);
-        return textBlock(`${value.proposals.length} proposal(s)\n${lines.join('\n')}`);
-      },
-    },
-    async execute(args = {}) {
-      return { proposals: dreamProposals(openStore(), args.limit) };
-    },
-  }));
-
-  disposers.push(registerLocalTool({
-    name: 'memory_dream_replace',
-    description: 'Replace one flagged note with its evidence text. Requires confirm=true; the old note is superseded (kept for audit) and the replacement can be rolled back.',
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        noteId: { type: 'number', description: 'Note id from memory_dream_proposals.' },
-        confirm: { type: 'boolean', description: 'Must be true; replacement is a semantic decision, not automatic.' },
-      },
-      required: ['noteId', 'confirm'],
-    },
-    output: {
-      schema: { type: 'object', properties: { oldId: { type: 'number' }, replacementId: { type: 'number' } } },
-      render: (_args, value) => textBlock(`replaced #${value.oldId} with #${value.replacementId} (rollback with memory_dream_rollback)`),
-    },
-    async execute(args = {}, toolContext = {}) {
-      if (args.confirm !== true) throw new Error('confirm=true is required');
-      return dreamReplace(openStore(), args.noteId, writeScopeForTool(toolContext, args.scope));
-    },
-  }));
-
-  disposers.push(registerLocalTool({
-    name: 'memory_dream_rollback',
-    description: 'Undo a dream replacement: revive the original note and tombstone the generated replacement. Only works on replacements created by memory_dream (source dream:<id>).',
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: { noteId: { type: 'number', description: 'The original (superseded) note id.' } },
-      required: ['noteId'],
-    },
-    output: {
-      schema: { type: 'object', properties: { restored: { type: 'boolean' }, replacementId: { type: 'number' } } },
-      render: (_args, value) => textBlock(value.restored ? `restored #${_args.noteId}` : `not rolled back: ${value.reason}`),
-    },
-    async execute(args = {}, toolContext = {}) {
-      return dreamRollback(openStore(), args.noteId, writeScopeForTool(toolContext, args.scope));
-    },
-  }));
-
-  disposers.push(registerLocalTool({
     name: 'memory_export',
     description: 'Write a portable JSON backup (notes, facts, transcripts, edges, entities, relations, entity aliases, persona). Vectors are derived and excluded. Tombstones are included by default so a later restore can revive them.',
     parameters: {
@@ -6038,6 +5983,151 @@ function defineTools(ctx) {
     async execute(args = {}, toolContext = {}) {
       const s = openStore();
       return restoreMemory(s, String(args.kind), Number(args.id), writeScopeForTool(toolContext, args.scope));
+    },
+  }));
+
+  disposers.push(registerLocalTool({
+    name: 'memory_forget',
+    description: 'Tombstone one memory by kind and id. The row stays auditable; it stops appearing in recall and the profile.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', enum: ['note', 'fact', 'chunk'] },
+        id: { type: 'number' },
+      },
+      required: ['kind', 'id'],
+    },
+    output: {
+      schema: { type: 'object', properties: { forgotten: { type: 'boolean' }, reason: { type: 'string' } } },
+      render: (_args, value) => textBlock(value.forgotten ? 'tombstoned' : `nothing to forget${value.reason ? `: ${value.reason}` : ''}`),
+    },
+    async execute(args = {}, toolContext = {}) {
+      const s = openStore();
+      const kind = String(args.kind);
+      const id = Number(args.id);
+      const forgotten = forgetMemory(s, kind, id, writeScopeForTool(toolContext, args.scope));
+      invalidateProfile();
+      return forgotten
+        ? { forgotten: true }
+        : { forgotten: false, reason: `no active ${kind} #${id}` };
+    },
+  }));
+
+  disposers.push(registerLocalTool({
+    name: 'memory_compact',
+    description: 'Bound transcript growth by tombstoning the oldest chunks beyond a keep limit. Rows stay auditable and recoverable; the raw record is never destroyed. Dry run by default. Requires the host to have captured a transcript stream; under a plain MCP host with no sessions this is a no-op that reports total 0.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        keepChunks: { type: 'number', description: 'How many newest chunks to keep. Default 5000, minimum 50.' },
+        apply: { type: 'boolean', description: 'false (default) reports only; true tombstones the excess rows.' },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        properties: {
+          total: { type: 'number' },
+          excess: { type: 'number' },
+          tombstoned: { type: 'number' },
+          applied: { type: 'boolean' },
+        },
+      },
+      render: (_args, value) => textBlock(
+        `${value.applied ? 'applied' : 'dry-run'} · total ${value.total} · excess ${value.excess} · tombstoned ${value.tombstoned}`
+      ),
+    },
+    async execute(args) {
+      const s = openStore();
+      const keep = Math.max(50, Number(args.keepChunks ?? 5000) || 5000);
+      const apply = args.apply === true;
+      const total = Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM chunks WHERE deleted_at IS NULL').get().n);
+      const excess = Math.max(0, total - keep);
+      let tombstoned = 0;
+      if (apply && excess > 0) {
+        transaction(s.db, () => {
+          const rows = prepareCached(s.db,
+            'SELECT id FROM chunks WHERE deleted_at IS NULL ORDER BY ts ASC, id ASC LIMIT ?'
+          ).all(excess);
+          const stmt = prepareCached(s.db, 'UPDATE chunks SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL');
+          for (const row of rows) {
+            const changed = Number(stmt.run(now(), Number(row.id)).changes);
+            tombstoned += changed;
+            if (changed > 0) dropDerivedIndexes(s, 'chunk', row.id);
+          }
+        });
+      }
+      return { total, excess, tombstoned, applied: apply };
+    },
+  }));
+
+  return disposers;
+}
+
+/** Graph/dream: proposals, replace/rollback, profile, timeline and dream. */
+function defineGraphTools(ctx, registerLocalTool) {
+  const disposers = [];
+
+  disposers.push(registerLocalTool({
+    name: 'memory_dream_proposals',
+    description: 'List replacement candidates produced by dream: flagged notes plus the evidence text that would replace them. Read-only.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { limit: { type: 'number', description: 'Maximum proposals, default 50, max 200.' } },
+    },
+    output: {
+      schema: { type: 'object', properties: { proposals: { type: 'array', items: { type: 'object' } } } },
+      render: (_args, value) => {
+        if (!value.proposals.length) return textBlock('no replacement proposals');
+        const lines = value.proposals.map(item => `#${item.noteId} [${item.verdict}] <- ${item.evidence}: ${item.proposedText.slice(0, 120)}`);
+        return textBlock(`${value.proposals.length} proposal(s)\n${lines.join('\n')}`);
+      },
+    },
+    async execute(args = {}) {
+      return { proposals: dreamProposals(openStore(), args.limit) };
+    },
+  }));
+
+  disposers.push(registerLocalTool({
+    name: 'memory_dream_replace',
+    description: 'Replace one flagged note with its evidence text. Requires confirm=true; the old note is superseded (kept for audit) and the replacement can be rolled back.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        noteId: { type: 'number', description: 'Note id from memory_dream_proposals.' },
+        confirm: { type: 'boolean', description: 'Must be true; replacement is a semantic decision, not automatic.' },
+      },
+      required: ['noteId', 'confirm'],
+    },
+    output: {
+      schema: { type: 'object', properties: { oldId: { type: 'number' }, replacementId: { type: 'number' } } },
+      render: (_args, value) => textBlock(`replaced #${value.oldId} with #${value.replacementId} (rollback with memory_dream_rollback)`),
+    },
+    async execute(args = {}, toolContext = {}) {
+      if (args.confirm !== true) throw new Error('confirm=true is required');
+      return dreamReplace(openStore(), args.noteId, writeScopeForTool(toolContext, args.scope));
+    },
+  }));
+
+  disposers.push(registerLocalTool({
+    name: 'memory_dream_rollback',
+    description: 'Undo a dream replacement: revive the original note and tombstone the generated replacement. Only works on replacements created by memory_dream (source dream:<id>).',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { noteId: { type: 'number', description: 'The original (superseded) note id.' } },
+      required: ['noteId'],
+    },
+    output: {
+      schema: { type: 'object', properties: { restored: { type: 'boolean' }, replacementId: { type: 'number' } } },
+      render: (_args, value) => textBlock(value.restored ? `restored #${_args.noteId}` : `not rolled back: ${value.reason}`),
+    },
+    async execute(args = {}, toolContext = {}) {
+      return dreamRollback(openStore(), args.noteId, writeScopeForTool(toolContext, args.scope));
     },
   }));
 
@@ -6152,34 +6242,6 @@ function defineTools(ctx) {
   }));
 
   disposers.push(registerLocalTool({
-    name: 'memory_forget',
-    description: 'Tombstone one memory by kind and id. The row stays auditable; it stops appearing in recall and the profile.',
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        kind: { type: 'string', enum: ['note', 'fact', 'chunk'] },
-        id: { type: 'number' },
-      },
-      required: ['kind', 'id'],
-    },
-    output: {
-      schema: { type: 'object', properties: { forgotten: { type: 'boolean' }, reason: { type: 'string' } } },
-      render: (_args, value) => textBlock(value.forgotten ? 'tombstoned' : `nothing to forget${value.reason ? `: ${value.reason}` : ''}`),
-    },
-    async execute(args = {}, toolContext = {}) {
-      const s = openStore();
-      const kind = String(args.kind);
-      const id = Number(args.id);
-      const forgotten = forgetMemory(s, kind, id, writeScopeForTool(toolContext, args.scope));
-      invalidateProfile();
-      return forgotten
-        ? { forgotten: true }
-        : { forgotten: false, reason: `no active ${kind} #${id}` };
-    },
-  }));
-
-  disposers.push(registerLocalTool({
     name: 'memory_dream',
     description: 'Verify stored notes against the transcripts they came from. Dry run by default; apply=true records each verdict and flags unsupported notes as contested, but never replaces anything. commit=true (with apply) or memory_dream_replace performs a reversible replacement. Needs a captured session stream and an LLM; under a plain MCP host it reports no_source.',
     parameters: {
@@ -6219,54 +6281,24 @@ function defineTools(ctx) {
     },
   }));
 
-  disposers.push(registerLocalTool({
-    name: 'memory_compact',
-    description: 'Bound transcript growth by tombstoning the oldest chunks beyond a keep limit. Rows stay auditable and recoverable; the raw record is never destroyed. Dry run by default. Requires the host to have captured a transcript stream; under a plain MCP host with no sessions this is a no-op that reports total 0.',
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        keepChunks: { type: 'number', description: 'How many newest chunks to keep. Default 5000, minimum 50.' },
-        apply: { type: 'boolean', description: 'false (default) reports only; true tombstones the excess rows.' },
-      },
-    },
-    output: {
-      schema: {
-        type: 'object',
-        properties: {
-          total: { type: 'number' },
-          excess: { type: 'number' },
-          tombstoned: { type: 'number' },
-          applied: { type: 'boolean' },
-        },
-      },
-      render: (_args, value) => textBlock(
-        `${value.applied ? 'applied' : 'dry-run'} · total ${value.total} · excess ${value.excess} · tombstoned ${value.tombstoned}`
-      ),
-    },
-    async execute(args) {
-      const s = openStore();
-      const keep = Math.max(50, Number(args.keepChunks ?? 5000) || 5000);
-      const apply = args.apply === true;
-      const total = Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM chunks WHERE deleted_at IS NULL').get().n);
-      const excess = Math.max(0, total - keep);
-      let tombstoned = 0;
-      if (apply && excess > 0) {
-        transaction(s.db, () => {
-          const rows = prepareCached(s.db,
-            'SELECT id FROM chunks WHERE deleted_at IS NULL ORDER BY ts ASC, id ASC LIMIT ?'
-          ).all(excess);
-          const stmt = prepareCached(s.db, 'UPDATE chunks SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL');
-          for (const row of rows) {
-            const changed = Number(stmt.run(now(), Number(row.id)).changes);
-            tombstoned += changed;
-            if (changed > 0) dropDerivedIndexes(s, 'chunk', row.id);
-          }
-        });
-      }
-      return { total, excess, tombstoned, applied: apply };
-    },
-  }));
+  return disposers;
+}
+
+function defineTools(ctx) {
+  const disposers = [];
+
+  const registerLocalTool = definition => {
+    localToolDefinitions.set(definition.name, definition);
+    const dispose = ctx.tools.register(definition);
+    return () => {
+      if (localToolDefinitions.get(definition.name) === definition) localToolDefinitions.delete(definition.name);
+      if (typeof dispose === 'function') dispose();
+    };
+  };
+
+  for (const group of [defineCaptureTools, defineWriteReadTools, defineMaintenanceTools, defineGraphTools]) {
+    disposers.push(...group(ctx, registerLocalTool));
+  }
 
   return disposers;
 }

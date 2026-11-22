@@ -37,7 +37,7 @@
 |---|---|---|---|---|
 | M-01 | 第 6 节“路由 scope / 21 条路由” | 抽 `httpScope()`；引入统一 route wrapper，集中 loopback / 方法 / CSRF / 域名 | 21 条路由仍注册；403/405/CSRF 回归不变；scope=all 审计仍触发 | 已完成（374/374） |
 | M-02 | 第 6 节“registerRoutes 1082 行” | 按 packet/read、write/candidate、persona/dream、admin 拆路由组；`registerRoutes` 只做装配 | `registerRoutes` 降到 300 行内；路由计数 21；全量测试通过 | 已完成（70 行，21 路由，374/374） |
-| M-03 | 第 6 节“defineTools 1336 行” | 按 capture / write-read / maintenance / graph 拆工具组；`defineTools` 只做注册与装配 | 工具计数 23/25；工具 schema 与 execute 行为不变 | 待实施 |
+| M-03 | 第 6 节“defineTools 1336 行” | 按 capture / write-read / maintenance / graph 拆工具组；`defineTools` 只做注册与装配 | 工具计数 23/25；工具 schema 与 execute 行为不变 | 已完成（18 行；四组 3/6/8/6，工具 23/23 唯一） |
 | M-04 | 第 6 节“mergeSnapshot 317 行” | 按实体拆 importer（notes/facts/chunks/candidates/edges/meta）；保留单一事务与 idMap | 导入 dry-run/apply/血缘重映射回归不变；函数降到 80 行内 | 已完成（41 行，导入/备份 28/28） |
 | M-05 | 第 6 节“openStore 205 行” | 抽 `createBaseSchema()`、`createFtsTables()`；迁移/GC/回填仍由 `openStore` 编排 | 新库与旧库 schema 一致；schema 16→17 迁移可重入 | 已完成（109 行，`lib/schema.mjs`） |
 | M-06 | 第 6 节“restore/import/dream 重建重复” | 抽 `reindexRow(s, kind, id, text)` 统一 FTS + bigram + vector；restore/import/dream 复用 | 恢复后 FTS/向量/bigram 可搜；去重/回滚测试通过 | 已完成（restore/import/dream/amend/rollback 已复用；374/374） |
@@ -85,6 +85,7 @@ npm run bench
 | 2026-11-22 | M-01 / M-07 | 完成 | 统一 route guard；`httpScope` 替换 6 处；`positiveIdOrNull`；`npm test` 374/374 |
 | 2026-11-22 | M-02 | 完成 | `registerRoutes` 1100→70 行；四组 read/admin/write/persona 共 6/5/4/6 路由；路由计数 21；`npm test` 374/374 |
 | 2026-11-22 | M-04 / M-05 / M-06 | 完成 | `mergeSnapshot` 41 行；`openStore` 109 行；`lib/schema.mjs`；`reindexRow` 覆盖 restore/import/dream/amend/rollback；`npm test` 374/374 |
+| 2026-11-22 | M-03 | 完成 | `defineTools` 1336→18 行；capture/write-read/maintenance/graph 四组 3/6/8/6；工具 23 个唯一；专项 11/11 |
 
 ## 7. 明确不做
 
