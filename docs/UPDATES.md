@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 82 次提交；更新记录自身的提交不计入列表。
+> 共 84 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,8 @@
 
 ## 2026-11-22
 
+- 23:13:52 `1043256a` — docs: record 3.11.1 release and real-machine acceptance — [提交](https://github.com/wangzhen110/omni-memory/commit/1043256a0059f5503c0c85fe64457302a019b071)
+- 23:10:43 `9a856a91` — docs: update per-commit log for 3.11.1 — [提交](https://github.com/wangzhen110/omni-memory/commit/9a856a91b82a51826d0f5c3149ddf7ce70c7e81e)
 - 23:10:30 `d1831e22` — fix: batched v17 backfill and O(1) startup probe (3.11.1) — [提交](https://github.com/wangzhen110/omni-memory/commit/d1831e220e1e5610ae528aff8baec3f6c562cfe1)
 - 22:47:17 `7e9013e4` — docs: record 3.11.0 real-store acceptance — [提交](https://github.com/wangzhen110/omni-memory/commit/7e9013e45fff485c073542f8955d1b2c24669bae)
 - 22:45:31 `64488a9f` — release: 3.11.0 structural remediation and schema v17 — [提交](https://github.com/wangzhen110/omni-memory/commit/64488a9fed075928636eddc5f4b92e9ab06fc3a1)
