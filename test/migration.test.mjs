@@ -130,12 +130,19 @@ test('D-03 backfill indexes rows that predate the FTS tables', async () => {  co
   db.close();
 });
 
-test('v17 adds notes.text_hash, backfills legacy rows and keeps collisions distinct', async () => {
+test('v17 backfills in batches, indexes the empty probe and keeps collisions distinct', async () => {
   const home = mkdtempSync(path.join(tmpdir(), 'omni-v17-'));
   const first = await boot({ home });
   await first.call('memory_write', { kind: 'note', text: 'v17 legacy note' });
+  const seed = openDb(home);
+  const insert = seed.prepare('INSERT INTO notes(ts, scope, text, importance) VALUES (?, ?, ?, ?)');
+  seed.exec('BEGIN');
+  for (let i = 0; i < 2500; i += 1) insert.run(Date.now() + i, 'global', `v17 bulk note ${i}`, 0.5);
+  seed.exec('COMMIT');
+  seed.close();
   const legacy = openDb(home);
   legacy.exec('DROP INDEX IF EXISTS notes_scope_text_hash');
+  legacy.exec('DROP INDEX IF EXISTS notes_text_hash_missing');
   legacy.exec('ALTER TABLE notes DROP COLUMN text_hash');
   legacy.prepare("UPDATE meta SET value = '16' WHERE key = 'schema_version'").run();
   legacy.close();
@@ -147,6 +154,11 @@ test('v17 adds notes.text_hash, backfills legacy rows and keeps collisions disti
   assert.ok(db.prepare('PRAGMA table_info(notes)').all().some(row => row.name === 'text_hash'));
   assert.equal(Number(db.prepare('SELECT COUNT(*) AS n FROM notes WHERE text_hash IS NULL').get().n), 0);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='notes_scope_text_hash'").get());
+  assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='notes_text_hash_missing'").get());
+  const plan = db.prepare('EXPLAIN QUERY PLAN SELECT id, text FROM notes WHERE text_hash IS NULL ORDER BY id LIMIT 1000').all()
+    .map(row => row.detail).join('\n');
+  assert.match(plan, /SCAN notes USING INDEX notes_text_hash_missing/);
+  assert.doesNotMatch(plan, /^SCAN notes$/m);
 
   const deduped = await second.call('memory_write', { kind: 'note', text: 'v17 legacy note' });
   assert.equal(deduped.value.deduped, true);

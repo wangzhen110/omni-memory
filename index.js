@@ -800,20 +800,34 @@ function ensureHotIndexes(db) {
  * v17: hash note text so write dedupe and restore/import prechecks can use the
  * `(scope, text_hash)` index instead of scanning every row in the scope. The
  * hash is only a filter; every hit is still compared against the original text.
- * Reentrant: interrupted backfills resume from the remaining NULL rows.
+ *
+ * The partial index makes the steady-state "anything missing?" probe O(1) even
+ * on a 1M-row store, while the backfill is batched so an old library never loads
+ * every text into memory or holds one giant write transaction.
  */
+const NOTE_HASH_MIGRATION_BATCH = 1000;
 function ensureNoteTextHash(db) {
   addColumn(db, 'notes', 'text_hash', 'TEXT');
   db.exec(`
     CREATE INDEX IF NOT EXISTS notes_scope_text_hash
       ON notes(scope, text_hash);
+    CREATE INDEX IF NOT EXISTS notes_text_hash_missing
+      ON notes(id) WHERE text_hash IS NULL;
   `);
-  const missing = prepareCached(db, 'SELECT id, text FROM notes WHERE text_hash IS NULL').all();
-  if (!missing.length) return;
-  transaction(db, () => {
-    const update = prepareCached(db, 'UPDATE notes SET text_hash = ? WHERE id = ?');
-    for (const row of missing) update.run(hash(row.text), Number(row.id));
-  });
+  const select = prepareCached(db, `
+    SELECT id, text FROM notes WHERE text_hash IS NULL ORDER BY id LIMIT ?
+  `);
+  const update = prepareCached(db, 'UPDATE notes SET text_hash = ? WHERE id = ?');
+  let migrated = 0;
+  while (true) {
+    const missing = select.all(NOTE_HASH_MIGRATION_BATCH);
+    if (!missing.length) break;
+    transaction(db, () => {
+      for (const row of missing) update.run(hash(row.text), Number(row.id));
+    });
+    migrated += missing.length;
+  }
+  return migrated;
 }
 
 /**
@@ -7215,7 +7229,7 @@ function registerReadRoutes(add) {
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const node = String(url.searchParams.get('node') ?? '').trim();
-      const { requested: requestedScope, scope } = httpScope(url.searchParams.get('scope'));
+      const { scope } = httpScope(url.searchParams.get('scope'));
       const noteFilter = scope ? scopeClause('scope', scope, false) : { sql: '', params: [] };
       const factFilter = scope ? scopeClause('scope', scope) : { sql: '', params: [] };
 

@@ -7,10 +7,12 @@
  */
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { boot, fakeReq, fakeRes } from '../test/helpers.mjs';
 
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const ROWS = Number(process.argv[2] ?? 100000);
 const SAMPLES = 5;
 const noteRows = Math.max(1, Math.round(ROWS * 0.8));
@@ -46,6 +48,14 @@ db.exec('COMMIT');
 const seedMs = performance.now() - seedStarted;
 db.close();
 
+// Steady-state startup: a fresh module opens the already-seeded v17 store. This
+// exercises the zero-missing text_hash probe and all migration repair paths.
+const startupStarted = performance.now();
+const fresh = await import(`../index.js?startup=${Date.now()}`);
+const opened = fresh.openStore();
+const openMs = performance.now() - startupStarted;
+opened.db.close();
+
 const measure = async (fn) => {
   await fn(); // warm-up
   const samples = [];
@@ -76,13 +86,15 @@ const write = await measure(async () => {
 
 const cpu = os.cpus()[0]?.model ?? 'unknown';
 console.log(JSON.stringify({
-  version: '3.11.0',
+  version: pkg.version,
   rows: ROWS,
   fixture: { notes: noteRows, facts: factRows, chunks: chunkRows },
   machine: { platform: `${os.platform()} ${os.release()}`, arch: os.arch(), cpu, totalMemGb: Number((os.totalmem() / 1024 ** 3).toFixed(1)) },
   node: process.version,
   sqlite: process.versions.sqlite,
   seedMs: Number(seedMs.toFixed(1)),
+  openMs: Number(openMs.toFixed(1)),
+  load: process.env.BENCH_LOAD ?? 'unspecified',
   samples: SAMPLES,
   metrics: {
     write: { medianMs: write.median, samples: write.samples },

@@ -2,6 +2,20 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.11.1] — 2026-11-22
+
+### 修复 · 3.11.0 复审 P2/P3
+- **P2-1 启动空扫描**：新增部分索引 `notes_text_hash_missing(id) WHERE text_hash IS NULL`。稳态打开时缺失探针走空索引，不再全表扫描 `notes`；1M `openStore()` 46.5ms。
+- **P2-2 迁移内存峰值**：`ensureNoteTextHash` 改为 `ORDER BY id LIMIT 1000` 分批回填，每批独立事务；1M notes 迁移 73.01s，RSS 增量 58.9MB，NULL 归零，样本哈希正确。
+- **P3-1**：`/omni-memory/node` 移除未使用的 `requestedScope`。
+- **P3-3**：`bench/release.mjs` 版本从 `package.json` 读取；新增 `openMs` 与 `BENCH_LOAD`，发布文档补负载条件与区间。
+- **P3-2 复核**：`/health`、`/rules`、`/`、静态页已有 loopback 403 守卫，`test/http-security.test.mjs` 覆盖 `127.0.0.2`；复审该项为误报，无代码改动。
+
+### 测试与基准
+- `test/migration.test.mjs` 覆盖 2500 条多批回填、部分索引查询计划、碰撞区分与重开幂等。
+- 新增 `bench/migrate.mjs`：100k/1M v16→v17 存量迁移基准。
+- 完整 `npm test` **376/376** 通过；`npm run check` 通过；schema 仍为 v17、版本 3.11.1。
+
 ## [3.11.0] — 2026-11-22
 
 ### 结构整改 · 3.10.4 复审第 6/7 节
