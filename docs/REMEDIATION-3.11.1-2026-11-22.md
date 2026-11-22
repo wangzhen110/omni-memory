@@ -42,7 +42,7 @@ SCAN notes USING INDEX notes_text_hash_missing
 
 - R-03：`/omni-memory/node` 不再解构未使用的 `requested`。
 - R-04：`hosts/http/server.mjs` 已在 `/health`、`/rules`、`/`、所有静态 GET 前检查 `isLoopback(req)`；`test/http-security.test.mjs` 覆盖 `127.0.0.2` 非 loopback 的 403。复审该项为误报，本轮未改代码，只复验。
-- R-05：`bench/release.mjs` 版本来自 `package.json`；新增 `openMs` 与 `BENCH_LOAD`，发布文档补 3.11.0 与本轮复跑的区间。
+- R-05：`bench/release.mjs` 版本来自 `package.json`；新增 `openMs` 与 `BENCH_LOAD`，发布文档补 3.11.x 区间与稳态打开。
 
 ## 5. 验证命令
 
@@ -65,3 +65,5 @@ npm run check
 | 2026-11-22 | R-03 / R-05 | 完成 | 死变量移除；bench 版本动态读取；release 输出版本 3.11.1 |
 | 2026-11-22 | R-04 | 已满足 | health/rules/static 非 loopback 403 测试 1/1 |
 | 2026-11-22 | 全量门禁 | 完成 | `npm test` 376/376；`npm run check` 通过 |
+| 2026-11-22 | 发布 | 完成 | commit `d1831e2` + 日志 `9a856a9` 已 push `origin/main` |
+| 2026-11-22 | 真机复验 | 完成 | DSH 重启加载 3.11.1，21 路由；真实库 schema 17、`notes_text_hash_missing` 存在、`text_hash` 0 NULL、活跃 35 notes/8 facts/980 chunks；验收 note #45 |
