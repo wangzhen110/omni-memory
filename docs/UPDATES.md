@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 71 次提交；更新记录自身的提交不计入列表。
+> 共 72 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-22
 
+- 20:42:59 `ae8ba727` — fix: close 3.10.4 review B-1..B-4 (3.10.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/ae8ba7278485c336e2ea34b49aa28dac85560949)
 - 00:11:54 `f5bd9a7e` — docs: define scope authority semantics — [提交](https://github.com/wangzhen110/omni-memory/commit/f5bd9a7ed143261c2bda3d43da5c53471200e261)
 - 00:08:19 `cc0604d9` — docs: record 3.10.4 review fix commit — [提交](https://github.com/wangzhen110/omni-memory/commit/cc0604d9e054587f4d1d1a72873919f6016f9d2c)
 - 00:08:13 `73a29ae8` — fix: close 3.10.3 review P1/P2 (3.10.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/73a29ae80dd3f2c90685fd98a145a75bd6b7a346)
