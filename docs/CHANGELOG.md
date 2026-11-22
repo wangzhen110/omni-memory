@@ -2,6 +2,25 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.10.5] — 2026-11-22
+
+### 修复 · 3.10.4 复查 B-1 至 B-4
+- **B-1 恢复事实不再制造双 active**：`restoreMemory` 恢复事实前先检查同三元组 active 行；单值关系再检查同 `subject+relation+scope` 的其他 active 值，存在时返回 `{restored:false, reason:'single-valued relation already has an active value', activeId, activeObject}`，要求先遗忘/过期当前值再恢复。多值关系仍允许并存。
+- **B-2 persona 不再静默清空**：HTTP body 改为严格解析。空 body、非法 JSON、超限 body 分别返回 400/400/413，绝不进入 `personaSet`；只有非空 `values` 才替换，清空必须显式 `action=clear`。body 上限从 8KB 提到 64KB，覆盖 4000 字符总上限的中文。
+- **B-3 长中文可写入**：`/ingest` body 上限提到 64KB，4000 字中文（约 12KB）不再被截断；超限返回 413，不静默丢内容。URL query 仍只适合短文本。
+- **B-4 恢复笔记去重**：恢复墓碑笔记前检查同 scope、同文本是否已有 active 笔记；存在时返回 `active duplicate` 与 `activeId`，不再生成两条同文本 active。
+- **B-5 复核结论**：`hosts/http/server.mjs` 当前已在 `/health`、`/rules`、`/` 和所有静态 GET 上做 loopback 403；本轮补了 127.0.0.2 非 loopback 回归，确认不是漏洞。报告中的行号描述与当前 3.10.4 代码不一致。
+
+### 清理与边界
+- 删除死代码：`dropSemanticIndex`、`PERSONA_DEFAULT_KEYS`、未使用的 `statSync` / `homedir` 导入、只写不读的 `lastClaimAt`、未使用的 `projectActive` / `transcriptProjectActive`、未挂载的 `GraphBoundary`；清理两处 oxlint 可简化的字符类转义与 `...(model ?? {})`。
+- **未做结构拆分**：`defineTools` / `registerRoutes` / `mergeSnapshot` 的模块化拆分与 `/overview` 聚合 SQL、`notes.text_hash` 索引属于大重构，本轮不混入 bugfix；留待独立版本并用基准回归。
+- **性能**：本轮未重跑 100k；3.10.5 的新增 restore 检查只走已有索引，不改变写入路径。
+
+### 测试与发布
+- 新增 `test/review-3.10.4.test.mjs`（6 项）：单值事实恢复冲突、同文本笔记恢复冲突、persona 空/非法/超长 body 不清空、显式 clear、长中文 ingest、超限 413。
+- `test/http-security.test.mjs` 新增非 loopback 的 `/health` `/rules` `/` `/index.html` 403 回归。
+- 完整 `npm test` **374/374** 通过；`npm run check` 同步为 23 个内核工具、25 个 MCP 工具、21 路由、31 ADR、schema v16、3.10.5。
+
 ## [3.10.4] — 2026-11-21
 
 ### 修复 · 3.10.3 复审 P1/P2

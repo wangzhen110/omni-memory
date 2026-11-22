@@ -16,7 +16,6 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
 import path from 'node:path';
 
 // Keep node:sqlite's ExperimentalWarning off stderr; hook runs read stderr as an error.

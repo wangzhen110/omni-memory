@@ -164,6 +164,13 @@ function rawRequest({ target, method = 'GET', headers = {}, body = '', localAddr
   });
 }
 
+test('health, rules and static pages reject non-loopback peers', async () => {
+  for (const target of ['/health', '/rules', '/', '/index.html']) {
+    const response = await rawRequest({ target, localAddress: '127.0.0.2' });
+    assert.equal(response.status, 403, `${target} must not be readable from a LAN peer`);
+  }
+});
+
 test('static path traversal variants are rejected without leaking project files', async () => {
   // 既包含会被 new URL() 规范化的形式，也包含保留编码、真正命中
   // serveStatic 的 `name.includes("..")` 分支的形式。

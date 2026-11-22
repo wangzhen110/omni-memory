@@ -2,11 +2,11 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.10.4 |
-| 插件版本 | 3.10.4 |
+| 文档版本 | 3.10.5 |
+| 插件版本 | 3.10.5 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
-| 最后更新 | 2026-11-21 |
+| 最后更新 | 2026-11-22 |
 | 变更规则 | 任何行为变更必须先改本文并升版本，再改代码 |
 
 **写作原则**：本规格只声明两类内容——① 已实现且被测试覆盖的行为；② 明确标注为「未实现」并有对应 FR 编号的需求。禁止把计划写成现状。
@@ -94,9 +94,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足 |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 367/367（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 374/374（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 367 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 374 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -282,8 +282,9 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 | `/omni-memory/openapi.json` | GET | — | OpenAPI 3.0 描述：10 条 path（packet/search/list/node/status/tool/ingest/candidates/candidate/consolidate） |
 | `/omni-memory/tool` | POST | body `name` `arguments`；header `x-omni-csrf: 1` | `{ok, name, value, text}`；仅允许 write/search/solution_report/feedback/get/amend/profile/timeline |
 | `/omni-memory/forget` | **POST**（GET 兼容） | `kind`, `id`, `scope`（查询参数优先；空 body 时从 JSON body 兜底） | `{ok, forgotten, scope}` |
-| `/omni-memory/restore` | POST | `kind`, `id`, `scope`（查询参数优先，JSON body 兜底） | `{ok, restored, reason?, activeId?}` |
-| `/omni-memory/ingest` | POST | `text`（必填）, `role`, `scope`, `cwd`, `sessionId`, `source`, `importance`, `extract` | `{ok,id,deduped,scope,sessionId,chars,truncated,candidates[]}` |
+| `/omni-memory/restore` | POST | `kind`, `id`, `scope`（查询参数优先，JSON body 兜底） | `{ok, restored, reason?, activeId?, activeObject?}`；单值事实/同文本笔记已有 active 值时拒绝恢复 |
+| `/omni-memory/persona` | GET/POST | body `values`（≤64KB）或 query `values`；清空须 `action=clear` | `{ok, persona}`；空/非法 body 400，超限 413，不静默清空 |
+| `/omni-memory/ingest` | POST | `text`（必填；body 上限 64KB，长中文走 body）, `role`, `scope`, `cwd`, `sessionId`, `source`, `importance`, `extract` | `{ok,id,deduped,scope,sessionId,chars,truncated,candidates[]}`；超限 413 |
 | `/omni-memory/candidates` | GET | `status`(pending/accepted/rejected/all), `scope`, `cwd`, `limit` | `{ok,action:'list',total,candidates[]}` |
 | `/omni-memory/candidate` | POST | `id`, `action`(accept/reject), `scope`, `cwd`, `reason` | `{ok,id,action,noteId?,reason?}` |
 | `/omni-memory/consolidate` | POST | `problemKey`（必填）, `scope`, `minNotes`, `apply` | `{ok,problemKey,scope,applied,notes,noteId?,sourceIds[],summary?}` |

@@ -750,31 +750,6 @@ const EMPTY_HIGHLIGHT = [];
           : null);
     }
 
-    /** Keeps one broken visualization from taking down the whole panel. */
-    class GraphBoundary extends React.Component {
-      constructor(props) {
-        super(props);
-        this.state = { error: null };
-      }
-
-      static getDerivedStateFromError(error) {
-        return { error: String((error && error.message) || error) };
-      }
-
-      render() {
-        if (this.state.error) {
-          return h('div', {
-            style: {
-              border: '1px dashed var(--dsw-alias-label-dangerous, #d9483b)',
-              borderRadius: 10, padding: '8px 10px', fontSize: 11,
-              color: 'var(--dsw-alias-label-dangerous, #d9483b)',
-            },
-          }, `星图渲染失败：${this.state.error}`);
-        }
-        return this.props.children;
-      }
-    }
-
     /**
      * Memory star map.
      *

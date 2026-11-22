@@ -354,7 +354,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 ### 5.7 memory_persona
 参数：
 - `action` string，必填，`get|set|refresh`
-- `values` object，set 专用；空值删除条目，总长 4000 字符
+- `values` object，set 专用；空值删除条目，总长 4000 字符。HTTP 侧要求非空 JSON body（或 `values` 查询参数），body 上限 64KB；清空必须显式传 `action=clear`，非法/超长 body 返回 400/413 且不改动已有画像。
 - `apply` boolean，refresh 专用，默认 true
 - `useModel` boolean，refresh 专用，默认 false（只用离线规则）
 
@@ -429,19 +429,19 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 | `/overview` | GET | `range`（`4w`/`6w`/`12w`/`26w`，默认 `12w`）`scope` | 网页概览用真实聚合：`stats` / `health` / `series` / `daily` / `projects` / `profile` / `activity` / `graph`；不返回全文 |
 | `/graph` | GET | `scope` | 星图：`nodes[]`、`links[]`（`source/target/rel`）、`scopes[]` |
 | `/node` | GET | `node` `scope` | 单实体详情与关联事实 |
-| `/persona` | GET/POST | body `values` | 读/写用户设定 |
+| `/persona` | GET/POST | body `values`（≤64KB），清空显式 `action=clear` | 读/写用户设定；空/非法 body 返回 400，不静默清空 |
 | `/persona/refresh` | POST | `dryRun` `model` | 从近期全局记忆提炼 |
 | `/dream/proposals` | GET | `limit` | 待替代候选 |
 | `/dream/replace` | POST | `noteId` | 确认替代 |
 | `/dream/rollback` | POST | `noteId` | 撤销替代 |
 | `/export` | GET | `activeOnly` `download` | 备份；`download=1` 走附件下载 |
-| `/restore` | POST | `kind` `id` | 复活墓碑 |
+| `/restore` | POST | `kind` `id` `scope` | 复活墓碑；同 key 已有 active 值/同文本 active 笔记时返回 `restored:false` 与 `activeId`，不制造双活 |
 | `/status` | GET | — | 运行态：注入统计、嵌入后端、`routes`（pending/registered/disposed、count、lastError）、`aliasRepair`、`aliasMigration`；`embedding.dropped` / `lastDropAt` 与 `semantic.gcError` / `gcFailedAt` 可观测队列丢弃和启动 GC 失败 |
 | `/search` | GET | `q` `limit` `scope` | 混合检索 |
 | `/packet` | GET | `q` `scope` `cwd` `limit` `budget` `format` | 无 MCP 宿主的可注入记忆包；`cwd` 先走 `resolveProjectKey()`（3.10.2 起），`format=text` 直接输出纯文本 |
 | `/openapi.json` | GET | — | HTTP adapter 的 OpenAPI 3.0 描述（packet/search/list/node/status/tool） |
 | `/tool` | POST | body `name` `arguments`；header `x-omni-csrf: 1` | 受限工具桥：write/search/solution_report/feedback/get/amend/profile/timeline |
-| `/ingest` | POST | `text` 必填；`role` `scope` `cwd` `sessionId` `source` `importance` `extract` | 写转录 + 抽取 pending 候选 |
+| `/ingest` | POST | `text` 必填；`role` `scope` `cwd` `sessionId` `source` `importance` `extract`；body 上限 64KB（长中文走 JSON body，不塞 URL） | 写转录 + 抽取 pending 候选；超限返回 413 |
 | `/candidates` | GET | `status` `scope` `cwd` `limit` | 列出候选 |
 | `/candidate` | POST | `id` `action` `scope` `cwd` `reason` | 接受/拒绝候选 |
 | `/consolidate` | POST | `problemKey` `scope` `minNotes` `apply` | 按问题指纹巩固笔记 |

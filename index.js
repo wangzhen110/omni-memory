@@ -20,7 +20,7 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { appendFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { DIM, embedText, dot, toBlob, fromBlob, tokenize } from './lib/embed.mjs';
@@ -99,7 +99,6 @@ function prepareCached(db, sql) {
 const SCOPE_GLOBAL = 'global';
 const cwdBySession = new Map();
 const projectByAgent = new Map();
-let lastClaimAt = 0;
 const MAX_PENDING_VECTORS = 4096;
 const REMOTE_PROBE_TEXT = 'omni-memory embedding dimension probe';
 
@@ -1541,15 +1540,6 @@ function releaseSemanticLease(s) {
   }
 }
 
-/** Remove one derived semantic row and any queued update for it. */
-function dropSemanticIndex(s, kind, id) {
-  const state = semanticState(s);
-  state.pending.delete(`${kind}:${Number(id)}`);
-  if (!tableExists(s.db, 'semantic_vectors')) return;
-  prepareCached(s.db, 'DELETE FROM semantic_vectors WHERE kind = ? AND owner_id = ?')
-    .run(kind, Number(id));
-}
-
 /** Remove every derived index row for a source row, with only a bare db handle. */
 function dropDerivedRows(db, kind, id) {
   const table = { note: 'notes', fact: 'facts', chunk: 'chunks' }[String(kind)];
@@ -2497,13 +2487,41 @@ function restoreMemory(s, kind, id, scope = SCOPE_GLOBAL) {
       // old version while a newer version of the same triple is active would
       // create two concurrent truths. Refuse and report the active row.
       const active = prepareCached(s.db, `
-        SELECT id FROM facts
-        WHERE subject = ? AND relation = ? AND object = ? AND scope = ?
+        SELECT id, object FROM facts
+        WHERE subject = ? AND relation = ? AND object = ?
+          AND IFNULL(scope, 'global') = ?
           AND valid_to IS NULL AND deleted_at IS NULL AND id <> ?
       `).get(row.subject, row.relation, String(row.object ?? ''), row.scope ?? SCOPE_GLOBAL, Number(id));
       if (active) return { restored: false, reason: 'active duplicate', activeId: Number(active.id) };
+      // Single-valued relations may not hold two different active objects either.
+      // Restore is an undo, not an override: the caller must forget/expire the
+      // current value first, then restore the old one.
+      if (relationCardinality(s.db, row.relation) === 'single') {
+        const activeValue = prepareCached(s.db, `
+          SELECT id, object FROM facts
+          WHERE subject = ? AND relation = ? AND IFNULL(scope, 'global') = ?
+            AND valid_to IS NULL AND deleted_at IS NULL AND id <> ?
+          LIMIT 1
+        `).get(row.subject, row.relation, row.scope ?? SCOPE_GLOBAL, Number(id));
+        if (activeValue) {
+          return {
+            restored: false,
+            reason: 'single-valued relation already has an active value',
+            activeId: Number(activeValue.id),
+            activeObject: activeValue.object,
+          };
+        }
+      }
     }
     if (table === 'notes') {
+      // Restoring a tombstoned note while another active note has the same text
+      // in the same scope would recreate the duplicate FR-01 forbids.
+      const activeText = prepareCached(s.db, `
+        SELECT id FROM notes
+        WHERE IFNULL(scope, 'global') = ? AND text = ?
+          AND deleted_at IS NULL AND superseded_by IS NULL AND id <> ?
+      `).get(row.scope ?? SCOPE_GLOBAL, row.text, Number(id));
+      if (activeText) return { restored: false, reason: 'active duplicate', activeId: Number(activeText.id) };
       // A tombstoned note may also have been superseded by a newer conclusion.
       // Restoring it must clear both states, otherwise the row is visible in the
       // audit list but still excluded from active search.
@@ -2923,7 +2941,7 @@ function recencyScore(ts) {
 function queryTerms(query) {
   const parts = String(query ?? '')
     .toLowerCase()
-    .split(/[\s,，。、；：:;\\|()（）“”’!?！？\[\]{}<>]+/u)
+    .split(/[\]\[\s,，。、；：:;\\|()（）“”’!?！？{}<>]+/u)
     .filter(Boolean);
   const terms = new Set();
   for (const part of parts) {
@@ -4274,7 +4292,6 @@ function profileFactLines(db, scopeKey, budget) {
   return lines.length > 1 ? lines : [];
 }
 
-const PERSONA_DEFAULT_KEYS = ['称呼', '性格', '习惯', '偏好', '其他'];
 const PERSONA_MAX_VALUE = 1200;
 const PERSONA_MAX_TOTAL = 4000;
 
@@ -4418,7 +4435,7 @@ function personaValueOk(value) {
   // Reject heading residues and note fragments: markdown marks, em dashes,
   // blockquote/table syntax, or more than one clause separator. Those are
   // section titles copied out of a document, not a stable user setting.
-  if (/[*#`>\[\]{}|]|——/.test(text)) return false;
+  if (/[\]\[{}|*#`>]|——/.test(text)) return false;
   if ((text.match(/[。；;]/g) ?? []).length > 1) return false;
   if (/^(?:即|参见|详见|见第|第[一二三四五六七八九十\d]+[章节])/.test(text)) return false;
   return true;
@@ -4490,7 +4507,7 @@ async function personaRefresh(ctx, options = {}) {
   const rules = personaFromRules(evidence);
   const model = options.model === true ? await personaFromModel(ctx ?? hostCtx, evidence) : null;
   const existing = personaGet(s.db);
-  const merged = { ...existing, ...rules, ...(model ?? {}) };
+  const merged = { ...existing, ...rules, ...model };
   const source = model ? 'model' : 'rules';
   const applied = options.apply === true && Object.keys(merged).length > 0;
   if (applied) {
@@ -4906,7 +4923,6 @@ function rememberUserMessage(agent, message) {
     const text = inboxText(message);
     if (!text) return;
     lastUserByAgent.set(agentId, { text, at: now() });
-    lastClaimAt = now();
     const cwd = cwdBySession.get(agentId);
     if (cwd) {
       const db = openStore().db;
@@ -6512,25 +6528,56 @@ function json(res, status, body) {
 }
 
 /** Read a small JSON request body; never trusts its size or shape. */
-function readJsonBody(req, limit = 8192) {
-  return new Promise(resolve => {
+function httpBodyError(code, message, status = 400) {
+  const error = new Error(message);
+  error.code = code;
+  error.status = status;
+  return error;
+}
+
+function readJsonBody(req, limit = 8192, options = {}) {
+  const strict = options.strict === true;
+  const allowMissing = options.allowMissing !== false;
+  return new Promise((resolve, reject) => {
     if (!req || typeof req.on !== 'function' || req.complete === true || req.readable === false) {
-      resolve({});
+      if (strict && !allowMissing) {
+        reject(httpBodyError('body_unavailable', 'request body is not readable', 400));
+      } else {
+        resolve({});
+      }
       return;
     }
     const chunks = [];
     let size = 0;
     let settled = false;
-    const parse = text => {
-      try { return JSON.parse(text || '{}'); } catch { return {}; }
+    const fail = (code, message, status = 400) => {
+      if (settled) return;
+      settled = true;
+      if (strict) reject(httpBodyError(code, message, status));
+      else resolve({});
     };
     const done = () => {
       if (settled) return;
+      const bytes = Buffer.concat(chunks);
+      if (!bytes.length) {
+        fail('body_empty', 'request body is empty', 400);
+        return;
+      }
       settled = true;
-      // Concatenate bytes before decoding: a multi-byte UTF-8 character may be
-      // split across TCP chunks, and String(chunk) would insert U+FFFD.
-      const bytes = Buffer.concat(chunks).subarray(0, limit);
-      resolve(parse(bytes.toString('utf8')));
+      let parsed;
+      try {
+        parsed = JSON.parse(bytes.toString('utf8'));
+      } catch {
+        if (strict) reject(httpBodyError('body_invalid_json', 'request body must be valid JSON', 400));
+        else resolve({});
+        return;
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        if (strict) reject(httpBodyError('body_invalid_object', 'request body must be a JSON object', 400));
+        else resolve({});
+        return;
+      }
+      resolve(parsed);
     };
     req.on('data', chunk => {
       if (settled) return;
@@ -6538,21 +6585,14 @@ function readJsonBody(req, limit = 8192) {
       chunks.push(buffer);
       size += buffer.length;
       if (size > limit) {
-        let total = 0;
-        const bounded = [];
-        for (const item of chunks) {
-          if (total >= limit) break;
-          const remaining = limit - total;
-          bounded.push(item.subarray(0, remaining));
-          total += Math.min(item.length, remaining);
+        fail('body_too_large', `request body exceeds ${limit} bytes`, 413);
+        if (typeof req.resume === 'function') {
+          try { req.resume(); } catch { /* best effort drain */ }
         }
-        chunks.length = 0;
-        chunks.push(...bounded);
-        done();
       }
     });
     req.on('end', done);
-    req.on('error', done);
+    req.on('error', () => fail('body_unavailable', 'request body could not be read', 400));
   });
 }
 
@@ -6622,7 +6662,18 @@ function registerRoutes(ctx) {
       }
       if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const body = await readJsonBody(req);
+      let body = {};
+      try {
+        // Capture text can be close to MAX_CAPTURE_CHARS; 4000 CJK characters
+        // are ~12KB in UTF-8, so the old 8KB body cap rejected valid input.
+        body = await readJsonBody(req, 64 * 1024, { strict: true });
+      } catch (error) {
+        if (error?.code === 'body_empty' && url.searchParams.get('text')) {
+          body = {};
+        } else {
+          return json(res, error?.status === 413 ? 413 : 400, { ok: false, error: error?.message ?? 'invalid request body' });
+        }
+      }
       const text = String(url.searchParams.get('text') ?? body.text ?? '').trim();
       if (!text) return json(res, 400, { ok: false, error: 'text is required' });
       const sessionId = String(url.searchParams.get('sessionId') ?? body.sessionId ?? '').trim() || null;
@@ -6742,7 +6793,12 @@ function registerRoutes(ctx) {
         return json(res, 405, { ok: false, error: 'tool requires POST' });
       }
       if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
-      const body = await readJsonBody(req, 64 * 1024);
+      let body = {};
+      try {
+        body = await readJsonBody(req, 64 * 1024, { strict: true, allowMissing: false });
+      } catch (error) {
+        return json(res, error?.status === 413 ? 413 : 400, { ok: false, error: error?.message ?? 'invalid request body' });
+      }
       const name = String(body.name ?? '').trim();
       if (!HTTP_TOOL_ALLOWLIST.has(name)) {
         return json(res, 400, { ok: false, error: `tool not allowed on the HTTP adapter: ${name || '(empty)'}` });
@@ -7017,8 +7073,6 @@ function registerRoutes(ctx) {
             : entry.memoryLastAt >= now - 30 * 24 * 60 * 60 * 1000 ? 'watch' : 'quiet';
         return { ...entry, memory, label, status };
       }).sort((a, b) => b.memory - a.memory || b.chunks - a.chunks || b.lastAt - a.lastAt);
-      const projectActive = projectRows.filter(p => p.scope !== 'global' && p.memory > 0).length;
-      const transcriptProjectActive = projectRows.filter(p => p.scope !== 'global' && p.memory === 0 && p.chunks > 0).length;
       const visibleForScope = p => scope === 'global' ? p.scope === 'global'
         : scope === 'all' || scope === 'project' ? p.scope !== 'global'
           : p.scope === scope;
@@ -7370,20 +7424,37 @@ function registerRoutes(ctx) {
       if (method !== 'POST') return json(res, 405, { ok: false, error: 'persona requires GET or POST' });
       if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      let values;
+      const queryValues = url.searchParams.get('values');
+      const queryAction = String(url.searchParams.get('action') ?? '').trim().toLowerCase();
+      let body = {};
       try {
-        const body = await readJsonBody(req);
-        const candidate = body?.values ?? body;
-        if (candidate && typeof candidate === 'object' && !Array.isArray(candidate) && Object.keys(candidate).length) {
-          values = candidate;
-        } else {
-          values = JSON.parse(url.searchParams.get('values') ?? '{}');
-        }
-      } catch {
-        return json(res, 400, { ok: false, error: 'values must be a JSON object' });
+        // Persona values are user-visible text; the old 8KB cap turned a normal
+        // multi-field update into an empty body and then silently cleared it.
+        body = await readJsonBody(req, 64 * 1024, {
+          strict: true,
+          allowMissing: Boolean(queryValues) || queryAction === 'clear',
+        });
+      } catch (error) {
+        return json(res, error?.status === 413 ? 413 : 400, {
+          ok: false, error: error?.message ?? 'values must be a JSON object',
+        });
       }
-      if (!values || typeof values !== 'object' || Array.isArray(values)) {
-        return json(res, 400, { ok: false, error: 'values must be a JSON object' });
+      const action = queryAction || String(body?.action ?? '').trim().toLowerCase();
+      if (action === 'clear') {
+        return json(res, 200, { ok: true, persona: personaSet(s.db, {}) });
+      }
+      let values = body?.values ?? body;
+      if (!values || typeof values !== 'object' || Array.isArray(values) || !Object.keys(values).length) {
+        if (queryValues) {
+          try {
+            values = JSON.parse(queryValues);
+          } catch {
+            return json(res, 400, { ok: false, error: 'values must be a JSON object' });
+          }
+        }
+      }
+      if (!values || typeof values !== 'object' || Array.isArray(values) || !Object.keys(values).length) {
+        return json(res, 400, { ok: false, error: 'values must be a non-empty JSON object; use action=clear to clear persona' });
       }
       try {
         return json(res, 200, { ok: true, persona: personaSet(s.db, values) });
