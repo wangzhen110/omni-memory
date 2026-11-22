@@ -28,6 +28,7 @@ import { backendConfig, embedRemote } from './lib/embed-provider.mjs';
 import { extractCandidateTexts } from './lib/capture-rules.mjs';
 import { rerankConfig, rerankRemote } from './lib/rerank-provider.mjs';
 import { semanticConfig, embedSemantic } from './lib/semantic-embed.mjs';
+import { createBaseSchema, createFtsTables } from './lib/schema.mjs';
 
 // Data home resolution, in priority order:
 //   1. OMNI_HOME   — set by non-DSH adapters (MCP, CLI, HTTP) to point at a shared store
@@ -639,102 +640,10 @@ function openStore() {
   // Keep the WAL from growing without bound when many readers keep snapshots
   // alive; the limit is applied at the next checkpoint.
   db.exec('PRAGMA journal_size_limit = 16777216');
-  // The lease table must exist before anything else can coordinate, including
-  // the schema migration itself.
-  db.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+  createBaseSchema(db);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS chunks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      ts INTEGER NOT NULL,
-      session_id TEXT,
-      role TEXT NOT NULL,
-      text TEXT NOT NULL,
-      hash TEXT NOT NULL,
-      source TEXT,
-      importance REAL NOT NULL DEFAULT 0.5,
-      deleted_at INTEGER
-    );
+  const { chunksMode, notesMode, factsMode, ftsMode } = createFtsTables(db);
 
-    CREATE TABLE IF NOT EXISTS notes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      ts INTEGER NOT NULL,
-      scope TEXT NOT NULL DEFAULT 'global',
-      text TEXT NOT NULL,
-      importance REAL NOT NULL DEFAULT 0.5,
-      source TEXT,
-      revision INTEGER NOT NULL DEFAULT 1,
-      superseded_by INTEGER,
-      contested INTEGER NOT NULL DEFAULT 0,
-      deleted_at INTEGER,
-      problem_key TEXT,
-      solution_status TEXT,
-      solution_verified_at INTEGER,
-      reuse_count INTEGER NOT NULL DEFAULT 0,
-      last_used_at INTEGER
-    );
-
-    CREATE TABLE IF NOT EXISTS facts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      subject TEXT NOT NULL,
-      relation TEXT NOT NULL,
-      object TEXT NOT NULL,
-      text TEXT NOT NULL,
-      valid_from INTEGER NOT NULL,
-      valid_to INTEGER,
-      recorded_at INTEGER,
-      confidence REAL NOT NULL DEFAULT 0.7,
-      source TEXT,
-      contested INTEGER NOT NULL DEFAULT 0,
-      deleted_at INTEGER
-    );
-
-    CREATE TABLE IF NOT EXISTS entities (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      kind TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS edges (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      src TEXT NOT NULL,
-      rel TEXT NOT NULL,
-      dst TEXT NOT NULL,
-      valid_from INTEGER NOT NULL,
-      valid_to INTEGER,
-      scope TEXT,
-      source TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS bigrams (
-      layer TEXT NOT NULL,
-      owner_id INTEGER NOT NULL,
-      gram TEXT NOT NULL,
-      PRIMARY KEY (layer, owner_id, gram)
-    );
-    CREATE INDEX IF NOT EXISTS bigrams_gram ON bigrams(gram, layer, owner_id);
-  `);
-
-  // Trigram tokenisation is what makes CJK substring recall work; fall back to
-  // the default tokenizer when the bundled SQLite lacks it.
-  let ftsMode = 'like';
-  const createFts = (table) => {
-    try {
-      db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS ${table} USING fts5(text, tokenize='trigram')`);
-      return 'trigram';
-    } catch {
-      try {
-        db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS ${table} USING fts5(text)`);
-        return 'unicode61';
-      } catch {
-        return null;
-      }
-    }
-  };
-  const chunksMode = createFts('chunks_fts');
-  const notesMode = createFts('notes_fts');
-  const factsMode = createFts('facts_fts');
-  ftsMode = chunksMode ?? notesMode ?? factsMode ?? 'like';
 
   // Schema migrations. A fresh database and an upgraded one must converge on the
   // same structure, so every structural change is a numbered migration.
@@ -1574,6 +1483,22 @@ function dropDerivedIndexes(s, kind, id) {
   dropDerivedRows(s.db, kind, id);
 }
 
+/** Rebuild the FTS, bigram and vector views for one source row. */
+function reindexRow(s, kind, id, text) {
+  const fts = { note: ['notes_fts', s.fts?.notes], fact: ['facts_fts', s.fts?.facts], chunk: ['chunks_fts', s.fts?.chunks] }[String(kind)];
+  if (!fts) throw new Error(`unknown row kind: ${kind}`);
+  if (fts[1]) {
+    try {
+      // Delete first: amend/dream can change the text of an existing rowid, and
+      // INSERT alone would silently keep the stale FTS document.
+      prepareCached(s.db, `DELETE FROM ${fts[0]} WHERE rowid = ?`).run(Number(id));
+      prepareCached(s.db, `INSERT INTO ${fts[0]}(rowid, text) VALUES (?, ?)`).run(Number(id), String(text));
+    } catch { /* index write is best effort */ }
+  }
+  indexBigrams(s.db, String(kind), Number(id), String(text));
+  upsertVector(s, String(kind), Number(id), String(text));
+}
+
 /**
  * Drop semantic rows whose source row is tombstoned, superseded or expired.
  * Derived data has no audit value; a stale vector only costs disk and can make
@@ -2146,48 +2071,18 @@ function importBackup(s, options = {}) {
   return mergeSnapshot(s, snapshot, options);
 }
 
-/**
- * Merge a snapshot into the live store.
- *
- * Safe default is a dry run: import touches every table, so the caller has to
- * pass dryRun=false explicitly. Rows are matched by natural identity (text, fact
- * triple, chunk hash, edge triple) rather than by id; a note's `superseded_by`
- * pointer is remapped when ids are reassigned. Vectors are rebuilt, never imported.
- */
-function mergeSnapshot(s, snapshot, options = {}) {
-  if (!snapshot || snapshot.format !== EXPORT_FORMAT) throw new Error('not an omni-memory backup');
-  if (Number(snapshot.version) > EXPORT_VERSION) throw new Error('backup was written by a newer version');
-  const dryRun = options.dryRun !== false;
-  const stats = {
-    notes: 0, facts: 0, chunks: 0, edges: 0, entities: 0,
-    relations: 0, entityAliases: 0, persona: 0, candidates: 0, skipped: 0, dryRun,
-  };
-  const plan = {
-    notes: [], facts: [], chunks: [], edges: [], entities: [], relations: [], entityAliases: [], persona: [],
-    candidates: [],
-  };
-
-  const noteExists = prepareCached(s.db, 'SELECT id FROM notes WHERE scope = ? AND text = ? AND superseded_by IS NULL');
-  const factExists = prepareCached(s.db, 'SELECT id FROM facts WHERE subject = ? AND relation = ? AND object = ? AND scope = ?');
-  const activeFactRows = prepareCached(s.db, `
-    SELECT id, object, valid_from, scope FROM facts
-    WHERE subject = ? AND relation = ? AND valid_to IS NULL AND deleted_at IS NULL
-      AND (scope = ? OR (scope IS NULL AND ? = 'global'))
-  `);
-  const chunkExists = prepareCached(s.db, "SELECT id FROM chunks WHERE hash = ? AND IFNULL(scope, 'global') = IFNULL(?, 'global')");
-  const edgeExists = prepareCached(s.db, "SELECT id FROM edges WHERE src = ? AND rel = ? AND dst = ? AND IFNULL(scope, 'global') = IFNULL(?, 'global')");
-  const candidateExists = prepareCached(s.db, `
-    SELECT id FROM note_candidates
-    WHERE hash = ? AND IFNULL(scope, 'global') = IFNULL(?, 'global')
-  `);
-
-  for (const note of Array.isArray(snapshot.notes) ? snapshot.notes : []) {
+/** Plan note rows from a snapshot; validation stays in the import path. */
+function planImportNotes(db, snapshot, stats) {
+  const rows = Array.isArray(snapshot.notes) ? snapshot.notes : [];
+  const noteExists = prepareCached(db, 'SELECT id FROM notes WHERE scope = ? AND text = ? AND superseded_by IS NULL');
+  const plan = [];
+  for (const note of rows) {
     if (!note?.text) { stats.skipped += 1; continue; }
     if (noteExists.get(note.scope ?? SCOPE_GLOBAL, note.text)) { stats.skipped += 1; continue; }
     const verification = IMPORT_VERDICTS.has(String(note.verification ?? '')) ? String(note.verification) : null;
     const solutionStatus = IMPORT_SOLUTION_STATUSES.has(String(note.solution_status ?? note.solutionStatus ?? ''))
       ? String(note.solution_status ?? note.solutionStatus) : null;
-    plan.notes.push({
+    plan.push({
       ...note,
       ts: importNumber(note.ts, now(), 0, Number.MAX_SAFE_INTEGER),
       scope: String(note.scope ?? SCOPE_GLOBAL),
@@ -2211,13 +2106,21 @@ function mergeSnapshot(s, snapshot, options = {}) {
       misleading_count: Math.floor(importNumber(note.misleading_count ?? note.misleadingCount, 0, 0, 1_000_000_000)),
     });
   }
-  for (const fact of Array.isArray(snapshot.facts) ? snapshot.facts : []) {
+  return plan;
+}
+
+/** Plan fact rows from a snapshot, including cardinality and validity bounds. */
+function planImportFacts(db, snapshot, stats) {
+  const rows = Array.isArray(snapshot.facts) ? snapshot.facts : [];
+  const factExists = prepareCached(db, 'SELECT id FROM facts WHERE subject = ? AND relation = ? AND object = ? AND scope = ?');
+  const plan = [];
+  for (const fact of rows) {
     if (!fact?.subject || !fact?.relation) { stats.skipped += 1; continue; }
     if (factExists.get(fact.subject, fact.relation, String(fact.object ?? ''), fact.scope ?? SCOPE_GLOBAL)) {
       stats.skipped += 1;
       continue;
     }
-    plan.facts.push({
+    plan.push({
       ...fact,
       subject: String(fact.subject),
       relation: String(fact.relation),
@@ -2236,11 +2139,19 @@ function mergeSnapshot(s, snapshot, options = {}) {
       misleading_count: Math.floor(importNumber(fact.misleading_count ?? fact.misleadingCount, 0, 0, 1_000_000_000)),
     });
   }
-  for (const chunk of Array.isArray(snapshot.chunks) ? snapshot.chunks : []) {
+  return plan;
+}
+
+/** Plan transcript chunks, deduplicated by content hash and scope. */
+function planImportChunks(db, snapshot, stats) {
+  const rows = Array.isArray(snapshot.chunks) ? snapshot.chunks : [];
+  const chunkExists = prepareCached(db, "SELECT id FROM chunks WHERE hash = ? AND IFNULL(scope, 'global') = IFNULL(?, 'global')");
+  const plan = [];
+  for (const chunk of rows) {
     if (!chunk?.text) { stats.skipped += 1; continue; }
     const digest = hash(String(chunk.text));
     if (chunkExists.get(digest, chunk.scope ?? 'global')) { stats.skipped += 1; continue; }
-    plan.chunks.push({
+    plan.push({
       ...chunk,
       text: String(chunk.text),
       ts: importNumber(chunk.ts, now(), 0, Number.MAX_SAFE_INTEGER),
@@ -2249,38 +2160,66 @@ function mergeSnapshot(s, snapshot, options = {}) {
       deleted_at: chunk.deleted_at == null ? null : importNumber(chunk.deleted_at, now(), 0, Number.MAX_SAFE_INTEGER),
     });
   }
-  for (const edge of Array.isArray(snapshot.edges) ? snapshot.edges : []) {
+  return plan;
+}
+
+/** Plan graph edges, deduplicated by triple and scope. */
+function planImportEdges(db, snapshot, stats) {
+  const rows = Array.isArray(snapshot.edges) ? snapshot.edges : [];
+  const edgeExists = prepareCached(db, "SELECT id FROM edges WHERE src = ? AND rel = ? AND dst = ? AND IFNULL(scope, 'global') = IFNULL(?, 'global')");
+  const plan = [];
+  for (const edge of rows) {
     if (!edge?.src || !edge?.rel || !edge?.dst) { stats.skipped += 1; continue; }
     if (edgeExists.get(edge.src, edge.rel, edge.dst, edge.scope ?? SCOPE_GLOBAL)) { stats.skipped += 1; continue; }
-    plan.edges.push({
+    plan.push({
       ...edge,
       src: String(edge.src), rel: String(edge.rel), dst: String(edge.dst),
       valid_from: importNumber(edge.valid_from, now(), 0, Number.MAX_SAFE_INTEGER),
       valid_to: edge.valid_to == null ? null : importNumber(edge.valid_to, now(), 0, Number.MAX_SAFE_INTEGER),
     });
   }
-  for (const candidate of Array.isArray(snapshot.candidates) ? snapshot.candidates : []) {
+  return plan;
+}
+
+/** Plan pending candidates; accepted/rejected audit rows are not re-queued. */
+function planImportCandidates(db, snapshot, stats) {
+  const rows = Array.isArray(snapshot.candidates) ? snapshot.candidates : [];
+  const candidateExists = prepareCached(db, `
+    SELECT id FROM note_candidates
+    WHERE hash = ? AND IFNULL(scope, 'global') = IFNULL(?, 'global')
+  `);
+  const plan = [];
+  for (const candidate of rows) {
     const text = String(candidate?.text ?? '').trim();
     if (!text || (candidate.status && candidate.status !== 'pending')) { stats.skipped += 1; continue; }
     const scope = candidate.scope ?? SCOPE_GLOBAL;
     const digest = hash(`${scope}\n${text}`);
     if (candidateExists.get(digest, scope)) { stats.skipped += 1; continue; }
-    plan.candidates.push({ ...candidate, text, scope, hash: digest });
+    plan.push({ ...candidate, text, scope, hash: digest });
   }
+  return plan;
+}
+
+/** Plan entity, relation, alias and persona metadata. */
+function planImportMeta(snapshot, stats) {
+  const entities = [];
+  const relations = [];
+  const entityAliases = [];
+  const persona = [];
   for (const name of Array.isArray(snapshot.entities) ? snapshot.entities : []) {
     if (!name) { stats.skipped += 1; continue; }
-    plan.entities.push(String(name));
+    entities.push(String(name));
   }
   for (const relation of Array.isArray(snapshot.relations) ? snapshot.relations : []) {
     const name = String(relation?.name ?? '').trim();
     if (!name) { stats.skipped += 1; continue; }
-    plan.relations.push({ ...relation, name });
+    relations.push({ ...relation, name });
   }
   for (const alias of Array.isArray(snapshot.entityAliases) ? snapshot.entityAliases : (Array.isArray(snapshot.aliases) ? snapshot.aliases : [])) {
     const name = String(alias?.alias ?? '').trim();
     const canonical = String(alias?.canonical ?? '').trim();
     if (!name || !canonical) { stats.skipped += 1; continue; }
-    plan.entityAliases.push({ ...alias, alias: name, canonical });
+    entityAliases.push({ ...alias, alias: name, canonical });
   }
   const personaRows = Array.isArray(snapshot.persona)
     ? snapshot.persona
@@ -2289,8 +2228,212 @@ function mergeSnapshot(s, snapshot, options = {}) {
     const key = String(item?.key ?? '').trim();
     const value = String(item?.value ?? '').trim();
     if (!key || !value) { stats.skipped += 1; continue; }
-    plan.persona.push({ ...item, key, value });
+    persona.push({ ...item, key, value });
   }
+  return { entities, relations, entityAliases, persona };
+}
+
+/** Insert planned notes and remap lineage pointers to local ids. */
+function insertSnapshotNotes(s, notes) {
+  const idMap = new Map();
+  for (const note of notes) {
+    const info = prepareCached(s.db, `
+      INSERT INTO notes(
+        ts, scope, text, importance, source, revision, superseded_by, contested, deleted_at,
+        verification, verified_at, evidence, problem_key, solution_status,
+        solution_verified_at, reuse_count, last_used_at,
+        recall_count, last_recall_at, useful_count, misleading_count
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      Number(note.ts ?? now()), note.scope ?? SCOPE_GLOBAL, String(note.text),
+      Number(note.importance ?? 0.5), note.source ?? null, Number(note.revision ?? 1),
+      note.superseded_by ?? null, Number(note.contested ?? 0), note.deleted_at ?? null,
+      note.verification ?? null, note.verified_at ?? null, note.evidence ?? null,
+      note.problem_key ?? note.problemKey ?? null,
+      note.solution_status ?? note.solutionStatus ?? null,
+      note.solution_verified_at ?? note.solutionVerifiedAt ?? null,
+      Number(note.reuse_count ?? note.reuseCount ?? 0),
+      note.last_used_at ?? note.lastUsedAt ?? null,
+      Number(note.recall_count ?? note.recallCount ?? 0),
+      note.last_recall_at ?? note.lastRecallAt ?? null,
+      Number(note.useful_count ?? note.usefulCount ?? 0),
+      Number(note.misleading_count ?? note.misleadingCount ?? 0),
+    );
+    const newId = Number(info.lastInsertRowid);
+    idMap.set(Number(note.id), newId);
+    reindexRow(s, 'note', newId, note.text);
+  }
+  // Remap note lineage pointers to the ids assigned in this database. A pointer
+  // outside the imported snapshot must become null; falling back to the source
+  // id would point at an unrelated local note with that id.
+  for (const note of notes) {
+    const replacement = Number(note.superseded_by ?? 0);
+    if (!replacement) continue;
+    const newId = idMap.get(Number(note.id));
+    const target = idMap.get(replacement);
+    if (newId) {
+      prepareCached(s.db, 'UPDATE notes SET superseded_by = ? WHERE id = ?')
+        .run(target ?? null, newId);
+    }
+  }
+}
+
+/** Insert facts, closing older single-valued rows in valid_from order. */
+function insertSnapshotFacts(s, facts) {
+  const activeFactRows = prepareCached(s.db, `
+    SELECT id, object, valid_from, scope FROM facts
+    WHERE subject = ? AND relation = ? AND valid_to IS NULL AND deleted_at IS NULL
+      AND (scope = ? OR (scope IS NULL AND ? = 'global'))
+  `);
+  facts.sort((a, b) => Number(a.valid_from ?? 0) - Number(b.valid_from ?? 0));
+  for (const fact of facts) {
+    const factScope = fact.scope ?? SCOPE_GLOBAL;
+    const factFrom = Number(fact.valid_from ?? now());
+    const cardinality = fact.cardinality === 'multi' ? 'multi' : relationCardinality(s.db, String(fact.relation));
+    const factActive = fact.valid_to === null || fact.valid_to === undefined;
+    let validTo = fact.valid_to ?? null;
+    // Importing a snapshot used to bypass the write path's single-value rule:
+    // local and imported values both stayed valid_to=NULL. Sort by valid_from
+    // and close the rows this imported value actually replaces; if a newer
+    // local fact already exists, keep the imported one historical.
+    if (factActive && !fact.deleted_at && cardinality !== 'multi') {
+      const current = activeFactRows.all(String(fact.subject), String(fact.relation), factScope, factScope);
+      const newer = current.filter(row => Number(row.valid_from ?? 0) > factFrom);
+      if (newer.length) {
+        validTo = Math.min(...newer.map(row => Number(row.valid_from)));
+      } else {
+        for (const row of current) {
+          prepareCached(s.db, 'UPDATE facts SET valid_to = ? WHERE id = ?').run(factFrom, Number(row.id));
+          prepareCached(s.db, `
+            UPDATE edges SET valid_to = ?
+            WHERE src = ? AND rel = ? AND dst = ? AND valid_to IS NULL
+              AND (scope = ? OR scope IS NULL)
+          `).run(factFrom, String(fact.subject), String(fact.relation), String(row.object ?? ''), row.scope ?? SCOPE_GLOBAL);
+        }
+      }
+    }
+    const info = prepareCached(s.db, `
+      INSERT INTO facts(subject, relation, object, text, valid_from, valid_to, recorded_at, confidence, source, contested, scope, deleted_at, cardinality,
+        recall_count, last_recall_at, useful_count, misleading_count)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      String(fact.subject), String(fact.relation), String(fact.object ?? ''),
+      String(fact.text ?? `${fact.subject} ${fact.relation} ${fact.object ?? ''}`),
+      factFrom, validTo, fact.recorded_at ?? null,
+      Number(fact.confidence ?? 0.7), fact.source ?? null, Number(fact.contested ?? 0),
+      factScope, fact.deleted_at ?? null, cardinality,
+      Number(fact.recall_count ?? fact.recallCount ?? 0),
+      fact.last_recall_at ?? fact.lastRecallAt ?? null,
+      Number(fact.useful_count ?? fact.usefulCount ?? 0),
+      Number(fact.misleading_count ?? fact.misleadingCount ?? 0),
+    );
+    const newId = Number(info.lastInsertRowid);
+    reindexRow(s, 'fact', newId, String(fact.text ?? `${fact.subject} ${fact.relation} ${fact.object ?? ''}`));
+  }
+}
+
+/** Insert transcript chunks and their derived indexes. */
+function insertSnapshotChunks(s, chunks) {
+  for (const chunk of chunks) {
+    const text = String(chunk.text);
+    const info = prepareCached(s.db, `
+      INSERT INTO chunks(ts, session_id, role, text, hash, source, importance, scope, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      Number(chunk.ts ?? now()), chunk.session_id ?? null, chunk.role ?? 'note', text,
+      hash(text), chunk.source ?? null, Number(chunk.importance ?? 0.5), chunk.scope ?? null,
+      chunk.deleted_at ?? null,
+    );
+    reindexRow(s, 'chunk', Number(info.lastInsertRowid), text);
+  }
+}
+
+/** Insert pending candidates. */
+function insertSnapshotCandidates(s, candidates) {
+  for (const candidate of candidates) {
+    prepareCached(s.db, `
+      INSERT INTO note_candidates(ts, scope, text, hash, source, chunk_id, confidence, status)
+      VALUES (?, ?, ?, ?, ?, NULL, ?, 'pending')
+    `).run(
+      Number(candidate.ts ?? now()), candidate.scope ?? SCOPE_GLOBAL, String(candidate.text),
+      String(candidate.hash), candidate.source ?? null, Number(candidate.confidence ?? 0.5),
+    );
+  }
+}
+
+/** Insert graph edges. */
+function insertSnapshotEdges(s, edges) {
+  for (const edge of edges) {
+    prepareCached(s.db, `
+      INSERT INTO edges(src, rel, dst, valid_from, valid_to, scope, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      String(edge.src), String(edge.rel), String(edge.dst),
+      Number(edge.valid_from ?? now()), edge.valid_to ?? null,
+      edge.scope ?? null, edge.source ?? null,
+    );
+  }
+}
+
+/** Insert entity, relation, alias and persona metadata. */
+function insertSnapshotMeta(s, meta) {
+  for (const name of meta.entities) prepareCached(s.db, 'INSERT OR IGNORE INTO entities(name) VALUES (?)').run(name);
+  for (const relation of meta.relations) {
+    prepareCached(s.db, `
+      INSERT INTO relations(name, cardinality, aliases, updated_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(name) DO UPDATE SET
+        cardinality = excluded.cardinality,
+        aliases = excluded.aliases,
+        updated_at = excluded.updated_at
+    `).run(
+      String(relation.name), String(relation.cardinality ?? 'single'),
+      relation.aliases === null || relation.aliases === undefined ? null : String(relation.aliases),
+      Number(relation.updated_at ?? now()),
+    );
+  }
+  for (const alias of meta.entityAliases) {
+    prepareCached(s.db, `
+      INSERT INTO entity_aliases(alias, canonical, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(alias) DO UPDATE SET
+        canonical = excluded.canonical,
+        updated_at = excluded.updated_at
+    `).run(String(alias.alias), String(alias.canonical), Number(alias.updated_at ?? now()));
+  }
+  for (const setting of meta.persona) {
+    prepareCached(s.db, `
+      INSERT INTO persona(key, value, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = excluded.updated_at
+    `).run(String(setting.key), String(setting.value), Number(setting.updated_at ?? now()));
+  }
+}
+
+/**
+ * Merge a snapshot into the live store.
+ *
+ * Safe default is a dry run: import touches every table, so the caller has to
+ * pass dryRun=false explicitly. Rows are matched by natural identity (text, fact
+ * triple, chunk hash, edge triple) rather than by id; a note's `superseded_by`
+ * pointer is remapped when ids are reassigned. Vectors are rebuilt, never imported.
+ */
+function mergeSnapshot(s, snapshot, options = {}) {
+  if (!snapshot || snapshot.format !== EXPORT_FORMAT) throw new Error('not an omni-memory backup');
+  if (Number(snapshot.version) > EXPORT_VERSION) throw new Error('backup was written by a newer version');
+  const dryRun = options.dryRun !== false;
+  const stats = {
+    notes: 0, facts: 0, chunks: 0, edges: 0, entities: 0,
+    relations: 0, entityAliases: 0, persona: 0, candidates: 0, skipped: 0, dryRun,
+  };
+  const meta = planImportMeta(snapshot, stats);
+  const plan = {
+    notes: planImportNotes(s.db, snapshot, stats),
+    facts: planImportFacts(s.db, snapshot, stats),
+    chunks: planImportChunks(s.db, snapshot, stats),
+    edges: planImportEdges(s.db, snapshot, stats),
+    candidates: planImportCandidates(s.db, snapshot, stats),
+    ...meta,
+  };
 
   stats.notes = plan.notes.length;
   stats.facts = plan.facts.length;
@@ -2303,167 +2446,13 @@ function mergeSnapshot(s, snapshot, options = {}) {
   stats.candidates = plan.candidates.length;
   if (dryRun) return stats;
 
-  const idMap = new Map();
   transaction(s.db, () => {
-    for (const note of plan.notes) {
-      const info = prepareCached(s.db, `
-        INSERT INTO notes(
-          ts, scope, text, importance, source, revision, superseded_by, contested, deleted_at,
-          verification, verified_at, evidence, problem_key, solution_status,
-          solution_verified_at, reuse_count, last_used_at,
-          recall_count, last_recall_at, useful_count, misleading_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        Number(note.ts ?? now()), note.scope ?? SCOPE_GLOBAL, String(note.text),
-        Number(note.importance ?? 0.5), note.source ?? null, Number(note.revision ?? 1),
-        note.superseded_by ?? null, Number(note.contested ?? 0), note.deleted_at ?? null,
-        note.verification ?? null, note.verified_at ?? null, note.evidence ?? null,
-        note.problem_key ?? note.problemKey ?? null,
-        note.solution_status ?? note.solutionStatus ?? null,
-        note.solution_verified_at ?? note.solutionVerifiedAt ?? null,
-        Number(note.reuse_count ?? note.reuseCount ?? 0),
-        note.last_used_at ?? note.lastUsedAt ?? null,
-        Number(note.recall_count ?? note.recallCount ?? 0),
-        note.last_recall_at ?? note.lastRecallAt ?? null,
-        Number(note.useful_count ?? note.usefulCount ?? 0),
-        Number(note.misleading_count ?? note.misleadingCount ?? 0),
-      );
-      const newId = Number(info.lastInsertRowid);
-      idMap.set(Number(note.id), newId);
-      if (s.fts.notes) {
-        try { prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)').run(newId, String(note.text)); } catch { /* duplicate */ }
-      }
-      indexBigrams(s.db, 'note', newId, String(note.text));
-      upsertVector(s, 'note', newId, String(note.text));
-    }
-    // Remap note lineage pointers to the ids assigned in this database. A
-    // pointer outside the imported snapshot must become null; falling back to
-    // the source id would point at an unrelated local note with that id.
-    for (const note of plan.notes) {
-      const replacement = Number(note.superseded_by ?? 0);
-      if (!replacement) continue;
-      const newId = idMap.get(Number(note.id));
-      const target = idMap.get(replacement);
-      if (newId) {
-        prepareCached(s.db, 'UPDATE notes SET superseded_by = ? WHERE id = ?')
-          .run(target ?? null, newId);
-      }
-    }
-    plan.facts.sort((a, b) => Number(a.valid_from ?? 0) - Number(b.valid_from ?? 0));
-    for (const fact of plan.facts) {
-      const factScope = fact.scope ?? SCOPE_GLOBAL;
-      const factFrom = Number(fact.valid_from ?? now());
-      const cardinality = fact.cardinality === 'multi' ? 'multi' : relationCardinality(s.db, String(fact.relation));
-      const factActive = fact.valid_to === null || fact.valid_to === undefined;
-      let validTo = fact.valid_to ?? null;
-      // Importing a snapshot used to bypass the write path's single-value rule:
-      // local "裸机" and imported "Docker" both stayed valid_to=NULL. Sort by
-      // valid_from and close the rows this imported value actually replaces;
-      // if a newer local fact already exists, keep the imported one historical.
-      if (factActive && !fact.deleted_at && cardinality !== 'multi') {
-        const current = activeFactRows.all(String(fact.subject), String(fact.relation), factScope, factScope);
-        const newer = current.filter(row => Number(row.valid_from ?? 0) > factFrom);
-        if (newer.length) {
-          validTo = Math.min(...newer.map(row => Number(row.valid_from)));
-        } else {
-          for (const row of current) {
-            prepareCached(s.db, 'UPDATE facts SET valid_to = ? WHERE id = ?').run(factFrom, Number(row.id));
-            prepareCached(s.db, `
-              UPDATE edges SET valid_to = ?
-              WHERE src = ? AND rel = ? AND dst = ? AND valid_to IS NULL
-                AND (scope = ? OR scope IS NULL)
-            `).run(factFrom, String(fact.subject), String(fact.relation), String(row.object ?? ''), row.scope ?? SCOPE_GLOBAL);
-          }
-        }
-      }
-      const info = prepareCached(s.db, `
-        INSERT INTO facts(subject, relation, object, text, valid_from, valid_to, recorded_at, confidence, source, contested, scope, deleted_at, cardinality,
-          recall_count, last_recall_at, useful_count, misleading_count)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        String(fact.subject), String(fact.relation), String(fact.object ?? ''),
-        String(fact.text ?? `${fact.subject} ${fact.relation} ${fact.object ?? ''}`),
-        factFrom, validTo, fact.recorded_at ?? null,
-        Number(fact.confidence ?? 0.7), fact.source ?? null, Number(fact.contested ?? 0),
-        factScope, fact.deleted_at ?? null, cardinality,
-        Number(fact.recall_count ?? fact.recallCount ?? 0),
-        fact.last_recall_at ?? fact.lastRecallAt ?? null,
-        Number(fact.useful_count ?? fact.usefulCount ?? 0),
-        Number(fact.misleading_count ?? fact.misleadingCount ?? 0),
-      );
-      const newId = Number(info.lastInsertRowid);
-      if (s.fts.facts) {
-        try { prepareCached(s.db, 'INSERT INTO facts_fts(rowid, text) VALUES (?, ?)').run(newId, String(fact.text ?? '')); } catch { /* duplicate */ }
-      }
-      indexBigrams(s.db, 'fact', newId, String(fact.text ?? `${fact.subject} ${fact.relation} ${fact.object ?? ''}`));
-      upsertVector(s, 'fact', newId, String(fact.text ?? `${fact.subject} ${fact.relation} ${fact.object ?? ''}`));
-    }
-    for (const chunk of plan.chunks) {
-      const text = String(chunk.text);
-      const info = prepareCached(s.db, `
-        INSERT INTO chunks(ts, session_id, role, text, hash, source, importance, scope, deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        Number(chunk.ts ?? now()), chunk.session_id ?? null, chunk.role ?? 'note', text,
-        hash(text), chunk.source ?? null, Number(chunk.importance ?? 0.5), chunk.scope ?? null,
-        chunk.deleted_at ?? null,
-      );
-      const newId = Number(info.lastInsertRowid);
-      if (s.fts.chunks) {
-        try { prepareCached(s.db, 'INSERT INTO chunks_fts(rowid, text) VALUES (?, ?)').run(newId, text); } catch { /* duplicate */ }
-      }
-      indexBigrams(s.db, 'chunk', newId, text);
-      upsertVector(s, 'chunk', newId, text);
-    }
-    for (const candidate of plan.candidates) {
-      prepareCached(s.db, `
-        INSERT INTO note_candidates(ts, scope, text, hash, source, chunk_id, confidence, status)
-        VALUES (?, ?, ?, ?, ?, NULL, ?, 'pending')
-      `).run(
-        Number(candidate.ts ?? now()), candidate.scope ?? SCOPE_GLOBAL, String(candidate.text),
-        String(candidate.hash), candidate.source ?? null, Number(candidate.confidence ?? 0.5),
-      );
-    }
-    for (const edge of plan.edges) {
-      prepareCached(s.db, `
-        INSERT INTO edges(src, rel, dst, valid_from, valid_to, scope, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        String(edge.src), String(edge.rel), String(edge.dst),
-        Number(edge.valid_from ?? now()), edge.valid_to ?? null,
-        edge.scope ?? null, edge.source ?? null,
-      );
-    }
-    for (const name of plan.entities) prepareCached(s.db, 'INSERT OR IGNORE INTO entities(name) VALUES (?)').run(name);
-    for (const relation of plan.relations) {
-      prepareCached(s.db, `
-        INSERT INTO relations(name, cardinality, aliases, updated_at) VALUES (?, ?, ?, ?)
-        ON CONFLICT(name) DO UPDATE SET
-          cardinality = excluded.cardinality,
-          aliases = excluded.aliases,
-          updated_at = excluded.updated_at
-      `).run(
-        String(relation.name), String(relation.cardinality ?? 'single'),
-        relation.aliases === null || relation.aliases === undefined ? null : String(relation.aliases),
-        Number(relation.updated_at ?? now()),
-      );
-    }
-    for (const alias of plan.entityAliases) {
-      prepareCached(s.db, `
-        INSERT INTO entity_aliases(alias, canonical, updated_at) VALUES (?, ?, ?)
-        ON CONFLICT(alias) DO UPDATE SET
-          canonical = excluded.canonical,
-          updated_at = excluded.updated_at
-      `).run(String(alias.alias), String(alias.canonical), Number(alias.updated_at ?? now()));
-    }
-    for (const setting of plan.persona) {
-      prepareCached(s.db, `
-        INSERT INTO persona(key, value, updated_at) VALUES (?, ?, ?)
-        ON CONFLICT(key) DO UPDATE SET
-          value = excluded.value,
-          updated_at = excluded.updated_at
-      `).run(String(setting.key), String(setting.value), Number(setting.updated_at ?? now()));
-    }
+    insertSnapshotNotes(s, plan.notes);
+    insertSnapshotFacts(s, plan.facts);
+    insertSnapshotChunks(s, plan.chunks);
+    insertSnapshotCandidates(s, plan.candidates);
+    insertSnapshotEdges(s, plan.edges);
+    insertSnapshotMeta(s, plan);
   });
   entityCache = { names: [], at: 0 };
   invalidateProfile();
@@ -2541,18 +2530,10 @@ function restoreMemory(s, kind, id, scope = SCOPE_GLOBAL) {
       prepareCached(s.db, 'UPDATE chunks SET deleted_at = NULL WHERE id = ?').run(Number(id));
     }
     if (table === 'notes') {
-      if (s.fts.notes) {
-        try { prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)').run(Number(id), row.text); } catch { /* already indexed */ }
-      }
-      indexBigrams(s.db, 'note', Number(id), row.text);
-      upsertVector(s, 'note', Number(id), row.text);
+      reindexRow(s, 'note', Number(id), row.text);
     } else if (table === 'facts') {
       const text = String(row.text ?? `${row.subject} ${row.relation} ${row.object}`);
-      if (s.fts.facts) {
-        try { prepareCached(s.db, 'INSERT INTO facts_fts(rowid, text) VALUES (?, ?)').run(Number(id), text); } catch { /* already indexed */ }
-      }
-      indexBigrams(s.db, 'fact', Number(id), text);
-      upsertVector(s, 'fact', Number(id), text);
+      reindexRow(s, 'fact', Number(id), text);
       const edge = prepareCached(s.db, `
         SELECT id FROM edges WHERE src = ? AND rel = ? AND dst = ?
           AND (scope = ? OR scope IS NULL)
@@ -2564,11 +2545,7 @@ function restoreMemory(s, kind, id, scope = SCOPE_GLOBAL) {
           .run(row.subject, row.relation, String(row.object ?? ''), Number(row.valid_from ?? now()), row.scope ?? SCOPE_GLOBAL, row.source ?? null);
       }
     } else {
-      if (s.fts.chunks) {
-        try { prepareCached(s.db, 'INSERT INTO chunks_fts(rowid, text) VALUES (?, ?)').run(Number(id), row.text); } catch { /* already indexed */ }
-      }
-      indexBigrams(s.db, 'chunk', Number(id), row.text);
-      upsertVector(s, 'chunk', Number(id), row.text);
+      reindexRow(s, 'chunk', Number(id), row.text);
     }
     return { restored: true };
   });
@@ -2577,7 +2554,7 @@ function restoreMemory(s, kind, id, scope = SCOPE_GLOBAL) {
 }
 
 function insertChunk(s, input) {
-  const { db, ftsMode } = s;
+  const { db } = s;
   const text = String(input.text ?? '').trim();
   if (!text) return null;
   const digest = hash(text);
@@ -2604,13 +2581,7 @@ function insertChunk(s, input) {
       scope,
     );
     const id = Number(info.lastInsertRowid);
-    if (ftsMode !== 'like') {
-      try {
-        prepareCached(db, 'INSERT INTO chunks_fts(rowid, text) VALUES (?, ?)').run(id, text);
-      } catch { /* index write is best effort */ }
-    }
-    indexBigrams(db, 'chunk', id, text);
-    upsertVector(s, 'chunk', id, text);
+    reindexRow(s, 'chunk', id, text);
     return { id, deduped: false };
   });
 }
@@ -2787,11 +2758,7 @@ function writeCandidateNoteInTransaction(s, row) {
     VALUES (?, ?, ?, ?, ?)
   `).run(ts, scope, text, importance, source);
   const noteId = Number(info.lastInsertRowid);
-  if (s.fts.notes) {
-    try { prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)').run(noteId, text); } catch { /* index best effort */ }
-  }
-  indexBigrams(s.db, 'note', noteId, text);
-  upsertVector(s, 'note', noteId, text);
+  reindexRow(s, 'note', noteId, text);
   return { id: noteId, deduped: false };
 }
 
@@ -2902,11 +2869,7 @@ export function consolidateProblemNotes(problemKey, options = {}, toolContext = 
       active.reduce((sum, row) => sum + Number(row.misleading_count ?? 0), 0),
     );
     const summaryId = Number(info.lastInsertRowid);
-    if (s.fts.notes) {
-      try { prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)').run(summaryId, summaryText); } catch { /* index best effort */ }
-    }
-    indexBigrams(s.db, 'note', summaryId, summaryText);
-    upsertVector(s, 'note', summaryId, summaryText);
+    reindexRow(s, 'note', summaryId, summaryText);
     const update = prepareCached(s.db, 'UPDATE notes SET superseded_by = ? WHERE id = ?');
     for (const id of activeIds) {
       update.run(summaryId, id);
@@ -3605,14 +3568,7 @@ function dreamRun(s, apply, options = {}) {
           const replacementId = Number(info.lastInsertRowid);
           prepareCached(s.db, 'UPDATE notes SET superseded_by = ? WHERE id = ?').run(replacementId, Number(note.id));
           dropDerivedIndexes(s, 'note', note.id);
-          if (s.fts.notes) {
-            try {
-              prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)')
-                .run(replacementId, replacementText);
-            } catch { /* best effort */ }
-          }
-          indexBigrams(s.db, 'note', replacementId, replacementText);
-          upsertVector(s, 'note', replacementId, replacementText);
+          reindexRow(s, 'note', replacementId, replacementText);
           action.replacementId = replacementId;
         }
       });
@@ -3662,11 +3618,7 @@ function dreamReplace(s, noteId, scope = SCOPE_GLOBAL) {
     const replacementId = Number(info.lastInsertRowid);
     prepareCached(s.db, 'UPDATE notes SET superseded_by = ?, contested = 1 WHERE id = ?').run(replacementId, Number(note.id));
     dropDerivedIndexes(s, 'note', note.id);
-    if (s.fts.notes) {
-      try { prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)').run(replacementId, replacementText); } catch { /* best effort */ }
-    }
-    indexBigrams(s.db, 'note', replacementId, replacementText);
-    upsertVector(s, 'note', replacementId, replacementText);
+    reindexRow(s, 'note', replacementId, replacementText);
     return {
       oldId: Number(note.id),
       replacementId,
@@ -3692,9 +3644,9 @@ function dreamRollback(s, noteId, scope = SCOPE_GLOBAL) {
     prepareCached(s.db, 'UPDATE notes SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL')
       .run(now(), Number(replacement.id));
     dropDerivedIndexes(s, 'note', replacement.id);
-    // The original vector was removed when the note was superseded; restore it
-    // so a rollback does not leave a live note without a semantic entry.
-    if (note.text) upsertVector(s, 'note', note.id, note.text);
+    // Superseding the note removed all derived views; rollback must rebuild
+    // FTS, bigrams and the vector, not only the vector.
+    if (note.text) reindexRow(s, 'note', note.id, note.text);
     return { restored: true, replacementId: Number(replacement.id) };
   });
   if (result.restored) invalidateProfile();
@@ -5207,22 +5159,16 @@ function defineTools(ctx) {
           `).all(subject, relation, ...(factScope === SCOPE_GLOBAL ? [] : [factScope]));
           if (requested) setRelationCardinality(s.db, relation, requested);
           const insertFact = () => {
+            const factText = text || `${subject} ${relation} ${object}`;
             const info = prepareCached(s.db, `
               INSERT INTO facts(subject, relation, object, text, valid_from, valid_to, recorded_at, confidence, source, scope, cardinality)
               VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
             `).run(
-              subject, relation, object, text || `${subject} ${relation} ${object}`,
+              subject, relation, object, factText,
               ts, ts, 0.7, args.source ?? null, factScope, cardinality,
             );
             const factId = Number(info.lastInsertRowid);
-            if (s.fts.facts) {
-              try {
-                prepareCached(s.db, 'INSERT INTO facts_fts(rowid, text) VALUES (?, ?)')
-                  .run(factId, text || `${subject} ${relation} ${object}`);
-              } catch { /* index write is best effort */ }
-            }
-            indexBigrams(s.db, 'fact', factId, text || `${subject} ${relation} ${object}`);
-            upsertVector(s, 'fact', factId, text || `${subject} ${relation} ${object}`);
+            reindexRow(s, 'fact', factId, factText);
             prepareCached(s.db, 'INSERT OR IGNORE INTO entities(name) VALUES (?)').run(subject);
             if (object && object.length <= 80) prepareCached(s.db, 'INSERT OR IGNORE INTO entities(name) VALUES (?)').run(object);
             prepareCached(s.db, 'INSERT INTO edges(src, rel, dst, valid_from, scope, source) VALUES (?, ?, ?, ?, ?, ?)')
@@ -5362,14 +5308,7 @@ function defineTools(ctx) {
           evidence || null,
         );
         const noteId = Number(info.lastInsertRowid);
-        if (s.fts.notes) {
-          try {
-            prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)')
-              .run(noteId, text);
-          } catch { /* index write is best effort */ }
-        }
-        indexBigrams(s.db, 'note', noteId, text);
-        upsertVector(s, 'note', noteId, text);
+        reindexRow(s, 'note', noteId, text);
         const contestedWith = markContradictions(s, noteId, text, args.contradicts, scope);
         return { noteId, contestedWith };
       });
@@ -5839,13 +5778,7 @@ function defineTools(ctx) {
         const newId = Number(info.lastInsertRowid);
         prepareCached(s.db, 'UPDATE notes SET superseded_by = ? WHERE id = ?').run(newId, id);
         dropDerivedIndexes(s, 'note', id);
-        if (s.fts.notes) {
-          try {
-            prepareCached(s.db, 'INSERT INTO notes_fts(rowid, text) VALUES (?, ?)').run(newId, text);
-          } catch { /* index write is best effort */ }
-        }
-        indexBigrams(s.db, 'note', newId, text);
-        upsertVector(s, 'note', newId, text);
+        reindexRow(s, 'note', newId, text);
         return newId;
       });
       invalidateProfile();
