@@ -89,6 +89,7 @@ npm run bench
 | 2026-11-22 | M-08 | 完成 | `weeklyBuckets` / `dailyBuckets` SQL 分组；100k 临时库（80k notes/15k facts/5k chunks）与旧实现逐字段一致（notes/facts/chunks/base/cumulative/daily 全 true）；API 测试 17/17 |
 | 2026-11-22 | M-09 | 完成 | schema v17：`notes.text_hash` + `notes_scope_text_hash`；迁移回填 NULL、重开幂等；哈希碰撞按原文区分；写入/候选/导入/restore/amend 均走索引；migration 7/7、专项 22/22 |
 | 2026-11-22 | M-10 | 完成 | 100k：write 4.4 / list 96.4 / overview 187.2 / search 2.8ms；1M：4.4 / 966.4 / 2026 / 2.8ms；5 次原始值见 `BENCH-3.11.0-2026-11-22.md` |
+| 2026-11-22 | 真机验收 | 完成 | DSH 重启后 `/omni-memory/status` 21 路由；`/list` schema 17、33 notes / 7 facts / 963 chunks；真实库 `text_hash` 0 NULL；验收 note #42 |
 
 ## 7. 明确不做
 
