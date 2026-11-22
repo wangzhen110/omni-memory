@@ -225,6 +225,15 @@ function normalizeScopeInput(value) {
   return lower === 'all' || lower === 'project' || lower === 'global' ? lower : raw;
 }
 
+/** Parse an HTTP scope request once; `all` is the read-only cross-layer view. */
+function httpScope(value, fallback = SCOPE_GLOBAL) {
+  const requested = normalizeScopeInput(value);
+  return {
+    requested,
+    scope: requested === 'all' ? null : (requested || fallback),
+  };
+}
+
 function decideScope(explicit, text, project = currentProject()) {
   const given = normalizeScopeInput(explicit);
   if (given === 'all') throw new Error('scope=all is read-only; choose global or a project scope');
@@ -2031,8 +2040,8 @@ function importNumber(value, fallback, min, max) {
   return Math.min(max, Math.max(min, number));
 }
 
-/** Keep lineage pointers inside the imported snapshot; unresolved ids become null. */
-function importLineage(value) {
+/** Keep lineage pointers positive; unresolved ids become null. */
+function positiveIdOrNull(value) {
   const id = Number(value);
   return Number.isFinite(id) && id > 0 ? id : null;
 }
@@ -2186,7 +2195,7 @@ function mergeSnapshot(s, snapshot, options = {}) {
       importance: importNumber(note.importance, 0.5, 0, 1),
       revision: Math.floor(importNumber(note.revision, 1, 1, 1_000_000)),
       contested: importNumber(note.contested, 0, 0, 1) ? 1 : 0,
-      superseded_by: importLineage(note.superseded_by),
+      superseded_by: positiveIdOrNull(note.superseded_by),
       deleted_at: note.deleted_at == null ? null : importNumber(note.deleted_at, now(), 0, Number.MAX_SAFE_INTEGER),
       verification,
       verified_at: verification ? importNumber(note.verified_at, now(), 0, Number.MAX_SAFE_INTEGER) : null,
@@ -6606,9 +6615,49 @@ function registerRoutes(ctx) {
   }
 
   const disposers = [];
+  // Every HTTP route is loopback-only. Method/CSRF policy stays here so a new
+  // route cannot forget the guard while its handler only deals with its payload.
+  const routeGuards = new Map([
+    ['/omni-memory/packet', { methods: ['GET'], error: 'packet requires GET' }],
+    ['/omni-memory/ingest', { methods: ['POST'], error: 'ingest requires POST', mutating: true }],
+    ['/omni-memory/consolidate', { methods: ['POST'], error: 'consolidate requires POST', mutating: true }],
+    ['/omni-memory/candidates', { methods: ['GET'], error: 'candidates requires GET' }],
+    ['/omni-memory/candidate', { methods: ['POST'], error: 'candidate requires POST', mutating: true }],
+    ['/omni-memory/openapi.json', { methods: ['GET'], error: 'openapi.json requires GET' }],
+    ['/omni-memory/tool', { methods: ['POST'], error: 'tool requires POST', mutating: true }],
+    ['/omni-memory/list', {}],
+    ['/omni-memory/overview', {}],
+    ['/omni-memory/graph', {}],
+    ['/omni-memory/node', {}],
+    ['/omni-memory/persona', { methods: ['GET', 'POST'], error: 'persona requires GET or POST', mutating: true }],
+    ['/omni-memory/persona/refresh', { methods: ['POST'], error: 'refresh requires POST', mutating: true }],
+    ['/omni-memory/dream/proposals', {}],
+    ['/omni-memory/dream/replace', { methods: ['POST'], error: 'replace requires POST', mutating: true }],
+    ['/omni-memory/dream/rollback', { methods: ['POST'], error: 'rollback requires POST', mutating: true }],
+    ['/omni-memory/export', {}],
+    ['/omni-memory/restore', { methods: ['POST'], error: 'restore requires POST', mutating: true }],
+    ['/omni-memory/status', {}],
+    ['/omni-memory/search', {}],
+    ['/omni-memory/forget', { methods: ['POST'], error: 'forget requires POST', mutating: true }],
+  ]);
   const add = route => {
+    const guard = routeGuards.get(String(route.path ?? ''));
+    if (!guard) throw new Error(`route guard missing for ${route.path}`);
     try {
-      const dispose = web.register(route);
+      const dispose = web.register({
+        ...route,
+        handler: async (req, res) => {
+          if (!isLoopback(req)) return json(res, 403, { ok: false });
+          const method = String(req.method ?? 'GET').toUpperCase();
+          if (guard.methods && !guard.methods.includes(method)) {
+            return json(res, 405, { ok: false, error: guard.error });
+          }
+          if (guard.mutating && method === 'POST' && !mutationAllowed(req)) {
+            return json(res, 403, { ok: false, error: 'forbidden' });
+          }
+          return route.handler(req, res);
+        },
+      });
       if (typeof dispose === 'function') disposers.push(dispose);
     } catch { /* a missing route is not fatal */ }
   };
@@ -6617,7 +6666,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/packet',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'GET') {
         return json(res, 405, { ok: false, error: 'packet requires GET' });
       }
@@ -6656,11 +6704,9 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/ingest',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
         return json(res, 405, { ok: false, error: 'ingest requires POST' });
       }
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       let body = {};
       try {
@@ -6699,11 +6745,9 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/consolidate',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
         return json(res, 405, { ok: false, error: 'consolidate requires POST' });
       }
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const body = await readJsonBody(req);
       const problemKey = String(url.searchParams.get('problemKey') ?? body.problemKey ?? '').trim();
@@ -6725,7 +6769,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/candidates',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'GET') {
         return json(res, 405, { ok: false, error: 'candidates requires GET' });
       }
@@ -6749,11 +6792,9 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/candidate',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
         return json(res, 405, { ok: false, error: 'candidate requires POST' });
       }
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const body = await readJsonBody(req);
       const id = Number(url.searchParams.get('id') ?? body.id ?? 0);
@@ -6776,7 +6817,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/openapi.json',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'GET') {
         return json(res, 405, { ok: false, error: 'openapi.json requires GET' });
       }
@@ -6788,11 +6828,9 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/tool',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
         return json(res, 405, { ok: false, error: 'tool requires POST' });
       }
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       let body = {};
       try {
         body = await readJsonBody(req, 64 * 1024, { strict: true, allowMissing: false });
@@ -6830,7 +6868,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/list',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') ?? 40)));
@@ -6974,7 +7011,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/overview',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const scope = normalizeScopeInput(url.searchParams.get('scope') || 'all');
@@ -7258,7 +7294,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/graph',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const requested = normalizeScopeInput(url.searchParams.get('scope') || 'global');
@@ -7358,12 +7393,10 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/node',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const node = String(url.searchParams.get('node') ?? '').trim();
-      const requestedScope = normalizeScopeInput(url.searchParams.get('scope'));
-      const scope = requestedScope === 'all' ? null : (requestedScope || SCOPE_GLOBAL);
+      const { requested: requestedScope, scope } = httpScope(url.searchParams.get('scope'));
       const noteFilter = scope ? scopeClause('scope', scope, false) : { sql: '', params: [] };
       const factFilter = scope ? scopeClause('scope', scope) : { sql: '', params: [] };
 
@@ -7417,12 +7450,10 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/persona',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const method = String(req.method ?? 'GET').toUpperCase();
       if (method === 'GET') return json(res, 200, { ok: true, persona: personaGet(s.db) });
       if (method !== 'POST') return json(res, 405, { ok: false, error: 'persona requires GET or POST' });
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const queryValues = url.searchParams.get('values');
       const queryAction = String(url.searchParams.get('action') ?? '').trim().toLowerCase();
@@ -7468,9 +7499,7 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/persona/refresh',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') return json(res, 405, { ok: false, error: 'refresh requires POST' });
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const apply = String(url.searchParams.get('dryRun') ?? '') !== '1';
       const useModel = String(url.searchParams.get('model') ?? '') === '1';
@@ -7486,7 +7515,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/dream/proposals',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       return json(res, 200, { ok: true, proposals: dreamProposals(openStore(), url.searchParams.get('limit')) });
     },
@@ -7496,9 +7524,7 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/dream/replace',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') return json(res, 405, { ok: false, error: 'replace requires POST' });
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       let noteId = Number(url.searchParams.get('noteId') ?? 0);
       let rawScope = normalizeScopeInput(url.searchParams.get('scope'));
@@ -7511,9 +7537,9 @@ function registerRoutes(ctx) {
       }
       if (!noteId) return json(res, 400, { ok: false, error: 'noteId required' });
       const s = openStore();
-      const scope = rawScope === 'all' ? null : (rawScope || SCOPE_GLOBAL);
+      const { requested, scope } = httpScope(rawScope);
       try {
-        if (rawScope === 'all') auditCrossScope(s.db, 'http:dream/replace', noteId);
+        if (requested === 'all') auditCrossScope(s.db, 'http:dream/replace', noteId);
         return json(res, 200, { ok: true, ...dreamReplace(s, noteId, scope) });
       } catch (error) {
         return json(res, 400, { ok: false, error: String(error?.message ?? error) });
@@ -7525,9 +7551,7 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/dream/rollback',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') return json(res, 405, { ok: false, error: 'rollback requires POST' });
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       let noteId = Number(url.searchParams.get('noteId') ?? 0);
       let rawScope = normalizeScopeInput(url.searchParams.get('scope'));
@@ -7540,8 +7564,8 @@ function registerRoutes(ctx) {
       }
       if (!noteId) return json(res, 400, { ok: false, error: 'noteId required' });
       const s = openStore();
-      const scope = rawScope === 'all' ? null : (rawScope || SCOPE_GLOBAL);
-      if (rawScope === 'all') auditCrossScope(s.db, 'http:dream/rollback', noteId);
+      const { requested, scope } = httpScope(rawScope);
+      if (requested === 'all') auditCrossScope(s.db, 'http:dream/rollback', noteId);
       return json(res, 200, { ok: true, ...dreamRollback(s, noteId, scope) });
     },
   });
@@ -7550,7 +7574,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/export',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const activeOnly = String(url.searchParams.get('activeOnly') ?? '') === '1';
@@ -7567,10 +7590,8 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/restore',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const method = String(req.method ?? 'GET').toUpperCase();
       if (method !== 'POST') return json(res, 405, { ok: false, error: 'restore requires POST' });
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       let kind = String(url.searchParams.get('kind') ?? '');
       let id = Number(url.searchParams.get('id') ?? 0);
@@ -7590,9 +7611,9 @@ function registerRoutes(ctx) {
       }
       if (!kind || !id) return json(res, 400, { ok: false, error: 'kind and id required' });
       const s = openStore();
-      const scope = rawScope === 'all' ? null : (rawScope || SCOPE_GLOBAL);
+      const { requested, scope } = httpScope(rawScope);
       try {
-        if (rawScope === 'all') auditCrossScope(s.db, 'http:restore', id);
+        if (requested === 'all') auditCrossScope(s.db, 'http:restore', id);
         return json(res, 200, { ok: true, ...restoreMemory(s, String(kind), id, scope) });
       } catch (error) {
         return json(res, 400, { ok: false, error: String(error?.message ?? error) });
@@ -7604,7 +7625,6 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/status',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const count = table => Number(prepareCached(s.db, `SELECT COUNT(*) AS n FROM ${table} WHERE deleted_at IS NULL`).get().n);
       return json(res, 200, {
@@ -7639,19 +7659,16 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/search',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const query = url.searchParams.get('q') ?? '';
       if (!queryTerms(query).length) return json(res, 200, { ok: true, hits: [] });
       const limit = Math.min(60, Math.max(1, Number(url.searchParams.get('limit') ?? 30)));
-      const requestedScope = normalizeScopeInput(url.searchParams.get('scope'));
-      // A bare HTTP request gets global only. "all" is an explicit audit choice;
-      // project keys include that project plus global.
-      const scope = requestedScope === 'all' ? null : (requestedScope || SCOPE_GLOBAL);
+      const requestedScope = url.searchParams.get('scope');
+      const { requested, scope } = httpScope(requestedScope);
       const rerank = url.searchParams.get('rerank') === '0' ? false : undefined;
       const result = await runSearch(s, query, limit, scope, { rerank });
-      return json(res, 200, { ok: true, scope: requestedScope || SCOPE_GLOBAL, hits: result.hits });
+      return json(res, 200, { ok: true, scope: requested || SCOPE_GLOBAL, hits: result.hits });
     },
   });
 
@@ -7659,11 +7676,9 @@ function registerRoutes(ctx) {
     kind: 'exact',
     path: '/omni-memory/forget',
     handler: async (req, res) => {
-      if (!isLoopback(req)) return json(res, 403, { ok: false });
       const s = openStore();
       const method = String(req.method ?? 'GET').toUpperCase();
       if (method !== 'POST') return json(res, 405, { ok: false, error: 'forget requires POST' });
-      if (!mutationAllowed(req)) return json(res, 403, { ok: false, error: 'forbidden' });
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       let kind = url.searchParams.get('kind') ?? '';
       let id = Number(url.searchParams.get('id') ?? 0);
@@ -7680,8 +7695,8 @@ function registerRoutes(ctx) {
       if (!table || !id) {
         return json(res, 400, { ok: false, error: 'kind and id required' });
       }
-      const scope = rawScope === 'all' ? null : (rawScope || SCOPE_GLOBAL);
-      if (rawScope === 'all') auditCrossScope(s.db, 'http:forget', id);
+      const { requested, scope } = httpScope(rawScope);
+      if (requested === 'all') auditCrossScope(s.db, 'http:forget', id);
       const forgotten = forgetMemory(s, kind, id, scope);
       invalidateProfile();
       return json(res, 200, { ok: true, forgotten, scope: rawScope || SCOPE_GLOBAL });
