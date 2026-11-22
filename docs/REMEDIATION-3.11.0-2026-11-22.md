@@ -42,7 +42,7 @@
 | M-05 | 第 6 节“openStore 205 行” | 抽 `createBaseSchema()`、`createFtsTables()`；迁移/GC/回填仍由 `openStore` 编排 | 新库与旧库 schema 一致；schema 16→17 迁移可重入 | 已完成（109 行，`lib/schema.mjs`） |
 | M-06 | 第 6 节“restore/import/dream 重建重复” | 抽 `reindexRow(s, kind, id, text)` 统一 FTS + bigram + vector；restore/import/dream 复用 | 恢复后 FTS/向量/bigram 可搜；去重/回滚测试通过 | 已完成（restore/import/dream/amend/rollback 已复用；374/374） |
 | M-07 | 第 6 节“importLineage” | 将 `importLineage` 改为语义明确的 `positiveIdOrNull`，仅保留一处调用 | 导入非法 lineage 仍变 null；无死代码 | 已完成（374/374） |
-| M-08 | 第 7 节“/overview 全量物化” | 周序列与 84 日热力图改为 SQL 分组聚合；基线窗口计数用 SQL `SUM(ts < ?)` | 与旧实现在 100k 临时库逐字段一致；`/overview` 延迟写入基准报告 | 待实施 |
+| M-08 | 第 7 节“/overview 全量物化” | 周序列与 84 日热力图改为 SQL 分组聚合；基线窗口计数用 SQL 计数 | 与旧实现在 100k 临时库逐字段一致；`/overview` 延迟写入基准报告 | 已完成（SQL 分桶 + 旧实现对照测试） |
 | M-09 | 第 7 节“notes text_hash” | schema v17：`notes.text_hash` + `(scope, text_hash)` 索引；写入去重、restore、import 预筛走哈希再比对原文 | 现有去重语义不变；哈希碰撞回查原文；迁移可重入；100k 写入基准改善 | 待实施 |
 | M-10 | 第 7 节“1M 复测” | 隔离临时库生成 100k/1M fixture，跑 write/list/overview/search，记录 5 次中位数 | 报告含机器、Node、fixture、命令、原始值；不达标不写 README | 待实施 |
 
@@ -86,6 +86,7 @@ npm run bench
 | 2026-11-22 | M-02 | 完成 | `registerRoutes` 1100→70 行；四组 read/admin/write/persona 共 6/5/4/6 路由；路由计数 21；`npm test` 374/374 |
 | 2026-11-22 | M-04 / M-05 / M-06 | 完成 | `mergeSnapshot` 41 行；`openStore` 109 行；`lib/schema.mjs`；`reindexRow` 覆盖 restore/import/dream/amend/rollback；`npm test` 374/374 |
 | 2026-11-22 | M-03 | 完成 | `defineTools` 1336→18 行；capture/write-read/maintenance/graph 四组 3/6/8/6；工具 23 个唯一；专项 11/11 |
+| 2026-11-22 | M-08 | 完成 | `weeklyBuckets` / `dailyBuckets` SQL 分组；100k 临时库（80k notes/15k facts/5k chunks）与旧实现逐字段一致（notes/facts/chunks/base/cumulative/daily 全 true）；API 测试 17/17 |
 
 ## 7. 明确不做
 

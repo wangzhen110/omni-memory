@@ -6570,6 +6570,39 @@ function readJsonBody(req, limit = 8192, options = {}) {
   });
 }
 
+/**
+ * Count rows into fixed weekly buckets. The cumulative baseline is the count
+ * strictly before the first bucket, matching the in-memory implementation.
+ */
+function weeklyBuckets(s, table, column, active, params, startMs, weekMs, buckets) {
+  const endMs = startMs + weekMs * buckets;
+  const base = Number(prepareCached(s.db,
+    `SELECT COUNT(*) AS n FROM ${table} WHERE ${active} AND ${column} < ?`
+  ).get(...params, startMs).n ?? 0);
+  const values = Array(buckets).fill(0);
+  const rows = prepareCached(s.db, `
+    SELECT CAST((${column} - ?) / ? AS INTEGER) AS bucket, COUNT(*) AS n
+    FROM ${table}
+    WHERE ${active} AND ${column} >= ? AND ${column} < ?
+    GROUP BY bucket ORDER BY bucket
+  `).all(startMs, weekMs, ...params, startMs, endMs);
+  for (const row of rows) {
+    const index = Number(row.bucket);
+    if (index >= 0 && index < buckets) values[index] = Number(row.n);
+  }
+  return { values, base };
+}
+
+/** Per-local-day counts, using the same wall-clock day key as the UI heatmap. */
+function dailyBuckets(s, table, column, active, params, dayStartMs, dayEndMs) {
+  return prepareCached(s.db, `
+    SELECT date(${column} / 1000, 'unixepoch', 'localtime') AS day, COUNT(*) AS n
+    FROM ${table}
+    WHERE ${active} AND ${column} >= ? AND ${column} < ?
+    GROUP BY day
+  `).all(...params, dayStartMs, dayEndMs).map(row => [row.day, Number(row.n)]);
+}
+
 /** Packet, candidate queue, browser list, overview, graph and node. */
 function registerReadRoutes(add) {
   add({
@@ -6885,24 +6918,9 @@ function registerReadRoutes(add) {
       const visibleTranscriptProjects = scope === 'global' ? 0 : projectRows.filter(p => visibleForScope(p) && p.memory === 0 && p.chunks > 0).length;
 
       // Weekly series. Counts before the window become the cumulative baseline.
-      const noteTimes = prepareCached(s.db, `SELECT ts FROM notes WHERE ${noteActive}`).all(...noteScope.params);
-      const factTimes = prepareCached(s.db, `SELECT valid_from AS ts FROM facts WHERE ${factActive}`).all(...factScope.params);
-      const chunkTimes = prepareCached(s.db, `SELECT ts FROM chunks WHERE ${chunkActive}`).all(...chunkScope.params);
-      const bucketize = rows => {
-        const out = Array(buckets).fill(0);
-        let base = 0;
-        for (const row of rows) {
-          const ts = Number(row.ts);
-          if (!Number.isFinite(ts)) continue;
-          if (ts < startMs) { base += 1; continue; }
-          const index = Math.floor((ts - startMs) / weekMs);
-          if (index >= 0 && index < buckets) out[index] += 1;
-        }
-        return { values: out, base };
-      };
-      const noteSeries = bucketize(noteTimes);
-      const factSeries = bucketize(factTimes);
-      const chunkSeries = bucketize(chunkTimes);
+      const noteSeries = weeklyBuckets(s, 'notes', 'ts', noteActive, noteScope.params, startMs, weekMs, buckets);
+      const factSeries = weeklyBuckets(s, 'facts', 'valid_from', factActive, factScope.params, startMs, weekMs, buckets);
+      const chunkSeries = weeklyBuckets(s, 'chunks', 'ts', chunkActive, chunkScope.params, startMs, weekMs, buckets);
       const labels = Array.from({ length: buckets }, (_, i) => {
         const d = new Date(startMs);
         d.setDate(d.getDate() + i * 7);
@@ -6922,12 +6940,14 @@ function registerReadRoutes(add) {
         const date = new Date(d);
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       };
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 84);
       const dailyCounts = new Map();
-      for (const row of [...noteTimes, ...factTimes]) {
-        const ts = Number(row.ts);
-        if (!Number.isFinite(ts) || ts < dayStart.getTime()) continue;
-        const key = keyOf(ts);
-        dailyCounts.set(key, (dailyCounts.get(key) ?? 0) + 1);
+      for (const [day, n] of dailyBuckets(s, 'notes', 'ts', noteActive, noteScope.params, dayStart.getTime(), dayEnd.getTime())) {
+        dailyCounts.set(day, (dailyCounts.get(day) ?? 0) + n);
+      }
+      for (const [day, n] of dailyBuckets(s, 'facts', 'valid_from', factActive, factScope.params, dayStart.getTime(), dayEnd.getTime())) {
+        dailyCounts.set(day, (dailyCounts.get(day) ?? 0) + n);
       }
       const daily = Array.from({ length: 84 }, (_, i) => {
         const d = new Date(dayStart);

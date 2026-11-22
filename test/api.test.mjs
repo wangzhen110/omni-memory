@@ -61,6 +61,118 @@ test('GET /omni-memory/overview aggregates growth, health and profile signals', 
   assert.ok(body.activity.length >= 1);
 });
 
+test('GET /omni-memory/overview SQL buckets match the legacy row scan', async () => {
+  const app = await boot();
+  for (let i = 0; i < 10; i += 1) {
+    await app.call('memory_write', { kind: 'note', text: `概览分桶笔记 ${i}` });
+  }
+  for (let i = 0; i < 6; i += 1) {
+    await app.call('memory_write', {
+      kind: 'fact', text: `概览分桶事实 ${i}`, subject: `分桶主体${i}`, relation: '属于', object: '概览对比',
+    });
+  }
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const weekMs = 7 * dayMs;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weekStart = new Date(today);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const start = new Date(weekStart);
+  start.setDate(start.getDate() - 25 * 7);
+  const startMs = start.getTime();
+  const dayStart = new Date(today);
+  dayStart.setDate(dayStart.getDate() - 83);
+
+  const s = app.mod.openStore();
+  const noteIds = s.db.prepare('SELECT id FROM notes WHERE deleted_at IS NULL AND superseded_by IS NULL ORDER BY id').all().map(row => row.id);
+  const noteTimes = [
+    startMs - 3 * dayMs,
+    startMs + 1000,
+    startMs + 2 * weekMs + 3 * dayMs,
+    startMs + 5 * weekMs + dayMs,
+    startMs + 10 * weekMs + 5 * dayMs,
+    startMs + 25 * weekMs + 2 * dayMs,
+    startMs + 26 * weekMs + dayMs,
+    dayStart.getTime() + dayMs + 1000,
+    dayStart.getTime() + 40 * dayMs + 1000,
+    dayStart.getTime() + 83 * dayMs + 1000,
+  ];
+  const updateNote = s.db.prepare('UPDATE notes SET ts = ? WHERE id = ?');
+  noteIds.forEach((id, i) => updateNote.run(noteTimes[i], id));
+
+  const factIds = s.db.prepare('SELECT id FROM facts WHERE deleted_at IS NULL AND valid_to IS NULL ORDER BY id').all().map(row => row.id);
+  const factTimes = [
+    startMs - 10 * dayMs,
+    startMs + 1 * weekMs + 6 * dayMs,
+    startMs + 3 * weekMs + 4 * dayMs,
+    startMs + 8 * weekMs + 2 * dayMs,
+    startMs + 20 * weekMs + 5 * dayMs,
+    dayStart.getTime() + 84 * dayMs + 1000,
+  ];
+  const updateFact = s.db.prepare('UPDATE facts SET valid_from = ? WHERE id = ?');
+  factIds.forEach((id, i) => updateFact.run(factTimes[i], id));
+
+  const insertChunk = s.db.prepare('INSERT INTO chunks (ts, session_id, role, text, hash, source, importance, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  const chunkTimes = [startMs + weekMs + dayMs, startMs + 15 * weekMs + 3 * dayMs, startMs - dayMs];
+  chunkTimes.forEach((ts, i) => insertChunk.run(ts, `bucket-${i}`, 'user', `分桶会话 ${i}`, `hash-${i}`, 'test', 0.5, 'global'));
+
+  const legacyBuckets = rows => {
+    const values = Array(26).fill(0);
+    let base = 0;
+    for (const row of rows) {
+      const ts = Number(row.ts);
+      if (!Number.isFinite(ts)) continue;
+      if (ts < startMs) { base += 1; continue; }
+      const index = Math.floor((ts - startMs) / weekMs);
+      if (index >= 0 && index < 26) values[index] += 1;
+    }
+    return { values, base };
+  };
+  const keyOf = d => {
+    const date = new Date(d);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  const noteRows = s.db.prepare('SELECT ts FROM notes WHERE deleted_at IS NULL AND superseded_by IS NULL').all();
+  const factRows = s.db.prepare('SELECT valid_from AS ts FROM facts WHERE deleted_at IS NULL AND valid_to IS NULL').all();
+  const chunkRows = s.db.prepare('SELECT ts FROM chunks WHERE deleted_at IS NULL').all();
+  const expectedNotes = legacyBuckets(noteRows);
+  const expectedFacts = legacyBuckets(factRows);
+  const expectedChunks = legacyBuckets(chunkRows);
+  const dailyCounts = new Map();
+  for (const row of [...noteRows, ...factRows]) {
+    const ts = Number(row.ts);
+    if (!Number.isFinite(ts) || ts < dayStart.getTime()) continue;
+    const key = keyOf(ts);
+    dailyCounts.set(key, (dailyCounts.get(key) ?? 0) + 1);
+  }
+  const expectedDaily = Array.from({ length: 84 }, (_, i) => {
+    const d = new Date(dayStart);
+    d.setDate(d.getDate() + i);
+    const date = keyOf(d);
+    return { date, count: dailyCounts.get(date) ?? 0 };
+  });
+  let cumulative = expectedNotes.base + expectedFacts.base;
+  const expectedCumulative = expectedNotes.values.map((n, i) => {
+    cumulative += n + expectedFacts.values[i];
+    return cumulative;
+  });
+
+  const { res, state, json } = fakeRes();
+  await app.route('/omni-memory/overview').handler(
+    fakeReq('/omni-memory/overview?range=26w&scope=all'),
+    res,
+  );
+  assert.equal(state.statusCode, 200);
+  const body = json();
+  assert.deepEqual(body.series.notes, expectedNotes.values);
+  assert.deepEqual(body.series.facts, expectedFacts.values);
+  assert.deepEqual(body.series.chunks, expectedChunks.values);
+  assert.equal(body.series.base, expectedNotes.base + expectedFacts.base);
+  assert.deepEqual(body.series.cumulative, expectedCumulative);
+  assert.deepEqual(body.daily, expectedDaily);
+});
+
 test('GET /omni-memory/list returns stats and rows', async () => {
   const app = await boot();
   await app.call('memory_write', { kind: 'note', text: '列表接口测试' });
