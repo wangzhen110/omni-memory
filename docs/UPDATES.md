@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 72 次提交；更新记录自身的提交不计入列表。
+> 共 80 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,14 @@
 
 ## 2026-11-22
 
+- 22:45:31 `64488a9f` — release: 3.11.0 structural remediation and schema v17 — [提交](https://github.com/wangzhen110/omni-memory/commit/64488a9fed075928636eddc5f4b92e9ab06fc3a1)
+- 22:42:53 `ac49759f` — bench: record 100k and 1M release metrics (M-10) — [提交](https://github.com/wangzhen110/omni-memory/commit/ac49759fd9d827d873a5e90e27e891200e3e9af6)
+- 22:40:35 `4e80c98c` — feat: add notes.text_hash for indexed dedupe (M-09, schema v17) — [提交](https://github.com/wangzhen110/omni-memory/commit/4e80c98c49819ff150faaa9b2f76faa4b3bf811c)
+- 22:35:59 `f5d255e6` — perf: aggregate overview series in SQL (M-08) — [提交](https://github.com/wangzhen110/omni-memory/commit/f5d255e69e6713f3bcce69988daccf202de30c40)
+- 22:33:38 `55597cb0` — refactor: split tool registration into four groups (M-03) — [提交](https://github.com/wangzhen110/omni-memory/commit/55597cb04b44b3ffad0a51c3ff452ca6a3066480)
+- 22:32:27 `c9a93291` — refactor: split store schema, snapshot import and reindexing (M-04..M-06) — [提交](https://github.com/wangzhen110/omni-memory/commit/c9a93291d710f2008994b1a6117b4c01ab7afec7)
+- 22:27:36 `6f7cc3ca` — refactor: split HTTP routes into four groups (M-02) — [提交](https://github.com/wangzhen110/omni-memory/commit/6f7cc3ca90d93524211775aff1a6509fd9b60ddc)
+- 22:25:30 `70512a78` — refactor: centralize HTTP route guards (M-01, M-07) — [提交](https://github.com/wangzhen110/omni-memory/commit/70512a7898ed3b5f6208426a5e1f68976e15934c)
 - 20:42:59 `ae8ba727` — fix: close 3.10.4 review B-1..B-4 (3.10.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/ae8ba7278485c336e2ea34b49aa28dac85560949)
 - 00:11:54 `f5bd9a7e` — docs: define scope authority semantics — [提交](https://github.com/wangzhen110/omni-memory/commit/f5bd9a7ed143261c2bda3d43da5c53471200e261)
 - 00:08:19 `cc0604d9` — docs: record 3.10.4 review fix commit — [提交](https://github.com/wangzhen110/omni-memory/commit/cc0604d9e054587f4d1d1a72873919f6016f9d2c)
