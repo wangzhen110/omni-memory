@@ -44,7 +44,7 @@
 | M-07 | 第 6 节“importLineage” | 将 `importLineage` 改为语义明确的 `positiveIdOrNull`，仅保留一处调用 | 导入非法 lineage 仍变 null；无死代码 | 已完成（374/374） |
 | M-08 | 第 7 节“/overview 全量物化” | 周序列与 84 日热力图改为 SQL 分组聚合；基线窗口计数用 SQL 计数 | 与旧实现在 100k 临时库逐字段一致；`/overview` 延迟写入基准报告 | 已完成（SQL 分桶 + 旧实现对照测试） |
 | M-09 | 第 7 节“notes text_hash” | schema v17：`notes.text_hash` + `(scope, text_hash)` 索引；写入去重、restore、import 预筛走哈希再比对原文 | 现有去重语义不变；哈希碰撞回查原文；迁移可重入；100k 写入基准改善 | 已完成（v17 迁移/回填/碰撞测试；写入/导入/恢复/amend 均走索引） |
-| M-10 | 第 7 节“1M 复测” | 隔离临时库生成 100k/1M fixture，跑 write/list/overview/search，记录 5 次中位数 | 报告含机器、Node、fixture、命令、原始值；不达标不写 README | 待实施 |
+| M-10 | 第 7 节“1M 复测” | 隔离临时库生成 100k/1M fixture，跑 write/list/overview/search，记录 5 次中位数 | 报告含机器、Node、fixture、命令、原始值；不达标不写 README | 已完成（100k/1M 原始值见 `BENCH-3.11.0-2026-11-22.md`） |
 
 ## 4. 实施顺序
 
@@ -88,6 +88,7 @@ npm run bench
 | 2026-11-22 | M-03 | 完成 | `defineTools` 1336→18 行；capture/write-read/maintenance/graph 四组 3/6/8/6；工具 23 个唯一；专项 11/11 |
 | 2026-11-22 | M-08 | 完成 | `weeklyBuckets` / `dailyBuckets` SQL 分组；100k 临时库（80k notes/15k facts/5k chunks）与旧实现逐字段一致（notes/facts/chunks/base/cumulative/daily 全 true）；API 测试 17/17 |
 | 2026-11-22 | M-09 | 完成 | schema v17：`notes.text_hash` + `notes_scope_text_hash`；迁移回填 NULL、重开幂等；哈希碰撞按原文区分；写入/候选/导入/restore/amend 均走索引；migration 7/7、专项 22/22 |
+| 2026-11-22 | M-10 | 完成 | 100k：write 4.4 / list 96.4 / overview 187.2 / search 2.8ms；1M：4.4 / 966.4 / 2026 / 2.8ms；5 次原始值见 `BENCH-3.11.0-2026-11-22.md` |
 
 ## 7. 明确不做
 
