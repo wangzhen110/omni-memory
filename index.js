@@ -6605,63 +6605,8 @@ function readJsonBody(req, limit = 8192, options = {}) {
   });
 }
 
-function registerRoutes(ctx) {
-  const web = (ctx && typeof ctx.register === 'function' && typeof ctx.get !== 'function')
-    ? ctx
-    : serviceFrom(ctx, 'webServer');
-  if (!web || typeof web.register !== 'function') {
-    routeState = { status: 'pending', count: 0, at: now(), error: 'webServer not available' };
-    return undefined;
-  }
-
-  const disposers = [];
-  // Every HTTP route is loopback-only. Method/CSRF policy stays here so a new
-  // route cannot forget the guard while its handler only deals with its payload.
-  const routeGuards = new Map([
-    ['/omni-memory/packet', { methods: ['GET'], error: 'packet requires GET' }],
-    ['/omni-memory/ingest', { methods: ['POST'], error: 'ingest requires POST', mutating: true }],
-    ['/omni-memory/consolidate', { methods: ['POST'], error: 'consolidate requires POST', mutating: true }],
-    ['/omni-memory/candidates', { methods: ['GET'], error: 'candidates requires GET' }],
-    ['/omni-memory/candidate', { methods: ['POST'], error: 'candidate requires POST', mutating: true }],
-    ['/omni-memory/openapi.json', { methods: ['GET'], error: 'openapi.json requires GET' }],
-    ['/omni-memory/tool', { methods: ['POST'], error: 'tool requires POST', mutating: true }],
-    ['/omni-memory/list', {}],
-    ['/omni-memory/overview', {}],
-    ['/omni-memory/graph', {}],
-    ['/omni-memory/node', {}],
-    ['/omni-memory/persona', { methods: ['GET', 'POST'], error: 'persona requires GET or POST', mutating: true }],
-    ['/omni-memory/persona/refresh', { methods: ['POST'], error: 'refresh requires POST', mutating: true }],
-    ['/omni-memory/dream/proposals', {}],
-    ['/omni-memory/dream/replace', { methods: ['POST'], error: 'replace requires POST', mutating: true }],
-    ['/omni-memory/dream/rollback', { methods: ['POST'], error: 'rollback requires POST', mutating: true }],
-    ['/omni-memory/export', {}],
-    ['/omni-memory/restore', { methods: ['POST'], error: 'restore requires POST', mutating: true }],
-    ['/omni-memory/status', {}],
-    ['/omni-memory/search', {}],
-    ['/omni-memory/forget', { methods: ['POST'], error: 'forget requires POST', mutating: true }],
-  ]);
-  const add = route => {
-    const guard = routeGuards.get(String(route.path ?? ''));
-    if (!guard) throw new Error(`route guard missing for ${route.path}`);
-    try {
-      const dispose = web.register({
-        ...route,
-        handler: async (req, res) => {
-          if (!isLoopback(req)) return json(res, 403, { ok: false });
-          const method = String(req.method ?? 'GET').toUpperCase();
-          if (guard.methods && !guard.methods.includes(method)) {
-            return json(res, 405, { ok: false, error: guard.error });
-          }
-          if (guard.mutating && method === 'POST' && !mutationAllowed(req)) {
-            return json(res, 403, { ok: false, error: 'forbidden' });
-          }
-          return route.handler(req, res);
-        },
-      });
-      if (typeof dispose === 'function') disposers.push(dispose);
-    } catch { /* a missing route is not fatal */ }
-  };
-
+/** Packet, candidate queue, browser list, overview, graph and node. */
+function registerReadRoutes(add) {
   add({
     kind: 'exact',
     path: '/omni-memory/packet',
@@ -6702,71 +6647,6 @@ function registerRoutes(ctx) {
 
   add({
     kind: 'exact',
-    path: '/omni-memory/ingest',
-    handler: async (req, res) => {
-      if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
-        return json(res, 405, { ok: false, error: 'ingest requires POST' });
-      }
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      let body = {};
-      try {
-        // Capture text can be close to MAX_CAPTURE_CHARS; 4000 CJK characters
-        // are ~12KB in UTF-8, so the old 8KB body cap rejected valid input.
-        body = await readJsonBody(req, 64 * 1024, { strict: true });
-      } catch (error) {
-        if (error?.code === 'body_empty' && url.searchParams.get('text')) {
-          body = {};
-        } else {
-          return json(res, error?.status === 413 ? 413 : 400, { ok: false, error: error?.message ?? 'invalid request body' });
-        }
-      }
-      const text = String(url.searchParams.get('text') ?? body.text ?? '').trim();
-      if (!text) return json(res, 400, { ok: false, error: 'text is required' });
-      const sessionId = String(url.searchParams.get('sessionId') ?? body.sessionId ?? '').trim() || null;
-      try {
-        const result = ingestTranscript({
-          text,
-          role: url.searchParams.get('role') ?? body.role ?? 'user',
-          source: url.searchParams.get('source') ?? body.source ?? undefined,
-          sessionId,
-          cwd: url.searchParams.get('cwd') ?? body.cwd ?? undefined,
-          scope: url.searchParams.get('scope') ?? body.scope ?? undefined,
-          importance: url.searchParams.get('importance') ?? body.importance ?? undefined,
-          extract: url.searchParams.get('extract') ?? body.extract ?? '1',
-        }, { agent: { id: sessionId ?? undefined }, session: { id: sessionId ?? undefined } });
-        return json(res, 200, { ok: true, ...result });
-      } catch (error) {
-        return json(res, 400, { ok: false, error: error?.message ?? String(error) });
-      }
-    },
-  });
-
-  add({
-    kind: 'exact',
-    path: '/omni-memory/consolidate',
-    handler: async (req, res) => {
-      if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
-        return json(res, 405, { ok: false, error: 'consolidate requires POST' });
-      }
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const body = await readJsonBody(req);
-      const problemKey = String(url.searchParams.get('problemKey') ?? body.problemKey ?? '').trim();
-      const sessionId = String(url.searchParams.get('sessionId') ?? body.sessionId ?? '').trim() || null;
-      try {
-        const result = consolidateProblemNotes(problemKey, {
-          scope: url.searchParams.get('scope') ?? body.scope ?? undefined,
-          minNotes: url.searchParams.get('minNotes') ?? body.minNotes ?? 2,
-          apply: url.searchParams.get('apply') === '1' || url.searchParams.get('apply') === 'true' || body.apply === true,
-        }, { agent: { id: sessionId ?? undefined }, session: { id: sessionId ?? undefined } });
-        return json(res, 200, { ok: true, ...result });
-      } catch (error) {
-        return json(res, 400, { ok: false, error: error?.message ?? String(error) });
-      }
-    },
-  });
-
-  add({
-    kind: 'exact',
     path: '/omni-memory/candidates',
     handler: async (req, res) => {
       if (String(req.method ?? 'GET').toUpperCase() !== 'GET') {
@@ -6784,82 +6664,6 @@ function registerRoutes(ctx) {
         return json(res, 200, { ok: true, ...result });
       } catch (error) {
         return json(res, 400, { ok: false, error: error?.message ?? String(error) });
-      }
-    },
-  });
-
-  add({
-    kind: 'exact',
-    path: '/omni-memory/candidate',
-    handler: async (req, res) => {
-      if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
-        return json(res, 405, { ok: false, error: 'candidate requires POST' });
-      }
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const body = await readJsonBody(req);
-      const id = Number(url.searchParams.get('id') ?? body.id ?? 0);
-      const action = String(url.searchParams.get('action') ?? body.action ?? '').trim();
-      const sessionId = String(url.searchParams.get('sessionId') ?? body.sessionId ?? '').trim() || null;
-      try {
-        const result = reviewNoteCandidate(id, action, {
-          scope: url.searchParams.get('scope') ?? body.scope ?? undefined,
-          cwd: url.searchParams.get('cwd') ?? body.cwd ?? undefined,
-          reason: url.searchParams.get('reason') ?? body.reason ?? undefined,
-        }, { agent: { id: sessionId ?? undefined }, session: { id: sessionId ?? undefined } });
-        return json(res, 200, { ok: true, ...result });
-      } catch (error) {
-        return json(res, 400, { ok: false, error: error?.message ?? String(error) });
-      }
-    },
-  });
-
-  add({
-    kind: 'exact',
-    path: '/omni-memory/openapi.json',
-    handler: async (req, res) => {
-      if (String(req.method ?? 'GET').toUpperCase() !== 'GET') {
-        return json(res, 405, { ok: false, error: 'openapi.json requires GET' });
-      }
-      return json(res, 200, HOST_OPENAPI);
-    },
-  });
-
-  add({
-    kind: 'exact',
-    path: '/omni-memory/tool',
-    handler: async (req, res) => {
-      if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
-        return json(res, 405, { ok: false, error: 'tool requires POST' });
-      }
-      let body = {};
-      try {
-        body = await readJsonBody(req, 64 * 1024, { strict: true, allowMissing: false });
-      } catch (error) {
-        return json(res, error?.status === 413 ? 413 : 400, { ok: false, error: error?.message ?? 'invalid request body' });
-      }
-      const name = String(body.name ?? '').trim();
-      if (!HTTP_TOOL_ALLOWLIST.has(name)) {
-        return json(res, 400, { ok: false, error: `tool not allowed on the HTTP adapter: ${name || '(empty)'}` });
-      }
-      const definition = localToolDefinitions.get(name);
-      if (!definition || typeof definition.execute !== 'function') {
-        return json(res, 503, { ok: false, error: `tool unavailable: ${name}` });
-      }
-      const args = body.arguments && typeof body.arguments === 'object' && !Array.isArray(body.arguments)
-        ? body.arguments
-        : {};
-      try {
-        const value = await definition.execute(args, {});
-        let text = '';
-        try {
-          const rendered = typeof definition.output?.render === 'function' ? definition.output.render(args, value) : '';
-          text = Array.isArray(rendered)
-            ? rendered.map(block => String(block?.text ?? '')).join('\n')
-            : String(rendered?.text ?? rendered ?? '');
-        } catch { /* rendering is a convenience, not part of the result */ }
-        return json(res, 200, { ok: true, name, value, text });
-      } catch (error) {
-        return json(res, 400, { ok: false, error: String(error?.message ?? error) });
       }
     },
   });
@@ -7445,7 +7249,233 @@ function registerRoutes(ctx) {
       return json(res, 400, { ok: false });
     },
   });
+}
 
+/** OpenAPI, status, search, export and dream review. */
+function registerAdminRoutes(add) {
+  add({
+    kind: 'exact',
+    path: '/omni-memory/openapi.json',
+    handler: async (req, res) => {
+      if (String(req.method ?? 'GET').toUpperCase() !== 'GET') {
+        return json(res, 405, { ok: false, error: 'openapi.json requires GET' });
+      }
+      return json(res, 200, HOST_OPENAPI);
+    },
+  });
+
+  add({
+    kind: 'exact',
+    path: '/omni-memory/status',
+    handler: async (req, res) => {
+      const s = openStore();
+      const count = table => Number(prepareCached(s.db, `SELECT COUNT(*) AS n FROM ${table} WHERE deleted_at IS NULL`).get().n);
+      return json(res, 200, {
+        ok: true,
+        autoRecall: autoRecallEnabled(),
+        lastInjection,
+        routes: routeState,
+        aliasRepair: s.aliasRepair,
+        aliasMigration: s.aliasMigration,
+        lastSearch: lastSearchProfile,
+        lastJudge,
+        embedding: {
+          kind: backendConfig().kind,
+          dim: activeVectorDim(),
+          pending: pendingVectors.size,
+          dropped: vectorDropped,
+          lastDropAt: vectorLastDropAt || null,
+        },
+        semantic: semanticStatus(s),
+        stats: {
+          notes: count('notes'),
+          facts: Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM facts WHERE deleted_at IS NULL AND valid_to IS NULL').get().n),
+          chunks: count('chunks'),
+          contested: Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM notes WHERE deleted_at IS NULL AND contested = 1').get().n),
+          verified: Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM notes WHERE deleted_at IS NULL AND verification IS NOT NULL').get().n),
+        },
+      });
+    },
+  });
+
+  add({
+    kind: 'exact',
+    path: '/omni-memory/search',
+    handler: async (req, res) => {
+      const s = openStore();
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+      const query = url.searchParams.get('q') ?? '';
+      if (!queryTerms(query).length) return json(res, 200, { ok: true, hits: [] });
+      const limit = Math.min(60, Math.max(1, Number(url.searchParams.get('limit') ?? 30)));
+      const requestedScope = url.searchParams.get('scope');
+      const { requested, scope } = httpScope(requestedScope);
+      const rerank = url.searchParams.get('rerank') === '0' ? false : undefined;
+      const result = await runSearch(s, query, limit, scope, { rerank });
+      return json(res, 200, { ok: true, scope: requested || SCOPE_GLOBAL, hits: result.hits });
+    },
+  });
+
+  add({
+    kind: 'exact',
+    path: '/omni-memory/export',
+    handler: async (req, res) => {
+      const s = openStore();
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+      const activeOnly = String(url.searchParams.get('activeOnly') ?? '') === '1';
+      const snapshot = snapshotStore(s, { audit: !activeOnly });
+      if (String(url.searchParams.get('download') ?? '') === '1') {
+        const name = `omni-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        res.setHeader('content-disposition', `attachment; filename="${name}"`);
+      }
+      return json(res, 200, { ok: true, ...snapshot });
+    },
+  });
+
+  add({
+    kind: 'exact',
+    path: '/omni-memory/dream/proposals',
+    handler: async (req, res) => {
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+      return json(res, 200, { ok: true, proposals: dreamProposals(openStore(), url.searchParams.get('limit')) });
+    },
+  });
+}
+
+/** Ingest, consolidation, candidate review and the tool bridge. */
+function registerWriteRoutes(add) {
+  add({
+    kind: 'exact',
+    path: '/omni-memory/ingest',
+    handler: async (req, res) => {
+      if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
+        return json(res, 405, { ok: false, error: 'ingest requires POST' });
+      }
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+      let body = {};
+      try {
+        // Capture text can be close to MAX_CAPTURE_CHARS; 4000 CJK characters
+        // are ~12KB in UTF-8, so the old 8KB body cap rejected valid input.
+        body = await readJsonBody(req, 64 * 1024, { strict: true });
+      } catch (error) {
+        if (error?.code === 'body_empty' && url.searchParams.get('text')) {
+          body = {};
+        } else {
+          return json(res, error?.status === 413 ? 413 : 400, { ok: false, error: error?.message ?? 'invalid request body' });
+        }
+      }
+      const text = String(url.searchParams.get('text') ?? body.text ?? '').trim();
+      if (!text) return json(res, 400, { ok: false, error: 'text is required' });
+      const sessionId = String(url.searchParams.get('sessionId') ?? body.sessionId ?? '').trim() || null;
+      try {
+        const result = ingestTranscript({
+          text,
+          role: url.searchParams.get('role') ?? body.role ?? 'user',
+          source: url.searchParams.get('source') ?? body.source ?? undefined,
+          sessionId,
+          cwd: url.searchParams.get('cwd') ?? body.cwd ?? undefined,
+          scope: url.searchParams.get('scope') ?? body.scope ?? undefined,
+          importance: url.searchParams.get('importance') ?? body.importance ?? undefined,
+          extract: url.searchParams.get('extract') ?? body.extract ?? '1',
+        }, { agent: { id: sessionId ?? undefined }, session: { id: sessionId ?? undefined } });
+        return json(res, 200, { ok: true, ...result });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: error?.message ?? String(error) });
+      }
+    },
+  });
+
+  add({
+    kind: 'exact',
+    path: '/omni-memory/consolidate',
+    handler: async (req, res) => {
+      if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
+        return json(res, 405, { ok: false, error: 'consolidate requires POST' });
+      }
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+      const body = await readJsonBody(req);
+      const problemKey = String(url.searchParams.get('problemKey') ?? body.problemKey ?? '').trim();
+      const sessionId = String(url.searchParams.get('sessionId') ?? body.sessionId ?? '').trim() || null;
+      try {
+        const result = consolidateProblemNotes(problemKey, {
+          scope: url.searchParams.get('scope') ?? body.scope ?? undefined,
+          minNotes: url.searchParams.get('minNotes') ?? body.minNotes ?? 2,
+          apply: url.searchParams.get('apply') === '1' || url.searchParams.get('apply') === 'true' || body.apply === true,
+        }, { agent: { id: sessionId ?? undefined }, session: { id: sessionId ?? undefined } });
+        return json(res, 200, { ok: true, ...result });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: error?.message ?? String(error) });
+      }
+    },
+  });
+
+  add({
+    kind: 'exact',
+    path: '/omni-memory/candidate',
+    handler: async (req, res) => {
+      if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
+        return json(res, 405, { ok: false, error: 'candidate requires POST' });
+      }
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+      const body = await readJsonBody(req);
+      const id = Number(url.searchParams.get('id') ?? body.id ?? 0);
+      const action = String(url.searchParams.get('action') ?? body.action ?? '').trim();
+      const sessionId = String(url.searchParams.get('sessionId') ?? body.sessionId ?? '').trim() || null;
+      try {
+        const result = reviewNoteCandidate(id, action, {
+          scope: url.searchParams.get('scope') ?? body.scope ?? undefined,
+          cwd: url.searchParams.get('cwd') ?? body.cwd ?? undefined,
+          reason: url.searchParams.get('reason') ?? body.reason ?? undefined,
+        }, { agent: { id: sessionId ?? undefined }, session: { id: sessionId ?? undefined } });
+        return json(res, 200, { ok: true, ...result });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: error?.message ?? String(error) });
+      }
+    },
+  });
+
+  add({
+    kind: 'exact',
+    path: '/omni-memory/tool',
+    handler: async (req, res) => {
+      if (String(req.method ?? 'GET').toUpperCase() !== 'POST') {
+        return json(res, 405, { ok: false, error: 'tool requires POST' });
+      }
+      let body = {};
+      try {
+        body = await readJsonBody(req, 64 * 1024, { strict: true, allowMissing: false });
+      } catch (error) {
+        return json(res, error?.status === 413 ? 413 : 400, { ok: false, error: error?.message ?? 'invalid request body' });
+      }
+      const name = String(body.name ?? '').trim();
+      if (!HTTP_TOOL_ALLOWLIST.has(name)) {
+        return json(res, 400, { ok: false, error: `tool not allowed on the HTTP adapter: ${name || '(empty)'}` });
+      }
+      const definition = localToolDefinitions.get(name);
+      if (!definition || typeof definition.execute !== 'function') {
+        return json(res, 503, { ok: false, error: `tool unavailable: ${name}` });
+      }
+      const args = body.arguments && typeof body.arguments === 'object' && !Array.isArray(body.arguments)
+        ? body.arguments
+        : {};
+      try {
+        const value = await definition.execute(args, {});
+        let text = '';
+        try {
+          const rendered = typeof definition.output?.render === 'function' ? definition.output.render(args, value) : '';
+          text = Array.isArray(rendered)
+            ? rendered.map(block => String(block?.text ?? '')).join('\n')
+            : String(rendered?.text ?? rendered ?? '');
+        } catch { /* rendering is a convenience, not part of the result */ }
+        return json(res, 200, { ok: true, name, value, text });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: String(error?.message ?? error) });
+      }
+    },
+  });
+}
+
+/** Persona, dream mutations, restore and forget. */
+function registerPersonaRoutes(add) {
   add({
     kind: 'exact',
     path: '/omni-memory/persona',
@@ -7513,15 +7543,6 @@ function registerRoutes(ctx) {
 
   add({
     kind: 'exact',
-    path: '/omni-memory/dream/proposals',
-    handler: async (req, res) => {
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      return json(res, 200, { ok: true, proposals: dreamProposals(openStore(), url.searchParams.get('limit')) });
-    },
-  });
-
-  add({
-    kind: 'exact',
     path: '/omni-memory/dream/replace',
     handler: async (req, res) => {
       if (String(req.method ?? 'GET').toUpperCase() !== 'POST') return json(res, 405, { ok: false, error: 'replace requires POST' });
@@ -7572,22 +7593,6 @@ function registerRoutes(ctx) {
 
   add({
     kind: 'exact',
-    path: '/omni-memory/export',
-    handler: async (req, res) => {
-      const s = openStore();
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const activeOnly = String(url.searchParams.get('activeOnly') ?? '') === '1';
-      const snapshot = snapshotStore(s, { audit: !activeOnly });
-      if (String(url.searchParams.get('download') ?? '') === '1') {
-        const name = `omni-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
-        res.setHeader('content-disposition', `attachment; filename="${name}"`);
-      }
-      return json(res, 200, { ok: true, ...snapshot });
-    },
-  });
-
-  add({
-    kind: 'exact',
     path: '/omni-memory/restore',
     handler: async (req, res) => {
       const method = String(req.method ?? 'GET').toUpperCase();
@@ -7623,57 +7628,6 @@ function registerRoutes(ctx) {
 
   add({
     kind: 'exact',
-    path: '/omni-memory/status',
-    handler: async (req, res) => {
-      const s = openStore();
-      const count = table => Number(prepareCached(s.db, `SELECT COUNT(*) AS n FROM ${table} WHERE deleted_at IS NULL`).get().n);
-      return json(res, 200, {
-        ok: true,
-        autoRecall: autoRecallEnabled(),
-        lastInjection,
-        routes: routeState,
-        aliasRepair: s.aliasRepair,
-        aliasMigration: s.aliasMigration,
-        lastSearch: lastSearchProfile,
-        lastJudge,
-        embedding: {
-          kind: backendConfig().kind,
-          dim: activeVectorDim(),
-          pending: pendingVectors.size,
-          dropped: vectorDropped,
-          lastDropAt: vectorLastDropAt || null,
-        },
-        semantic: semanticStatus(s),
-        stats: {
-          notes: count('notes'),
-          facts: Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM facts WHERE deleted_at IS NULL AND valid_to IS NULL').get().n),
-          chunks: count('chunks'),
-          contested: Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM notes WHERE deleted_at IS NULL AND contested = 1').get().n),
-          verified: Number(prepareCached(s.db, 'SELECT COUNT(*) AS n FROM notes WHERE deleted_at IS NULL AND verification IS NOT NULL').get().n),
-        },
-      });
-    },
-  });
-
-  add({
-    kind: 'exact',
-    path: '/omni-memory/search',
-    handler: async (req, res) => {
-      const s = openStore();
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const query = url.searchParams.get('q') ?? '';
-      if (!queryTerms(query).length) return json(res, 200, { ok: true, hits: [] });
-      const limit = Math.min(60, Math.max(1, Number(url.searchParams.get('limit') ?? 30)));
-      const requestedScope = url.searchParams.get('scope');
-      const { requested, scope } = httpScope(requestedScope);
-      const rerank = url.searchParams.get('rerank') === '0' ? false : undefined;
-      const result = await runSearch(s, query, limit, scope, { rerank });
-      return json(res, 200, { ok: true, scope: requested || SCOPE_GLOBAL, hits: result.hits });
-    },
-  });
-
-  add({
-    kind: 'exact',
     path: '/omni-memory/forget',
     handler: async (req, res) => {
       const s = openStore();
@@ -7702,6 +7656,68 @@ function registerRoutes(ctx) {
       return json(res, 200, { ok: true, forgotten, scope: rawScope || SCOPE_GLOBAL });
     },
   });
+}
+function registerRoutes(ctx) {
+  const web = (ctx && typeof ctx.register === 'function' && typeof ctx.get !== 'function')
+    ? ctx
+    : serviceFrom(ctx, 'webServer');
+  if (!web || typeof web.register !== 'function') {
+    routeState = { status: 'pending', count: 0, at: now(), error: 'webServer not available' };
+    return undefined;
+  }
+
+  const disposers = [];
+  // Every HTTP route is loopback-only. Method/CSRF policy stays here so a new
+  // route cannot forget the guard while its handler only deals with its payload.
+  const routeGuards = new Map([
+    ['/omni-memory/packet', { methods: ['GET'], error: 'packet requires GET' }],
+    ['/omni-memory/ingest', { methods: ['POST'], error: 'ingest requires POST', mutating: true }],
+    ['/omni-memory/consolidate', { methods: ['POST'], error: 'consolidate requires POST', mutating: true }],
+    ['/omni-memory/candidates', { methods: ['GET'], error: 'candidates requires GET' }],
+    ['/omni-memory/candidate', { methods: ['POST'], error: 'candidate requires POST', mutating: true }],
+    ['/omni-memory/openapi.json', { methods: ['GET'], error: 'openapi.json requires GET' }],
+    ['/omni-memory/tool', { methods: ['POST'], error: 'tool requires POST', mutating: true }],
+    ['/omni-memory/list', {}],
+    ['/omni-memory/overview', {}],
+    ['/omni-memory/graph', {}],
+    ['/omni-memory/node', {}],
+    ['/omni-memory/persona', { methods: ['GET', 'POST'], error: 'persona requires GET or POST', mutating: true }],
+    ['/omni-memory/persona/refresh', { methods: ['POST'], error: 'refresh requires POST', mutating: true }],
+    ['/omni-memory/dream/proposals', {}],
+    ['/omni-memory/dream/replace', { methods: ['POST'], error: 'replace requires POST', mutating: true }],
+    ['/omni-memory/dream/rollback', { methods: ['POST'], error: 'rollback requires POST', mutating: true }],
+    ['/omni-memory/export', {}],
+    ['/omni-memory/restore', { methods: ['POST'], error: 'restore requires POST', mutating: true }],
+    ['/omni-memory/status', {}],
+    ['/omni-memory/search', {}],
+    ['/omni-memory/forget', { methods: ['POST'], error: 'forget requires POST', mutating: true }],
+  ]);
+  const add = route => {
+    const guard = routeGuards.get(String(route.path ?? ''));
+    if (!guard) throw new Error(`route guard missing for ${route.path}`);
+    try {
+      const dispose = web.register({
+        ...route,
+        handler: async (req, res) => {
+          if (!isLoopback(req)) return json(res, 403, { ok: false });
+          const method = String(req.method ?? 'GET').toUpperCase();
+          if (guard.methods && !guard.methods.includes(method)) {
+            return json(res, 405, { ok: false, error: guard.error });
+          }
+          if (guard.mutating && method === 'POST' && !mutationAllowed(req)) {
+            return json(res, 403, { ok: false, error: 'forbidden' });
+          }
+          return route.handler(req, res);
+        },
+      });
+      if (typeof dispose === 'function') disposers.push(dispose);
+    } catch { /* a missing route is not fatal */ }
+  };
+
+  registerReadRoutes(add);
+  registerAdminRoutes(add);
+  registerWriteRoutes(add);
+  registerPersonaRoutes(add);
 
   routeState = { status: 'registered', count: disposers.length, at: now(), error: null };
   return () => {
