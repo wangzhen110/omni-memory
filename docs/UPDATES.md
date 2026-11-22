@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 80 次提交；更新记录自身的提交不计入列表。
+> 共 81 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-22
 
+- 22:47:17 `7e9013e4` — docs: record 3.11.0 real-store acceptance — [提交](https://github.com/wangzhen110/omni-memory/commit/7e9013e45fff485c073542f8955d1b2c24669bae)
 - 22:45:31 `64488a9f` — release: 3.11.0 structural remediation and schema v17 — [提交](https://github.com/wangzhen110/omni-memory/commit/64488a9fed075928636eddc5f4b92e9ab06fc3a1)
 - 22:42:53 `ac49759f` — bench: record 100k and 1M release metrics (M-10) — [提交](https://github.com/wangzhen110/omni-memory/commit/ac49759fd9d827d873a5e90e27e891200e3e9af6)
 - 22:40:35 `4e80c98c` — feat: add notes.text_hash for indexed dedupe (M-09, schema v17) — [提交](https://github.com/wangzhen110/omni-memory/commit/4e80c98c49819ff150faaa9b2f76faa4b3bf811c)
