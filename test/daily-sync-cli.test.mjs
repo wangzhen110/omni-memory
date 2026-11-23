@@ -1,22 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { applyLockPathForRepo } from '../scripts/daily-sync.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SCRIPT = path.join(ROOT, 'scripts', 'daily-sync.mjs');
 const FETCH_FIXTURE = pathToFileURL(path.join(ROOT, 'test', 'fixtures', 'mock-version-fetch.mjs')).href;
 const GIT = ['C:\\Program Files\\Git\\cmd\\git.exe', 'git'].find(candidate => candidate === 'git' || existsSync(candidate)) || 'git';
 
-function runIn(dir, args = []) {
+function runIn(dir, args = [], extraEnv = {}) {
   const state = path.join(dir, 'state.json');
   const result = spawnSync(process.execPath, [SCRIPT, '--dir', dir, '--state', state, ...args], {
     cwd: dir,
     encoding: 'utf8',
     timeout: 10_000,
+    env: { ...process.env, ...extraEnv },
   });
   return {
     code: result.status,
@@ -102,6 +104,8 @@ test('daily-sync refuses a second apply while the lock is held', t => {
     return;
   }
   const dir = mkdtempSync(path.join(tmpdir(), 'omni-daily-sync-lock-'));
+  const home = path.join(dir, 'home');
+  const previousHome = process.env.OMNI_HOME;
   try {
     writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
       name: '@local/omni-memory',
@@ -113,16 +117,78 @@ test('daily-sync refuses a second apply while the lock is held', t => {
     };
     gitIn(['init', '-q']);
     gitIn(['remote', 'add', 'origin', 'https://github.com/wangzhen110/omni-memory.git']);
-    writeFileSync(path.join(dir, 'state.json.apply.lock'), JSON.stringify({ pid: 999999, startedAt: new Date().toISOString() }));
-    const result = runIn(dir, ['--apply']);
+    process.env.OMNI_HOME = home;
+    const lock = applyLockPathForRepo(dir);
+    mkdirSync(path.dirname(lock), { recursive: true });
+    writeFileSync(lock, JSON.stringify({ pid: 999999, startedAt: new Date().toISOString() }));
+    const result = runIn(dir, ['--apply'], { OMNI_HOME: home });
     assert.equal(result.code, 2);
     assert.equal(result.json.action, 'already-running');
+  } finally {
+    if (previousHome === undefined) delete process.env.OMNI_HOME;
+    else process.env.OMNI_HOME = previousHome;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('daily-sync verifies the release manifest before moving HEAD', t => {
+  const git = spawnSync(GIT, ['--version'], { encoding: 'utf8' });
+  if (git.status !== 0) {
+    t.skip('git is unavailable');
+    return;
+  }
+  const dir = mkdtempSync(path.join(tmpdir(), 'omni-daily-sync-verify-'));
+  const remote = path.join(dir, 'remote.git');
+  const home = path.join(dir, 'home');
+  try {
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      name: '@local/omni-memory',
+      version: '3.11.0',
+    }));
+    writeFileSync(path.join(dir, 'README.md'), 'clean\n');
+    const gitIn = args => {
+      const result = spawnSync(GIT, ['-C', dir, ...args], { encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+    };
+    gitIn(['init', '-q']);
+    gitIn(['config', 'user.email', 'test@example.com']);
+    gitIn(['config', 'user.name', 'Test']);
+    gitIn(['remote', 'add', 'origin', 'https://github.com/wangzhen110/omni-memory.git']);
+    gitIn(['add', 'package.json', 'README.md']);
+    gitIn(['commit', '-q', '-m', 'init']);
+    assert.equal(spawnSync(GIT, ['init', '--bare', '-q', remote], { encoding: 'utf8' }).status, 0);
+    assert.equal(spawnSync(GIT, ['-C', dir, 'push', '-q', remote, 'HEAD:refs/heads/main'], { encoding: 'utf8' }).status, 0);
+    const headBefore = spawnSync(GIT, ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
+    const state = path.join(dir, 'state.json');
+    const result = spawnSync(process.execPath, [
+      '--import', FETCH_FIXTURE, SCRIPT, '--dir', dir, '--state', state, '--apply',
+    ], {
+      cwd: dir,
+      encoding: 'utf8',
+      timeout: 15_000,
+      env: {
+        ...process.env,
+        OMNI_HOME: home,
+        OMNI_TEST_GIT_FETCH_URL: remote,
+        OMNI_TEST_REMOTE_VERSION: '3.11.7',
+        OMNI_TEST_MANIFEST_JSON: JSON.stringify({
+          schema: 'omni-update-manifest-v2',
+          signature: 'not-a-valid-signature',
+        }),
+        OMNI_HEALTH_URL: 'http://127.0.0.1:1/health',
+      },
+    });
+    const json = JSON.parse(String(result.stdout || '{}').trim().split('\n').at(-1));
+    assert.equal(result.status, 2);
+    assert.equal(json.action, 'signature-invalid');
+    const headAfter = spawnSync(GIT, ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
+    assert.equal(headAfter, headBefore, 'a rejected manifest must not move HEAD');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('daily-sync default is report-only and never fast-forwards the checkout', t => {
+test('daily-sync reports an update without applying or moving HEAD', t => {
   const git = spawnSync(GIT, ['--version'], { encoding: 'utf8' });
   if (git.status !== 0) {
     t.skip('git is unavailable');

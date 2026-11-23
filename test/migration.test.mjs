@@ -232,7 +232,7 @@ test('P0 concurrent first opens share one migration owner and keep a verified ba
   }
 });
 
-test('P1 a backup failure warns and does not block the migration', () => {
+test('P1 a backup failure blocks migration by default and only explicit degrade skips it', () => {
   const home = mkdtempSync(path.join(tmpdir(), 'omni-backup-fail-'));
   const env = {
     ...process.env,
@@ -242,6 +242,7 @@ test('P1 a backup failure warns and does not block the migration', () => {
     OMNI_DISABLE_SEMANTIC: '1',
   };
   delete env.OMNI_MIGRATION_BACKUP_STRICT;
+  delete env.OMNI_MIGRATION_BACKUP_DEGRADE;
   const seed = spawnSync(process.execPath, [
     path.join(ROOT, 'hosts', 'cli.mjs'), 'search', 'seed', '--limit', '1',
   ], { cwd: ROOT, env, encoding: 'utf8', timeout: 15_000 });
@@ -255,7 +256,7 @@ test('P1 a backup failure warns and does not block the migration', () => {
 
   const blocker = path.join(home, 'backups-is-a-file');
   writeFileSync(blocker, 'not a directory');
-  const run = spawnSync(process.execPath, [
+  const blocked = spawnSync(process.execPath, [
     path.join(ROOT, 'hosts', 'cli.mjs'), 'search', 'backup failure survivor', '--limit', '1',
   ], {
     cwd: ROOT,
@@ -263,12 +264,74 @@ test('P1 a backup failure warns and does not block the migration', () => {
     encoding: 'utf8',
     timeout: 15_000,
   });
-  assert.equal(run.status, 0, run.stderr || run.stdout);
-  assert.match(run.stderr, /migration backup skipped/);
+  assert.notEqual(blocked.status, 0, blocked.stderr || blocked.stdout);
+  assert.match(blocked.stderr, /migration backup failed/i);
+  const stillLegacy = openDb(home);
+  assert.equal(String(stillLegacy.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), '16');
+  assert.equal(Number(stillLegacy.prepare("SELECT COUNT(*) AS n FROM notes WHERE text='backup failure survivor'").get().n), 1);
+  stillLegacy.close();
+
+  const degraded = spawnSync(process.execPath, [
+    path.join(ROOT, 'hosts', 'cli.mjs'), 'search', 'backup failure survivor', '--limit', '1',
+  ], {
+    cwd: ROOT,
+    env: { ...env, OMNI_BACKUP_DIR: blocker, OMNI_MIGRATION_BACKUP_DEGRADE: '1' },
+    encoding: 'utf8',
+    timeout: 15_000,
+  });
+  assert.equal(degraded.status, 0, degraded.stderr || degraded.stdout);
+  assert.match(degraded.stderr, /migration backup skipped/);
   const db = openDb(home);
   assert.equal(String(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), String(SCHEMA_VERSION));
   assert.equal(Number(db.prepare("SELECT COUNT(*) AS n FROM notes WHERE text='backup failure survivor'").get().n), 1);
   db.close();
+});
+
+test('P1 shared backup pruning only removes backups of the current database', () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-shared-backup-'));
+  const shared = path.join(home, 'shared-backups');
+  mkdirSync(path.join(home, 'memory'), { recursive: true });
+  mkdirSync(shared, { recursive: true });
+  const legacy = openDb(home);
+  legacy.exec(`
+    CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
+    CREATE TABLE notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, text TEXT NOT NULL,
+      importance REAL NOT NULL DEFAULT 0.5, scope TEXT NOT NULL DEFAULT 'global',
+      revision INTEGER NOT NULL DEFAULT 1, superseded_by INTEGER, contested INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER);
+  `);
+  legacy.prepare("INSERT INTO meta(key, value) VALUES ('schema_version', '1')").run();
+  legacy.prepare('INSERT INTO notes(ts, text, importance, scope) VALUES (?, ?, ?, ?)')
+    .run(1, 'shared backup survivor', 0.9, 'global');
+  legacy.close();
+
+  const tag = createHash('sha256').update(path.resolve(path.join(home, 'memory', 'omni.db'))).digest('hex').slice(0, 8);
+  const oldCurrent = path.join(shared, `pre-migrate-v1-to-v17-${tag}-old.db`);
+  const otherDatabase = path.join(shared, 'pre-migrate-v1-to-v17-deadbeef-other.db');
+  writeFileSync(oldCurrent, 'old current database backup');
+  writeFileSync(otherDatabase, 'another database backup');
+
+  const run = spawnSync(process.execPath, [
+    path.join(ROOT, 'hosts', 'cli.mjs'), 'search', 'shared backup survivor', '--limit', '1',
+  ], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      OMNI_HOME: home,
+      DSH_HOME: home,
+      OMNI_BACKUP_DIR: shared,
+      OMNI_MIGRATION_BACKUP_KEEP: '1',
+      OMNI_VERSION_CHECK_DISABLED: '1',
+      OMNI_DISABLE_SEMANTIC: '1',
+    },
+    encoding: 'utf8',
+    timeout: 15_000,
+  });
+  assert.equal(run.status, 0, run.stderr || run.stdout);
+  const names = readdirSync(shared);
+  assert.equal(existsSync(otherDatabase), true, 'another database backup must not be pruned');
+  assert.equal(existsSync(oldCurrent), false, 'old backup of the current database is pruned by KEEP=1');
+  assert.equal(names.filter(name => name.startsWith(`pre-migrate-v1-to-v17-${tag}-`) && name.endsWith('.db')).length, 1);
 });
 
 test('v17 backfills in batches, indexes the empty probe and keeps collisions distinct', async () => {

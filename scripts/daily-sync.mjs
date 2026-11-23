@@ -17,7 +17,7 @@
  */
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
@@ -31,10 +31,13 @@ import {
   parseVersion,
 } from '../lib/daily-sync.mjs';
 import {
+  UPDATE_LAUNCHER_PATH,
+  UPDATE_MANIFEST_SCHEMA,
   UPDATE_PACKAGE_NAME,
   UPDATE_PUBLIC_KEY_SHA256,
   verifyUpdateManifest,
 } from '../lib/update-signature.mjs';
+import { installLauncherFromCommit } from './install-launcher.mjs';
 
 const GIT_CANDIDATES = [
   process.env.GIT_BIN,
@@ -47,6 +50,7 @@ const DEFAULT_REPO = path.resolve(SCRIPT_DIR, '..');
 const TASK_NAME = process.env.OMNI_SERVICE_TASK || SERVICE_TASK;
 const HEALTH_URL = process.env.OMNI_HEALTH_URL || 'http://127.0.0.1:7788/health';
 const GITHUB_TOKEN = process.env.OMNI_GITHUB_TOKEN || process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
+const TEST_GIT_FETCH_URL = process.env.OMNI_TEST_GIT_FETCH_URL || '';
 const SCHTASKS = process.platform === 'win32'
   ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'schtasks.exe')
   : 'schtasks.exe';
@@ -113,14 +117,19 @@ function writeState(file, state) {
   renameSync(temporary, file);
 }
 
-// One updater at a time. The state file alone cannot serialize two `--apply`
-// processes: both can pass the same-day gate before either writes it, then one
-// resets the tree underneath the other's verification. The lock is released
-// on process exit, so early error branches do not need a release call.
+// One updater at a time per real checkout. A lock keyed only by --state lets
+// two invocations with different state files reset the same tree underneath
+// each other; keying by the resolved repository removes that bypass.
 let applyLockPath = null;
 
-function acquireApplyLock(statePath) {
-  const lockPath = `${statePath}.apply.lock`;
+export function applyLockPathForRepo(repo) {
+  const resolved = realpathSync(repo);
+  const key = createHash('sha256').update(resolved).digest('hex').slice(0, 16);
+  return path.join(path.dirname(defaultStatePath()), `omni-daily-sync-${key}.apply.lock`);
+}
+
+function acquireApplyLock(repo) {
+  const lockPath = applyLockPathForRepo(repo);
   mkdirSync(path.dirname(lockPath), { recursive: true });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -209,12 +218,21 @@ function parseArgs(argv) {
   return options;
 }
 
+export function isGitHubApiUrl(value) {
+  try {
+    const parsed = new URL(String(value));
+    return parsed.protocol === 'https:' && parsed.hostname === 'api.github.com';
+  } catch {
+    return false;
+  }
+}
+
 async function fetchText(url, options = {}) {
   const headers = {
     'user-agent': 'omni-memory',
     accept: options.accept || 'application/vnd.github+json',
   };
-  if (GITHUB_TOKEN && String(url).includes('api.github.com')) {
+  if (GITHUB_TOKEN && isGitHubApiUrl(url)) {
     headers.authorization = `Bearer ${GITHUB_TOKEN}`;
   }
   const response = await fetch(url, {
@@ -263,11 +281,11 @@ async function fetchReleaseManifest(version) {
     }
     throw error;
   }
-  const asset = Array.isArray(release.assets)
-    ? release.assets.find(item => item?.name === 'omni-update-manifest.json')
-    : null;
+  const assets = Array.isArray(release.assets) ? release.assets : [];
+  const asset = assets.find(item => item?.name === 'omni-update-manifest-v2.json')
+    || assets.find(item => item?.name === 'omni-update-manifest.json');
   if (!asset?.url) {
-    throw new UpdateError('unsigned-release', `release v${version} has no omni-update-manifest.json asset`);
+    throw new UpdateError('unsigned-release', `release v${version} has no signed update manifest asset`);
   }
   const body = await fetchText(asset.url, { accept: 'application/octet-stream' });
   try {
@@ -319,10 +337,29 @@ export function verifyManifestForRepo(repo, candidate, expectedVersion, options 
   if (packageVersion !== manifest.version) {
     throw new UpdateError('package-version-mismatch', `package.json says ${packageVersion}`);
   }
-  return { ...verdict, manifest };
+  let launcher = null;
+  if (manifest.schema === UPDATE_MANIFEST_SCHEMA) {
+    if (manifest.launcherPath !== UPDATE_LAUNCHER_PATH) {
+      throw new UpdateError('launcher-path-mismatch', `manifest launcherPath is ${manifest.launcherPath}`);
+    }
+    const launcherBlob = gitBlob(repo, manifest.commit, manifest.launcherPath);
+    if (!launcherBlob.ok) throw new UpdateError('launcher-missing', launcherBlob.error);
+    if (launcherBlob.data.length === 0) throw new UpdateError('launcher-missing', 'launcher binary is empty');
+    const launcherHash = createHash('sha256').update(launcherBlob.data).digest('hex');
+    if (launcherHash !== manifest.launcherSha256) {
+      throw new UpdateError('launcher-hash-mismatch', `launcher at ${manifest.commit} does not match the signed hash`);
+    }
+    launcher = { path: manifest.launcherPath, sha256: launcherHash, bytes: launcherBlob.data.length };
+  }
+  return { ...verdict, manifest, ...(launcher ? { launcher } : {}) };
 }
 
 function gitFetch(dir) {
+  if (TEST_GIT_FETCH_URL) {
+    // Test-only: keep the GitHub identity gate intact while fetching from a
+    // local bare repository, so the CLI main chain can be exercised offline.
+    return runGit(['fetch', TEST_GIT_FETCH_URL, `${UPDATE_BRANCH}:refs/remotes/origin/${UPDATE_BRANCH}`, '--prune'], { cwd: dir });
+  }
   let result = runGit(['fetch', 'origin', UPDATE_BRANCH, '--prune'], { cwd: dir });
   if (!result.ok) {
     // Windows often resets github.com:443; the resolved IP fallback is known
@@ -511,6 +548,18 @@ function checkoutIdentityError(dir) {
   return null;
 }
 
+export function safeResetToBefore(repo, before) {
+  const status = trackedDirty(repo);
+  if (!status.ok) return { ok: false, error: `refusing rollback; git status failed: ${status.stderr}` };
+  if (status.stdout) {
+    return {
+      ok: false,
+      error: `refusing rollback; tracked files changed after merge: ${status.stdout.split('\n').slice(0, 5).join('; ')}`,
+    };
+  }
+  return runGit(['reset', '--hard', before], { cwd: repo });
+}
+
 async function main() {
   let options;
   try {
@@ -554,7 +603,7 @@ async function main() {
   }
 
   if (options.apply) {
-    applyLockPath = acquireApplyLock(options.state);
+    applyLockPath = acquireApplyLock(repo);
     if (!applyLockPath) {
       console.log(JSON.stringify({
         ok: false,
@@ -711,7 +760,17 @@ async function main() {
   let verified;
   try {
     const candidate = await fetchReleaseManifest(remote.version);
-    verified = verifyManifestForRepo(repo, candidate, remote.version);
+    // Test-only key injection for the offline CLI integration test. Production
+    // runs leave this unset and stay pinned to UPDATE_PUBLIC_KEY_SHA256.
+    const testKeyFile = process.env.OMNI_TEST_UPDATE_PUBLIC_KEY_FILE;
+    const testOptions = testKeyFile
+      ? {
+          publicKeyPem: readFileSync(testKeyFile, 'utf8'),
+          keyId: process.env.OMNI_TEST_UPDATE_KEY_ID || undefined,
+          expectedFingerprint: process.env.OMNI_TEST_UPDATE_PUBLIC_KEY_SHA256 || undefined,
+        }
+      : {};
+    verified = verifyManifestForRepo(repo, candidate, remote.version, testOptions);
   } catch (error) {
     output.ok = false;
     output.action = error?.code || 'signature-verification-failed';
@@ -760,7 +819,7 @@ async function main() {
 
   const afterMerge = currentHead(repo);
   if (!afterMerge.ok || afterMerge.stdout !== verified.manifest.commit) {
-    runGit(['reset', '--hard', before.stdout], { cwd: repo });
+    safeResetToBefore(repo, before.stdout);
     output.ok = false;
     output.action = 'signed-commit-mismatch';
     output.error = afterMerge.ok
@@ -775,7 +834,7 @@ async function main() {
 
   const syntax = verifySyntax(repo);
   if (!syntax.ok) {
-    runGit(['reset', '--hard', before.stdout], { cwd: repo });
+    safeResetToBefore(repo, before.stdout);
     output.ok = false;
     output.action = 'verification-failed';
     output.error = syntax.stderr;
@@ -791,7 +850,7 @@ async function main() {
       ? run(process.execPath, [NPM_CLI, 'test'], { cwd: repo, timeout: 180_000 })
       : run(NPM, ['test'], { cwd: repo, timeout: 180_000 });
     if (!tests.ok) {
-      runGit(['reset', '--hard', before.stdout], { cwd: repo });
+      safeResetToBefore(repo, before.stdout);
       output.ok = false;
       output.action = 'tests-failed';
       output.error = (tests.stderr || tests.stdout || 'npm test failed').slice(-2000);
@@ -806,7 +865,7 @@ async function main() {
 
   const updatedVersion = readPackageVersion(repo);
   if (updatedVersion !== remote.version) {
-    runGit(['reset', '--hard', before.stdout], { cwd: repo });
+    safeResetToBefore(repo, before.stdout);
     output.ok = false;
     output.action = 'version-mismatch';
     output.localVersionAfter = updatedVersion;
@@ -819,6 +878,40 @@ async function main() {
 
   output.localVersionAfter = updatedVersion;
   output.headAfter = currentHead(repo).stdout;
+
+  if (verified.launcher) {
+    try {
+      output.launcher = installLauncherFromCommit({
+        repo,
+        commit: verified.manifest.commit,
+        task: TASK_NAME,
+        apply: true,
+        restart: false,
+      });
+    } catch (error) {
+      output.ok = false;
+      output.action = 'launcher-install-failed';
+      output.error = String(error?.message ?? error);
+      output.service = await probeService(localVersion);
+      writeState(options.state, output);
+      console.log(JSON.stringify(output));
+      process.exitCode = 2;
+      return;
+    }
+    if (!output.launcher.ok) {
+      output.ok = false;
+      output.action = 'launcher-install-failed';
+      output.error = output.launcher.error || 'launcher installation failed';
+      output.service = await probeService(localVersion);
+      writeState(options.state, output);
+      console.log(JSON.stringify(output));
+      process.exitCode = 2;
+      return;
+    }
+  } else {
+    output.launcher = { ok: true, skipped: true, reason: 'legacy manifest has no launcher hash' };
+  }
+
   output.action = 'updated';
   output.service = await probeService(updatedVersion);
   output.restartRequired = !output.service.healthy;

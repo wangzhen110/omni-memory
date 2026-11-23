@@ -46,6 +46,7 @@ function currentPackageVersion() {
 }
 const DB_DIR = path.join(DSH_HOME, 'memory');
 const DB_FILE = path.join(DB_DIR, 'omni.db');
+const DB_TAG = createHash('sha256').update(path.resolve(DB_FILE)).digest('hex').slice(0, 8);
 // Backups are the one place a model-facing tool is allowed to touch the disk.
 // Keeping that directory fixed turns export/import from an arbitrary read/write
 // primitive into a narrow, auditable file exchange.
@@ -673,7 +674,7 @@ function backupBeforeMigration(db, fromVersion) {
   // store at once; pid + UUID makes each VACUUM INTO target private.
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const unique = `${stamp}-p${process.pid}-${randomUUID().slice(0, 8)}`;
-  const file = path.join(backupDir, `pre-migrate-v${fromVersion}-to-v${SCHEMA_VERSION}-${unique}.db`);
+  const file = path.join(backupDir, `pre-migrate-v${fromVersion}-to-v${SCHEMA_VERSION}-${DB_TAG}-${unique}.db`);
   const temporary = `${file}.tmp`;
   // VACUUM INTO refuses to overwrite; write to this call's private temp file,
   // verify it, then rename it into place so retention never sees a half copy.
@@ -720,7 +721,7 @@ function backupBeforeMigration(db, fromVersion) {
   const keep = Number.isInteger(configuredKeep) && configuredKeep > 0 ? configuredKeep : 5;
   try {
     const backups = readdirSync(backupDir)
-      .filter(name => /^pre-migrate-v\d+-to-v\d+-.*\.db$/.test(name))
+      .filter(name => new RegExp(`^pre-migrate-v\\d+-to-v\\d+-${DB_TAG}-.*\\.db$`).test(name))
       .map(name => {
         const absolute = path.join(backupDir, name);
         return { absolute, mtime: statSync(absolute).mtimeMs };
@@ -782,11 +783,12 @@ function openStore() {
       } catch (error) {
         const warning = String(error?.message ?? error);
         migrationBackup = { skipped: true, error: warning, fromVersion: versionAtLease, toVersion: SCHEMA_VERSION };
-        // A backup failure must not make the plugin unloadable (NFR-07). The
-        // migration itself is transactional and still has the previous WAL as
-        // an emergency copy; operators who want a hard stop can opt in.
-        if (process.env.OMNI_MIGRATION_BACKUP_STRICT === '1') throw error;
-        try { process.stderr.write(`[omni] migration backup skipped: ${warning}\n`); } catch { /* stderr unavailable */ }
+        // A missing rollback point is a data-safety failure, not a routine
+        // degradation. Operators who accept the risk can opt in explicitly.
+        const allowDegrade = process.env.OMNI_MIGRATION_BACKUP_DEGRADE === '1'
+          || process.env.OMNI_MIGRATION_BACKUP_STRICT === '0';
+        if (!allowDegrade) throw new Error(`migration backup failed: ${warning}`, { cause: error });
+        try { process.stderr.write(`[omni] migration backup skipped by explicit opt-in: ${warning}\n`); } catch { /* stderr unavailable */ }
       }
     }
     createBaseSchema(db);

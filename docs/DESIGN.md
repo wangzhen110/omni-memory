@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.11.7 |
-| 插件版本 | 3.11.7 |
+| 文档版本 | 3.11.8 |
+| 插件版本 | 3.11.8 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-23 |
@@ -80,7 +80,7 @@
 | FR-39 | 经验巩固 | `memory_consolidate` 按精确 `problemKey` + 精确 scope 合并；默认 dry-run；应用时写来源链摘要、旧行只 supersede、反馈计数汇总 | ✅ 已实现 |
 | FR-40 | 分层画像与重排 | 画像分 `## 全局` / `## 当前项目`；可选 cross-encoder rerank（未配置端点零延迟，失败回落融合排序）；本地/远程 embedding 预设 | ✅ 已实现 |
 | FR-42 | 跨平台项目键稳定 | Windows/macOS 同一路径不同大小写生成同一项目键；旧键首次打开时按路径迁移到 canonical key，迁移幂等且不误合并同名目录 | ✅ 已实现（schema v15，ADR-031） |
-| FR-43 | 版本可见与受控更新 | `/health`、`/omni-memory/status`、`/overview` 与面板顶栏显示当前版本；`daily-sync` 默认只报告，`--apply` 才更新；更新前必须验证 GitHub Release 的 Ed25519 清单、包哈希与签名提交谱系，只快进到签名提交；`--restart` 才重启服务 | ✅ 已实现（3.11.6；`scripts/daily-sync.mjs`、`lib/update-signature.mjs`） |
+| FR-43 | 版本可见与受控更新 | `/health`、`/omni-memory/status`、`/overview` 与面板顶栏显示当前版本；`daily-sync` 默认只报告，`--apply` 才更新；更新前必须验证 GitHub Release 的 Ed25519 清单、包哈希、启动器哈希与签名提交谱系，只快进到签名提交；启动器安装到内容寻址路径后再切换任务；`--restart` 才重启服务 | ✅ 已实现（3.11.8；`scripts/daily-sync.mjs`、`lib/update-signature.mjs`、`scripts/install-launcher.mjs`） |
 | FR-44 | 读取记忆时版本提醒 | `memory_context`（MCP/CLI）与 `/omni-memory/packet` 读取时检查云端 `main/package.json`；发现更高版本时在返回文本顶部提示“云端有新版，是否更新由用户决定”，不命令 AI 自动执行；成功结果缓存 30 分钟，失败 5 分钟，Contents API 与 raw 回退共享 2.5s 总预算，检查失败不阻塞记忆读取；缓存回读校验版本结构与 TTL，失败不保留旧远端版本；并发读取用跨进程单飞锁只发一次请求 | ✅ 已实现（3.11.6；`lib/version-check.mjs`） |
 
 ### 1.2 非功能需求
@@ -95,10 +95,10 @@
 | NFR-06 | 数据不丢失 | 遗忘为墓碑；事实失效为 `valid_to`；无物理删除 | 满足 |
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
-| NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足 |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 408/408（100%） |
+| NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 420/420（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 408 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 420 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -304,7 +304,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 - 左栏图标：`sidebar.panellist`，`id=omni-memory`，`order=20`，`label=记忆`，图标为内联 SVG。
 - 面板：`main`，`key=omni-memory`；`hosts/http/web/panel.html` 是独立 HTTP 外壳的旧列表视图，含搜索、分页、状态和遗忘。
 - 概览：`hosts/http/web/index.html` 是默认 `/` 的「记忆概览」仪表盘；`dashboard.css` / `dashboard.js` 无外部依赖，读取 `/omni-memory/overview`。它展示 5 个 KPI、记忆增长双轴图、健康环、项目分布、84 天活跃日历、项目活跃带、事实关系迷你图、画像/偏好信号和最近动态。顶栏版本角标显示 `/overview.version`。
-- 每日同步：`scripts/daily-sync.mjs` 不是运行中 HTTP 服务的一部分。AI 读取记忆时先由 `lib/version-check.mjs` 做带缓存的轻量检查；提醒只报告版本差，**由用户确认后才显式执行 `--apply`**。`--apply` 从 GitHub Release 下载 `omni-update-manifest.json`，验证 Ed25519 签名、包哈希和签名提交谱系，只快进到签名提交；`node --check` 校验失败回滚；`--restart` 才重启 `OmniMemory7788`。状态落 `~/.dsh/omni-daily-sync.json`，同一本地日历日只自动检查一次，重试必须显式 `--force`。失败分支只探测服务，不重启。
+- 每日同步：`scripts/daily-sync.mjs` 不是运行中 HTTP 服务的一部分。AI 读取记忆时先由 `lib/version-check.mjs` 做带缓存的轻量检查；提醒只报告版本差，**由用户确认后才显式执行 `--apply`**。`--apply` 从 GitHub Release 下载 `omni-update-manifest-v2.json`（旧客户端回退 v1），验证 Ed25519 签名、包哈希、启动器哈希和签名提交谱系，只快进到签名提交；`node --check` 校验失败回滚；启动器安装失败返回 `launcher-install-failed`；`--restart` 才重启 `OmniMemory7788`。状态落 `~/.dsh/omni-daily-sync.json`，同一本地日历日只自动检查一次，重试必须显式 `--force`。失败分支只探测服务，不重启。
 - 边界：当前 schema 没有任务起止、状态、依赖字段，所以项目活跃带只画首次/最近写入区间，明确标注「不是任务甘特」；不伪造甘特。`persona` 为空时只展示可回原文的偏好信号，不生成推断画像。
 - 数据口径：活跃笔记 = 未删除且未被 `superseded_by` 替代；活跃事实 = 未删除且 `valid_to` 为空；有争议 = 两类 `contested` 之和；已失效 = 被替代笔记 + 过期事实；召回有用率在 `recall_count=0` 时返回 `null`，页面显示「暂无反馈」。
 
@@ -533,7 +533,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | FR-41 | `test/semantic.test.mjs`、`scripts/check-semantic-assets.mjs` | 本地模型随包、同轮写入可召回、模型/WASM 完整性闸门 |
 | FR-23 | `test/fixes.test.mjs`、`test/compact.test.mjs` | 墓碑后同文重捕、compact 事务 |
 | FR-26/27/28 | `test/scope-model-judge.test.mjs`、`test/fixes.test.mjs` | HTTP scope、`scope=all` 拒写、跨 scope 事实隔离 |
-| FR-43 | `test/update-signature.test.mjs`、`test/sign-release.test.mjs`、`test/daily-sync-cli.test.mjs`、`test/api.test.mjs` | Ed25519 签名/验签、发布清单生成、字段篡改/未知字段/错误密钥拒绝、默认只报告不移动 HEAD、`--apply` 脏树拒绝、版本/预发布解析、本地日期 gate；`/status` 与 `/overview` 暴露 `version` |
+| FR-43 | `test/update-signature.test.mjs`、`test/sign-release.test.mjs`、`test/daily-sync-cli.test.mjs`、`test/daily-sync-success.test.mjs`、`test/install-launcher.test.mjs`、`test/uninstall-launcher.test.mjs`、`test/api.test.mjs` | Ed25519 v1/v2 签名/验签、发布清单生成、启动器哈希绑定、字段篡改/未知字段/错误密钥/时间窗拒绝、默认只报告不移动 HEAD、`--apply` 脏树拒绝、完整成功主链、安装/卸载、版本/预发布解析、本地日期 gate；`/status` 与 `/overview` 暴露 `version` |
 | FR-44 | `test/version-check.test.mjs`、`test/daily-sync.test.mjs`、`test/api.test.mjs` | 提醒文本、contents API、raw 回退、缓存复用、缓存注入拒绝、失败清空旧远端版本、网络失败降级、并发单飞锁、`memory_context` 顶部提醒、`/packet` 文本提醒 |
 | FR-38 | `test/ingest.test.mjs`、`test/capture-rules.test.mjs` | ingest 候选、接受/拒绝、隔离、去重、hook 解析 |
 | FR-39 | `test/consolidation.test.mjs` | dry-run、apply、supersede、来源链、scope 隔离 |
@@ -560,11 +560,11 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | 版本 | 语义化：新增需求 → minor；缺陷修复 → patch；不兼容改动 → major |
 | 版本可见 | 面板顶栏 `vX.Y.Z`、`GET /health.version`、`GET /omni-memory/status.version`、`GET /omni-memory/overview.version` 四处一致，均来自 `package.json` |
 | 读取时版本提醒 | `memory_context`、CLI `context`、`/omni-memory/packet` 读取时检查云端 `main/package.json`；远端更高时返回文本顶部插入“云端有新版，是否更新由用户决定”的提示，JSON `update` 同步给出两版版本号；提醒不命令 AI 自动执行，检查失败不阻塞读取 |
-| 发布渠道 | GitHub Releases 按 `vX.Y.Z` 发布并写变更说明；同一 Release 上传 `omni-update-manifest.json` 签名资产；包为 `private:true`，没有 npm 通道；用户通过面板版本、Releases 和 `scripts/daily-sync.mjs` 感知更新 |
-| 更新执行 | 读取记忆时 `lib/version-check.mjs` 先查云端版本（成功缓存 30 分钟、失败 5 分钟、总网络预算 2.5s）；提醒只报告，用户确认后显式运行 `node scripts/daily-sync.mjs --apply`；`--apply` 必须验签 Ed25519 清单、包 SHA-256 与签名提交谱系，只快进到签名提交；`--restart` 才重启服务；本地日期 gate 写 `~/.dsh/omni-daily-sync.json`，同日重试必须 `--force` |
+| 发布渠道 | GitHub Releases 按 `vX.Y.Z` 发布并写变更说明；同一 Release 上传 `omni-update-manifest-v2.json` 主签名资产，需要兼容旧客户端时同时上传 `omni-update-manifest.json` v1 资产；包为 `private:true`，没有 npm 通道；用户通过面板版本、Releases 和 `scripts/daily-sync.mjs` 感知更新 |
+| 更新执行 | 读取记忆时 `lib/version-check.mjs` 先查云端版本（成功缓存 30 分钟、失败 5 分钟、总网络预算 2.5s）；提醒只报告，用户确认后显式运行 `node scripts/daily-sync.mjs --apply`；`--apply` 必须验签 Ed25519 清单、包 SHA-256、启动器 SHA-256 与签名提交谱系，只快进到签名提交；通过后安装内容寻址启动器并切换任务；`--restart` 才重启服务；本地日期 gate 写 `~/.dsh/omni-daily-sync.json`，同日重试必须 `--force` |
 | 发布 | `plugin_manager remove_bundle` → `install_bundle` → 刷新页面 → 跑 `npm test` |
-| 回滚 | 保留上一版目录/归档；数据库迁移前写 `memory/backups/pre-migrate-*.db`；更新校验失败自动 `git reset --hard` 回到更新前提交 |
-| 服务退出 | `OmniMemory7788` 的 `LastTaskResult=3221225786`（`0xC000013A`）表示收到 Ctrl+C / 控制台关闭；若任务显示 Running 但 `/health` 仍是旧版本，多半是旧 node 子进程成了孤儿并占着 7788。启动脚本会先只杀命令行含 `cli.mjs ... serve ... 7788` 的监听进程，再起新 node；日常用 `schtasks /Run /TN OmniMemory7788` 重启并等 `/health` 恢复 |
+| 回滚 | 保留上一版目录/归档；数据库迁移前写 `memory/backups/pre-migrate-*.db`；更新校验失败自动 `git reset --hard` 回到更新前提交（reset 前二次检查 tracked 改动）；启动器保留旧内容寻址副本，回滚时把任务 action 指回旧路径 |
+| 服务退出 | `OmniMemory7788` 的 `LastTaskResult=3221225786`（`0xC000013A`）表示收到 Ctrl+C / 控制台关闭；若任务显示 Running 但 `/health` 仍是旧版本，多半是旧 node 子进程成了孤儿并占着 7788。启动器只清理可执行路径等于配置 Node、命令行精确含 `hosts\cli.mjs`、`serve` 与 `--port 7788` 的监听进程，再起新 node；日常用 `schtasks /Run /TN OmniMemory7788` 重启并等 `/health` 恢复 |
 | 数据备份 | 复制 `$DSH_HOME/memory/omni.db`（建议先 `PRAGMA wal_checkpoint`） |
 
 ---

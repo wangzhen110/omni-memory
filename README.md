@@ -7,7 +7,7 @@
 > **源码/架构**后做商业替代、竞品或商业服务；且**必须署名作者**。
 > 商用请走 [商业授权](#商业授权) 流程。
 
-[![tests](https://img.shields.io/badge/tests-408%2F408-brightgreen)](#测试)
+[![tests](https://img.shields.io/badge/tests-420%2F420-brightgreen)](#测试)
 [![license](https://img.shields.io/badge/license-Personal%20Use%201.1-lightgrey)](LICENSE)
 
 ---
@@ -59,7 +59,7 @@
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 408 个用例
+npm test          # 420 个用例
 npm run check     # 语法、文档计数与模型资产完整性校验
 ```
 
@@ -77,9 +77,29 @@ AI 读取记忆时也会自动检查：`memory_context`、CLI `context` 和 `/om
 node scripts/daily-sync.mjs --apply
 ```
 
-不带参数时只报告 `update-available` / `up-to-date`，**不合并、不重启**。`--apply` 才执行更新：它从 GitHub Release 下载 `omni-update-manifest.json`，用内置的 Ed25519 公钥验签，校验签名清单里的版本、`package.json` SHA-256 和提交谱系；只快进到签名提交，不把任意 `origin/main` 合并进来。工作树有 tracked 修改时拒绝执行；校验失败回滚到更新前提交。`--restart` 才会重启 `OmniMemory7788`，`--run-tests` 可在快进后额外跑 `npm test`。同一天重复调用直接返回 `already-ran-today`；当天已同步过但仍想重试，必须显式加 `--force`。`--check` 只检查。脚本默认只操作自身所在的 checkout，并校验包名与 `origin` 必须是 `wangzhen110/omni-memory`。
+不带参数时只报告 `update-available` / `up-to-date`，**不合并、不重启**。`--apply` 才执行更新：它优先从 GitHub Release 下载 `omni-update-manifest-v2.json`，用内置的 Ed25519 公钥验签，校验签名清单里的版本、`package.json` SHA-256、启动器 SHA-256 和提交谱系；只快进到签名提交，不把任意 `origin/main` 合并进来。v1 清单继续兼容 3.11.8 之前的客户端。工作树有 tracked 修改时拒绝执行；校验失败回滚到更新前提交。`--restart` 才会重启 `OmniMemory7788`，`--run-tests` 可在快进后额外跑 `npm test`。同一天重复调用直接返回 `already-ran-today`；当天已同步过但仍想重试，必须显式加 `--force`。`--check` 只检查。脚本默认只操作自身所在的 checkout，并校验包名与 `origin` 必须是 `wangzhen110/omni-memory`。
 
-3.11.5 及更早的更新链没有签名校验；3.11.6 是第一个带签名清单的 Release，升级到 3.11.6 之后，后续 `--apply` 才会强制要求验签。公钥指纹与私钥保管方式见 [`docs/UPDATE-SIGNING.md`](docs/UPDATE-SIGNING.md)。
+3.11.5 及更早的更新链没有签名校验；3.11.6 是第一个带签名清单的 Release。3.11.8 起 v2 清单把启动器二进制也纳入签名范围，安装时先落内容寻址副本再切换计划任务，运行中的 exe 不被覆盖。公钥指纹与私钥保管方式见 [`docs/UPDATE-SIGNING.md`](docs/UPDATE-SIGNING.md)。
+
+### 7788 静默启动器（Windows）
+
+计划任务 `OmniMemory7788` 由仓库内的 GUI 子系统启动器（`/target:winexe`）启动，不创建控制台。启动器读取 `~/.dsh/omni-serve-7788.json` 侧车配置，仓库、Node、端口和日志路径都不再硬编码；端口被非 omni 进程占用时拒绝启动，只清理命令行精确匹配 `hosts\cli.mjs serve --port 7788` 的旧监听。
+
+```powershell
+# 从当前签出的提交安装并切换计划任务（默认不重启服务）
+node scripts/install-launcher.mjs --apply
+
+# 校验提交、package.json 和启动器 SHA-256 后重启
+node scripts/install-launcher.mjs --apply --restart
+
+# 卸载计划任务和侧车配置；默认保留日志、数据库与旧二进制
+node scripts/uninstall-launcher.mjs
+
+# 一并删除启动器二进制与日志（数据库永不删除）
+node scripts/uninstall-launcher.mjs --remove-binaries --remove-logs
+```
+
+`npm run check` 包含 C# 编译与二进制一致性门禁；`node scripts/build-launcher.mjs --check` 可单独复核可复现构建。源码、配置字段和回滚方式见 [`docs/SILENT-LAUNCHER.md`](docs/SILENT-LAUNCHER.md)。
 
 ### 在 DSH 之外使用（MCP / HTTP / CLI）
 
@@ -179,7 +199,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**408 / 408 通过**
+- 自动化用例：**420 / 420 通过**
 - 检索延迟（本机复核，**3.10.1 数据；3.10.4 未重跑，不作为 3.10.4 实测**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **116.8ms**（两段式有界检索，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）

@@ -14,14 +14,15 @@ using System.Threading;
 
 class OmniServeLauncher
 {
-    private const string Repo = @"D:\xiangmu\全息记忆";
-    private const string Node = @"C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe";
-    private const string MainLog = @"C:\Users\Administrator\.dsh\omni-serve-7788.log";
-    private const string ErrorLog = @"C:\Users\Administrator\.dsh\omni-serve-7788.err.log";
-    private const string StdoutLog = @"C:\Users\Administrator\.dsh\omni-serve-7788.stdout.log";
-    private const string StderrLog = @"C:\Users\Administrator\.dsh\omni-serve-7788.stderr.log";
-    private const string LauncherErrorLog = @"C:\Users\Administrator\.dsh\omni-serve-7788.launcher.err.log";
-    private const int Port = 7788;
+    private static string Repo;
+    private static string Node;
+    private static string MainLog;
+    private static string ErrorLog;
+    private static string StdoutLog;
+    private static string StderrLog;
+    private static string LauncherErrorLog;
+    private static int Port;
+    private static string ConfigPath;
     private static readonly UTF8Encoding Utf8 = new UTF8Encoding(false);
     private static readonly object LogLock = new object();
 
@@ -29,6 +30,7 @@ class OmniServeLauncher
     {
         try
         {
+            LoadConfig();
             Rotate(MainLog);
             Rotate(ErrorLog);
             Rotate(StdoutLog);
@@ -113,7 +115,7 @@ class OmniServeLauncher
         foreach (var pid in pids)
         {
             var commandLine = CommandLineOf(pid);
-            if (commandLine != null && Regex.IsMatch(commandLine, @"cli\.mjs.*serve.*" + Port, RegexOptions.IgnoreCase))
+            if (IsOmniNode(pid, commandLine))
             {
                 Log("stopping stale listener pid " + pid);
                 try
@@ -206,7 +208,7 @@ class OmniServeLauncher
         try
         {
             using (var searcher = new ManagementObjectSearcher(
-                "SELECT CommandLine FROM Win32_Process WHERE ProcessId = " + pid))
+                "SELECT CommandLine, ExecutablePath FROM Win32_Process WHERE ProcessId = " + pid))
             using (var rows = searcher.Get())
             {
                 foreach (ManagementObject row in rows)
@@ -221,6 +223,51 @@ class OmniServeLauncher
             Log("command line lookup failed for pid " + pid + ": " + error.Message);
         }
         return null;
+    }
+
+    static string ExecutablePathOf(int pid)
+    {
+        try
+        {
+            using (var searcher = new ManagementObjectSearcher(
+                "SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + pid))
+            using (var rows = searcher.Get())
+            {
+                foreach (ManagementObject row in rows)
+                {
+                    var value = row["ExecutablePath"];
+                    if (value != null) return value.ToString();
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            Log("executable path lookup failed for pid " + pid + ": " + error.Message);
+        }
+        return null;
+    }
+
+    static bool IsOmniNode(int pid, string commandLine)
+    {
+        if (String.IsNullOrEmpty(commandLine)) return false;
+        var executable = ExecutablePathOf(pid);
+        if (String.IsNullOrEmpty(executable)) return false;
+        try
+        {
+            if (!String.Equals(Path.GetFullPath(executable), Path.GetFullPath(Node), StringComparison.OrdinalIgnoreCase)) return false;
+        }
+        catch
+        {
+            return false;
+        }
+        // Require the exact repo entrypoint and exact port flag. A broad
+        // "cli.mjs.*serve.*7788" regex can kill an unrelated Node listener.
+        var entry = Regex.Match(commandLine, @"(?:^|\s)""?([^""\s]+[\\/])?hosts[\\/]cli\.mjs(""|\s|$)", RegexOptions.IgnoreCase);
+        if (!entry.Success) return false;
+        var serve = Regex.IsMatch(commandLine, @"\s+serve(\s|$)", RegexOptions.IgnoreCase);
+        if (!serve) return false;
+        var port = Regex.Match(commandLine, @"\s--port\s+" + Port + @"(\s|$)", RegexOptions.IgnoreCase);
+        return port.Success;
     }
 
     static bool HasListener()
@@ -323,6 +370,46 @@ class OmniServeLauncher
         {
             // Rotation must never prevent the service from starting.
         }
+    }
+
+    static void LoadConfig()
+    {
+        var baseDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+        ConfigPath = Path.Combine(baseDir, "omni-serve-7788.json");
+        var json = File.Exists(ConfigPath) ? File.ReadAllText(ConfigPath, Utf8) : String.Empty;
+
+        Repo = ResolvePath(Env("OMNI_REPO", JsonValue(json, "repo")), Environment.CurrentDirectory);
+        Node = ResolvePath(Env("OMNI_NODE", JsonValue(json, "node")), Path.Combine(baseDir, "node.exe"));
+        MainLog = ResolvePath(Env("OMNI_MAIN_LOG", JsonValue(json, "mainLog")), Path.Combine(baseDir, "omni-serve-7788.log"));
+        ErrorLog = ResolvePath(Env("OMNI_ERROR_LOG", JsonValue(json, "errorLog")), Path.Combine(baseDir, "omni-serve-7788.err.log"));
+        StdoutLog = ResolvePath(Env("OMNI_STDOUT_LOG", JsonValue(json, "stdoutLog")), Path.Combine(baseDir, "omni-serve-7788.stdout.log"));
+        StderrLog = ResolvePath(Env("OMNI_STDERR_LOG", JsonValue(json, "stderrLog")), Path.Combine(baseDir, "omni-serve-7788.stderr.log"));
+        LauncherErrorLog = ResolvePath(Env("OMNI_LAUNCHER_ERROR_LOG", JsonValue(json, "launcherErrorLog")), Path.Combine(baseDir, "omni-serve-7788.launcher.err.log"));
+
+        var portText = Env("OMNI_HTTP_PORT", JsonValue(json, "port"));
+        int parsedPort;
+        Port = Int32.TryParse(portText, out parsedPort) && parsedPort > 0 && parsedPort < 65536 ? parsedPort : 7788;
+    }
+
+    static string Env(string name, string fallback)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        return String.IsNullOrEmpty(value) ? fallback : value;
+    }
+
+    static string JsonValue(string json, string key)
+    {
+        if (String.IsNullOrEmpty(json)) return null;
+        var match = Regex.Match(json, "\"" + Regex.Escape(key) + "\"\\s*:\\s*(\"((?:\\\\.|[^\"])*)\"|(-?\\d+))");
+        if (!match.Success) return null;
+        if (match.Groups[2].Success) return Regex.Replace(match.Groups[2].Value, @"\\(.)", "$1");
+        return match.Groups[3].Value;
+    }
+
+    static string ResolvePath(string value, string fallback)
+    {
+        var selected = String.IsNullOrEmpty(value) ? fallback : value;
+        return Path.GetFullPath(selected);
     }
 
     static void Log(string message)

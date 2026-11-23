@@ -8,7 +8,9 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const FILES = ['index.js', 'client.js'];
+const FILES = readdirSync(ROOT, { withFileTypes: true })
+  .filter(entry => entry.isFile() && /\.(?:mjs|js)$/.test(entry.name))
+  .map(entry => entry.name);
 for (const dir of ['lib', 'hosts', 'scripts']) {
   const walk = relative => {
     let entries;

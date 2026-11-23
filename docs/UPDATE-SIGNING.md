@@ -1,6 +1,11 @@
 # 更新链签名
 
-3.11.6 起，`scripts/daily-sync.mjs --apply` 不再直接合并 `origin/main`。它先 `git fetch origin main` 取到签名提交对象，再下载要升级到的 GitHub Release 的 `omni-update-manifest.json`，用内置的 Ed25519 公钥验签，再校验包哈希和提交谱系，只快进到清单里签名的那个提交。
+3.11.6 起，`scripts/daily-sync.mjs --apply` 不再直接合并 `origin/main`。它先 `git fetch origin main` 取到签名提交对象，再下载目标 GitHub Release 的签名清单，用内置的 Ed25519 公钥验签，校验包哈希、启动器哈希和提交谱系，只快进到清单里签名的那个提交。
+
+3.11.8 起清单分为两代：
+
+- `omni-update-manifest-v2`：新客户端优先读取，除 `package.json` 外还固定 `launcherPath` / `launcherSha256`；
+- `omni-update-manifest-v1`：旧客户端兼容路径，不含启动器字段。
 
 ## 为什么要签名
 
@@ -15,56 +20,85 @@
   `76:f3:5c:2d:c5:d6:f7:7e:a8:4d:9b:03:26:c0:7f:fc:d5:94:70:50:8c:bf:c4:41:75:a5:59:c1:67:a9:10:f1`
 - 私钥默认路径：`~/.dsh/omni-update-signing-key.pem`
 - 公钥文件：`~/.dsh/omni-update-signing-public.pem`
-- Release 资产名：`omni-update-manifest.json`
-- 清单 schema：`omni-update-manifest-v1`
+- v2 Release 资产名：`omni-update-manifest-v2.json`
+- v1 兼容资产名：`omni-update-manifest.json`
+- v2 schema：`omni-update-manifest-v2`
+- v1 schema：`omni-update-manifest-v1`
 
-私钥文件权限必须只允许当前用户读写。Windows 上用 ACL 限制；类 Unix 上用 `chmod 600`。3.11.7 起 `scripts/sign-release.mjs` 在签名前强制检查：POSIX 模式不得有 group/other 位，Windows ACL 不允许 `Users`、`Everyone`、`Interactive` 等宽泛主体，否则拒绝签名。私钥丢失后无法用旧版本内置的公钥签出新清单，只能手工分发新版本并更换公钥。
+私钥文件权限必须只允许当前用户读写。Windows 上用 ACL 限制；类 Unix 上用 `chmod 600`。`scripts/sign-release.mjs` 在签名前强制检查：POSIX 模式不得有 group/other 位，Windows ACL 不允许 `Users`、`Everyone`、`Interactive` 等宽泛主体，否则拒绝签名。私钥丢失后无法用旧版本内置的公钥签出新清单，只能手工分发新版本并更换公钥。
 
 ## 清单字段
 
-清单是固定字段集合，任何未知字段都会被拒绝，避免未来新增字段改变旧签名的含义：
+清单是固定字段集合，任何未知字段都会被拒绝，避免未来新增字段改变旧签名的含义。
 
-- `schema`：固定 `omni-update-manifest-v1`
+v2：
+
+- `schema`：固定 `omni-update-manifest-v2`
 - `keyId`：固定 `omni-ed25519-2026-01`
 - `version` / `packageVersion`：两者必须相等
 - `packageName`：固定 `@local/omni-memory`
 - `commit`：40 位小写 Git SHA，必须等于要快进到的提交
 - `packageJsonSha256`：该提交里 `package.json` 原始字节的 SHA-256
+- `launcherPath`：固定 `scripts/launchers/omni-serve-7788.exe`
+- `launcherSha256`：该提交里启动器二进制原始字节的 SHA-256
 - `tag`：必须等于 `v<version>`
-- `issuedAt`：ISO 时间
+- `issuedAt`：ISO 时间；验签时拒绝超过 180 天的旧清单和超过 24 小时的未来时间
 - `signature`：对上面字段规范化 JSON 的 Ed25519 签名（base64）
 
-规范化 JSON 的字段顺序由 `canonicalUpdateManifest()` 固定，不依赖对象的插入顺序。
+v1 字段与 v2 相同，但没有 `launcherPath` / `launcherSha256`，`schema` 为 `omni-update-manifest-v1`。
+
+规范化 JSON 的字段顺序由 `canonicalUpdateManifest()` 固定，不依赖对象的插入顺序；`schema` 本身也在签名体内。
 
 ## 发布流程
 
-1. 确认 `package.json` 版本、测试数、CHANGELOG 当前版本一致，`npm test` 与 `npm run check` 通过。
-2. 提交并推送 `main`，记录最终提交 SHA。
-3. 生成清单：
+1. 确认 `package.json` 版本、`package.json.omni.launcher.sha256`、测试数、CHANGELOG 当前版本一致，`npm test` 与 `npm run check` 通过。
+2. 提交并推送 `main`，记录最终提交 SHA。启动器二进制必须已在该提交里。
+3. 生成 v2 清单：
 
    ```bash
-   node scripts/sign-release.mjs --version 3.11.7 --commit <sha> --tag v3.11.7
+   node scripts/sign-release.mjs --version 3.11.8 --commit <sha> --tag v3.11.8
    ```
 
-   默认读取 `~/.dsh/omni-update-signing-key.pem`，输出 `omni-update-manifest.json`。可用 `--key`、`--out`、`--issued-at` 覆盖，但发布流程不应把私钥路径写进仓库。
-4. 创建 `v3.11.7` tag 和 GitHub Release，把 `omni-update-manifest.json` 作为 Release asset 上传。清单不放进 git 仓库：它包含 commit，如果又提交进仓库，会形成“清单包含 commit、commit 又包含清单”的循环哈希。
-5. 在旧版本 checkout 上先跑 `node scripts/daily-sync.mjs --check`，确认返回 `update-available`；再跑 `--apply` 验证真实更新。`--check` 只比较版本，不读取也不验证签名；签名校验只在 `--apply` 发生。成功后才考虑 `--restart`。
+   默认读取 `~/.dsh/omni-update-signing-key.pem`，输出 `omni-update-manifest-v2.json`。启动器哈希从 `<sha>:scripts/launchers/omni-serve-7788.exe` 读取，不信任工作树。
+4. 可选生成 v1 兼容清单：
+
+   ```bash
+   node scripts/sign-release.mjs --version 3.11.8 --commit <sha> --tag v3.11.8 --schema v1 --out omni-update-manifest.json
+   ```
+
+5. 创建 `v3.11.8` tag 和 GitHub Release，把 v2 清单作为主资产上传；需要兼容旧客户端时同时上传 v1 清单。清单不放进 git 仓库：它包含 commit，如果又提交进仓库，会形成“清单包含 commit、commit 又包含清单”的循环哈希。
+6. 在旧版本 checkout 上先跑 `node scripts/daily-sync.mjs --check`，确认返回 `update-available`；再跑 `--apply` 验证真实更新。`--check` 只比较版本，不读取也不验证签名；签名校验只在 `--apply` 发生。成功后才考虑 `--restart`。
 
 ## `--apply` 的拒绝条件
 
 以下任一情况都不会移动 HEAD，不会重启服务：
 
-- `unsigned-release`：Release 没有 `omni-update-manifest.json`
-- `signature-invalid`：签名、key id、schema、字段格式任一不合法
+- `unsigned-release`：Release 没有 v2 或 v1 清单
+- `signature-invalid`：签名、key id、schema、字段格式或 `issuedAt` 时间窗任一不合法
 - `package-hash-mismatch`：清单里的 `package.json` SHA-256 与提交里的不一致
+- `launcher-path-mismatch`：v2 清单的启动器路径不是固定路径
+- `launcher-missing`：v2 清单的启动器在签名提交里不存在或为 0 字节
+- `launcher-hash-mismatch`：启动器字节哈希与清单不一致
 - `signed-commit-missing` / `signed-commit-not-on-main`：签名提交不存在，或不在 `origin/main` 历史内
 - `blocked-dirty`：tracked 文件有修改
 - `blocked-diverged`：本地与远端分叉，无法 fast-forward
 - `verification-failed`：快进后运行时 JS `node --check` 失败
 - `tests-failed`：显式 `--run-tests` 时测试失败
 - `signed-commit-mismatch`：快进后的 HEAD 不等于清单里的 commit
+- `launcher-install-failed`：安装/切换启动器失败
 
-失败会 `git reset --hard` 回到更新前提交；`--restart` 只在更新成功后执行。
+失败会 `git reset --hard` 回到更新前提交，但 `safeResetToBefore` 在 reset 前会再次检查 tracked 改动；发现验证过程改动了文件就拒绝覆盖。`--restart` 只在更新成功后执行。
+
+## 启动器安装
+
+v2 验签通过后，`daily-sync` 调用 `scripts/install-launcher.mjs`：
+
+1. 从签名提交读取 `scripts/launchers/omni-serve-7788.exe` 字节；
+2. 校验 `package.json.omni.launcher.sha256`；
+3. 写入内容寻址副本 `~/.dsh/omni-serve-7788-<sha8>.exe` 和侧车配置 `~/.dsh/omni-serve-7788.json`；
+4. 用 PowerShell `Set-ScheduledTask` 切换 `OmniMemory7788` 的 action；默认不停止运行中的进程。这里不用 `schtasks /Change /TR`，因为部分 Windows 构建会为 Interactive 任务弹出 run-as 密码提示，自动化更新无法应答。
+
+旧副本不删除，回滚时可把任务 action 指回旧路径。完整配置与卸载见 [`SILENT-LAUNCHER.md`](SILENT-LAUNCHER.md)。
 
 ## 密钥轮换
 
@@ -78,5 +112,6 @@
 
 ## 已知边界
 
-- 清单签的是 `package.json` 哈希、版本、提交和 tag，不是整棵 tree 的哈希。提交谱系校验保证快进到的是 `origin/main` 上的真实提交；如果要防“同一提交内文件被替换”，需要额外签 tree hash，当前未做。
+- 清单签的是 `package.json` 哈希、启动器哈希、版本、提交和 tag，不是整棵 tree 的哈希。提交谱系校验保证快进到的是 `origin/main` 上的真实提交；如果要防“同一提交内其他文件被替换”，需要额外签 tree hash，当前未做。
 - 3.11.5 及更早版本没有签名校验。升级到 3.11.6 的第一次仍需信任当时的发布渠道；从 3.11.6 起，后续 `--apply` 才强制验签。
+- v2 是 3.11.8 的主路径；旧客户端不认识 v2 时继续读 v1 资产。

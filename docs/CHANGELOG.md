@@ -2,6 +2,27 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.11.8] — 2026-11-23
+
+### 修复 · 终验 P1：启动器信任链
+- **启动器纳入签名清单**：新增 `omni-update-manifest-v2` schema，固定字段 `launcherPath` 与 `launcherSha256`；`sign-release.mjs` 从签名提交读取 `scripts/launchers/omni-serve-7788.exe` 的实际字节计算哈希。v1 清单继续保留，兼容旧客户端。
+- **可复现构建**：新增 `scripts/build-launcher.mjs`，用 `csc /target:winexe` 编译后归一化 PE 时间戳和 .NET Module MVID，连续构建两次比对哈希；`--check` 只重建并与仓库二进制比对。`scripts/check-launcher.mjs` 已接入 `npm run check`。
+- **配置驱动启动器**：`omni-serve-7788-launcher.cs` 不再硬编码仓库、Node 与日志路径；从 `omni-serve-7788.json` 侧车配置读取，支持 `OMNI_REPO` / `OMNI_NODE` / `OMNI_HTTP_PORT` 等环境变量回退。旧监听判定要求 Node 可执行路径、`hosts\cli.mjs`、`serve` 和精确 `--port` 同时匹配。
+- **安装与卸载**：新增 `scripts/install-launcher.mjs`，校验签名提交里的 `package.json` 元数据与启动器 SHA-256，写内容寻址副本 `omni-serve-7788-<sha8>.exe` 和侧车配置，再改计划任务 action；默认不覆盖运行中的 exe。新增 `scripts/uninstall-launcher.mjs`，删除任务与侧车配置，默认保留日志、数据库和二进制，显式 `--remove-binaries --remove-logs` 才清理。
+- **daily-sync 自动安装**：v2 清单验签、merge、syntax、测试和版本校验通过后，自动安装并切换启动器，不停止当前进程；安装失败返回 `launcher-install-failed` 并退出 2。
+
+### 修复 · 终验 P1：备份、锁与 CLI 主链
+- **备份失败默认 fail-closed**：迁移前备份抛错直接中止迁移；只有显式 `OMNI_MIGRATION_BACKUP_DEGRADE=1` 或 `OMNI_MIGRATION_BACKUP_STRICT=0` 才告警继续。
+- **共享备份目录按库隔离**：备份文件名加入 `DB_TAG = sha256(resolve(DB_FILE)).slice(0,8)`，保留裁剪只匹配当前库；共享 `OMNI_BACKUP_DIR` 不再误删其他数据库的备份。
+- **apply 锁按真实 repo**：锁名由 `realpath(repo)` 哈希生成，不同 `--state` 不能绕过同一 checkout 的互斥。
+- **Bearer token 精确 host**：只有 `https://api.github.com` 才附加 GitHub token，`api.github.com.evil` 之类子串不再匹配。
+- **rollback 二次检查**：`safeResetToBefore` 在 `reset --hard` 前再查 tracked 改动，发现验证过程改动文件就拒绝回滚。
+- **CLI 主链断言**：新增离线 bare remote 的完整成功路径测试（验签 → fast-forward → syntax → launcher 安装），以及验签失败不移动 HEAD、apply 锁、Bearer host、rollback 拒绝 tracked 改动等断言。
+
+### 测试与发布
+- 完整 `npm test` **420/420** 通过；`npm run check` 覆盖文档、客户端 hook、全部运行时 JS 语法、C# 启动器编译/二进制一致性、语义资产和 update log。
+- 终验报告中的 P2（NFR-08 口径、缓存 TTL、私钥权限测试、首开与语义内存、`index.js` 体量/静默 catch 等）未在本版全部关闭，继续留在下一轮。
+
 ## [3.11.7] — 2026-11-23
 
 ### 修复 · v3.11.6 复验 P0

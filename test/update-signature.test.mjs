@@ -14,18 +14,21 @@ const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' });
 const TEST_KEY_ID = 'test-key';
+const NOW = new Date().toISOString();
 
 function manifest(overrides = {}) {
   return {
-    schema: 'omni-update-manifest-v1',
+    schema: 'omni-update-manifest-v2',
     keyId: TEST_KEY_ID,
-    version: '3.11.6',
+    version: '3.11.8',
     packageName: '@local/omni-memory',
-    packageVersion: '3.11.6',
+    packageVersion: '3.11.8',
     commit: 'a'.repeat(40),
     packageJsonSha256: 'b'.repeat(64),
-    tag: 'v3.11.6',
-    issuedAt: '2026-11-23T05:00:00.000Z',
+    launcherPath: 'scripts/launchers/omni-serve-7788.exe',
+    launcherSha256: 'd'.repeat(64),
+    tag: 'v3.11.8',
+    issuedAt: NOW,
     ...overrides,
   };
 }
@@ -39,8 +42,9 @@ test('a signed manifest verifies and any field change breaks the signature', () 
   const signed = signUpdateManifest(manifest(), privateKeyPem);
   assert.ok(signed.signature);
   const verified = verifyUpdateManifest(signed, { publicKeyPem, keyId: TEST_KEY_ID });
-  assert.equal(verified.ok, true);
+  assert.equal(verified.ok, true, verified.error);
   assert.equal(verified.manifest.commit, 'a'.repeat(40));
+  assert.equal(verified.manifest.launcherSha256, 'd'.repeat(64));
   assert.equal(verified.keyFingerprint, publicKeyFingerprint(publicKeyPem));
 
   const wrongFingerprint = verifyUpdateManifest(signed, {
@@ -66,14 +70,40 @@ test('unknown fields, wrong key, malformed fields and mismatched versions are re
   for (const bad of [
     { ...signed, version: 'latest' },
     { ...signed, commit: 'a'.repeat(39) },
-    { ...signed, tag: 'v3.11.5' },
+    { ...signed, tag: 'v3.11.7' },
     { ...signed, packageJsonSha256: 'b'.repeat(63) },
     { ...signed, issuedAt: 'not-a-date' },
     { ...signed, packageName: 'other' },
+    { ...signed, launcherPath: 'scripts/launchers/evil.exe' },
+    { ...signed, launcherSha256: 'd'.repeat(63) },
   ]) {
     const result = verifyUpdateManifest(bad, { publicKeyPem, keyId: TEST_KEY_ID });
     assert.equal(result.ok, false);
   }
+});
+
+test('an old or future manifest issuedAt cannot be replayed', () => {
+  for (const issuedAt of ['2010-01-01T00:00:00.000Z', '2099-01-01T00:00:00.000Z']) {
+    const signed = signUpdateManifest(manifest({ issuedAt }), privateKeyPem);
+    const result = verifyUpdateManifest(signed, { publicKeyPem, keyId: TEST_KEY_ID });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /issuedAt/);
+  }
+});
+
+test('the v1 manifest remains verifiable for old clients during bootstrap', () => {
+  const legacy = manifest({
+    schema: 'omni-update-manifest-v1',
+    version: '3.11.7',
+    packageVersion: '3.11.7',
+    tag: 'v3.11.7',
+  });
+  delete legacy.launcherPath;
+  delete legacy.launcherSha256;
+  const signed = signUpdateManifest(legacy, privateKeyPem);
+  assert.equal(signed.launcherPath, undefined);
+  const result = verifyUpdateManifest(signed, { publicKeyPem, keyId: TEST_KEY_ID });
+  assert.equal(result.ok, true, result.error);
 });
 
 test('a manifest signed for another version can never be used for this release', () => {
@@ -81,5 +111,5 @@ test('a manifest signed for another version can never be used for this release',
   const result = verifyUpdateManifest(signed, { publicKeyPem, keyId: TEST_KEY_ID });
   assert.equal(result.ok, true);
   // Caller must still compare manifest.version with the release version.
-  assert.notEqual(result.manifest.version, '3.11.6');
+  assert.notEqual(result.manifest.version, '3.11.8');
 });

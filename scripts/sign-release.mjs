@@ -21,7 +21,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseVersion } from '../lib/daily-sync.mjs';
-import { signUpdateManifest, UPDATE_KEY_ID, UPDATE_MANIFEST_SCHEMA, UPDATE_PACKAGE_NAME } from '../lib/update-signature.mjs';
+import { signUpdateManifest, UPDATE_KEY_ID, UPDATE_LAUNCHER_PATH, UPDATE_MANIFEST_SCHEMA, UPDATE_MANIFEST_SCHEMA_V1, UPDATE_PACKAGE_NAME } from '../lib/update-signature.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO = path.resolve(SCRIPT_DIR, '..');
@@ -41,7 +41,9 @@ function parseArgs(argv) {
     commit: null,
     version: null,
     tag: null,
-    out: 'omni-update-manifest.json',
+    schema: UPDATE_MANIFEST_SCHEMA,
+    launcher: UPDATE_LAUNCHER_PATH,
+    out: null,
     key: process.env.OMNI_UPDATE_SIGNING_KEY
       || path.join(process.env.OMNI_HOME || process.env.DSH_HOME || path.join(homedir(), '.dsh'), 'omni-update-signing-key.pem'),
     issuedAt: new Date().toISOString(),
@@ -59,6 +61,12 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === '--tag') {
       options.tag = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--schema') {
+      options.schema = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--launcher') {
+      options.launcher = argValue(argv, index, arg);
       index += 1;
     } else if (arg === '--out') {
       options.out = argValue(argv, index, arg);
@@ -90,6 +98,13 @@ function packageAtCommit(repo, commit) {
   const text = raw.toString('utf8').replace(/^\uFEFF/, '');
   const pkg = JSON.parse(text);
   return { raw, pkg };
+}
+
+function fileAtCommit(repo, commit, file) {
+  return execFileSync(GIT, ['show', `${commit}:${file}`], {
+    cwd: repo,
+    maxBuffer: 64 * 1024 * 1024,
+  });
 }
 
 /**
@@ -134,13 +149,18 @@ function main() {
     return;
   }
   if (options.help) {
-    console.log('Usage: node scripts/sign-release.mjs --version <version> [--commit <sha>] [--tag <tag>] [--key <pem>] [--out <file>]');
+    console.log('Usage: node scripts/sign-release.mjs --version <version> [--schema v1|v2] [--commit <sha>] [--tag <tag>] [--key <pem>] [--out <file>]');
     return;
   }
 
   const repo = path.resolve(options.dir);
   const commit = (options.commit || git(['rev-parse', 'HEAD'], repo)).toLowerCase();
   if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error(`invalid commit: ${commit}`);
+  if (options.schema === 'v1') options.schema = UPDATE_MANIFEST_SCHEMA_V1;
+  if (options.schema === 'v2') options.schema = UPDATE_MANIFEST_SCHEMA;
+  if (options.schema !== UPDATE_MANIFEST_SCHEMA_V1 && options.schema !== UPDATE_MANIFEST_SCHEMA) {
+    throw new Error(`unsupported schema: ${options.schema}`);
+  }
   const { raw, pkg } = packageAtCommit(repo, commit);
   const version = String(options.version || pkg.version || '').trim().replace(/^[vV]/, '');
   if (!parseVersion(version)) throw new Error(`invalid version: ${version}`);
@@ -153,27 +173,44 @@ function main() {
   if (!existsSync(options.key)) throw new Error(`signing key not found: ${options.key}`);
   assertPrivateKeyPermissions(options.key);
 
+  let launcher = null;
+  if (options.schema === UPDATE_MANIFEST_SCHEMA) {
+    if (options.launcher !== UPDATE_LAUNCHER_PATH) {
+      throw new Error(`launcher path must be ${UPDATE_LAUNCHER_PATH}`);
+    }
+    const launcherRaw = fileAtCommit(repo, commit, options.launcher);
+    launcher = {
+      launcherPath: options.launcher,
+      launcherSha256: createHash('sha256').update(launcherRaw).digest('hex'),
+    };
+  }
+
   const manifest = {
-    schema: UPDATE_MANIFEST_SCHEMA,
+    schema: options.schema,
     keyId: UPDATE_KEY_ID,
     version,
     packageName: pkg.name,
     packageVersion: version,
     commit,
     packageJsonSha256: createHash('sha256').update(raw).digest('hex'),
+    ...(launcher ? launcher : {}),
     tag,
     issuedAt: options.issuedAt,
   };
   const signed = signUpdateManifest(manifest, readFileSync(options.key, 'utf8'));
-  const out = path.resolve(options.out);
+  const out = path.resolve(options.out || (options.schema === UPDATE_MANIFEST_SCHEMA
+    ? 'omni-update-manifest-v2.json'
+    : 'omni-update-manifest.json'));
   writeFileSync(out, `${JSON.stringify(signed, null, 2)}\n`, { encoding: 'utf8', mode: 0o644 });
   console.log(JSON.stringify({
     ok: true,
     manifest: out,
+    schema: options.schema,
     version,
     commit,
     tag,
     packageJsonSha256: signed.packageJsonSha256,
+    ...(launcher ? { launcherSha256: launcher.launcherSha256 } : {}),
     signatureBytes: Buffer.from(signed.signature, 'base64').length,
   }, null, 2));
 }
