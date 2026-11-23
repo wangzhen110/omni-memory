@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 98 次提交；更新记录自身的提交不计入列表。
+> 共 99 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-23
 
+- 21:31:17 `2862bee9` — fix: skip FTS5 and Windows-only tests on unsupported runners — [提交](https://github.com/wangzhen110/omni-memory/commit/2862bee99fa33bbe4208bbc0c8b7271030744422)
 - 21:25:46 `125cf575` — feat: v3.12.0 benchmarks, metrics, container and licensing — [提交](https://github.com/wangzhen110/omni-memory/commit/125cf57512cb4aff6bd7ce597998a148eb360e4c)
 - 17:16:24 `effeaec3` — feat: v3.11.9 product hub, mobile entry, one-command setup and doctor — [提交](https://github.com/wangzhen110/omni-memory/commit/effeaec39d7a4321e90f0556a46662888e64346a)
 - 15:27:01 `6a982ce0` — fix: guard daily-sync entrypoint when imported without argv — [提交](https://github.com/wangzhen110/omni-memory/commit/6a982ce0c3ef75b72fba86bcd0434c149391d729)
