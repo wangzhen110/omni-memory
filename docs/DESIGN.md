@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.11.2 |
-| 插件版本 | 3.11.2 |
+| 文档版本 | 3.11.3 |
+| 插件版本 | 3.11.3 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-23 |
@@ -81,6 +81,7 @@
 | FR-40 | 分层画像与重排 | 画像分 `## 全局` / `## 当前项目`；可选 cross-encoder rerank（未配置端点零延迟，失败回落融合排序）；本地/远程 embedding 预设 | ✅ 已实现 |
 | FR-42 | 跨平台项目键稳定 | Windows/macOS 同一路径不同大小写生成同一项目键；旧键首次打开时按路径迁移到 canonical key，迁移幂等且不误合并同名目录 | ✅ 已实现（schema v15，ADR-031） |
 | FR-43 | 版本可见与每日一次对齐 | `/health`、`/omni-memory/status`、`/overview` 与面板顶栏显示当前版本；每天第一次记忆操作前检查 GitHub `main`，远端更高且工作树干净时快进合并，校验失败回滚，同一天只执行一次 | ✅ 已实现（3.11.2；`scripts/daily-sync.mjs`） |
+| FR-44 | 读取记忆时版本提醒 | `memory_context`（MCP/CLI）与 `/omni-memory/packet` 读取时检查云端 `main/package.json`；发现更高版本时在返回文本顶部提示 AI 先运行 `scripts/daily-sync.mjs`；成功结果缓存 30 分钟，失败 5 分钟，网络上限 2.5s，检查失败不阻塞记忆读取 | ✅ 已实现（3.11.3；`lib/version-check.mjs`） |
 
 ### 1.2 非功能需求
 
@@ -95,9 +96,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足 |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 380/380（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 384/384（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 380 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 384 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -281,7 +282,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 | `/omni-memory/overview` | GET | `range`(`4w`\|`6w`\|`12w`\|`26w`, 默认 `12w`), `scope`(`all`\|`global`\|`project`\|项目键) | `{ok, version, asOf, range, scope, stats, health, series, daily, projects, profile, activity, graph}`；面向网页概览的真实聚合，不返回全文；非 loopback 403 |
 | `/omni-memory/graph` | GET | 无 | `{ok, nodes[{id,kind,label,weight,scope}], links[{source,target,rel}]}`（节点 ≤300，无悬空边） |
 | `/omni-memory/search` | GET | `q`, `limit`(1..60), `rerank`(0/1) | `{ok, hits[]}`；配置 rerank 后按 cross-encoder 分数重排 |
-| `/omni-memory/packet` | GET | `q` `scope` `cwd` `limit`(1..10, 默认 5) `budget`(400..4000, 默认 1800) `format`(`json`\|`text`) | `{ok, format, scope, query, text, chars, hits, truncated, memories[], generatedAt}`；`format=text` 直接输出纯文本 |
+| `/omni-memory/packet` | GET | `q` `scope` `cwd` `limit`(1..10, 默认 5) `budget`(400..4000, 默认 1800) `format`(`json`\|`text`) | `{ok, format, scope, query, text, chars, hits, truncated, memories[], update, generatedAt}`；`text` 顶部可能含版本提醒；`format=text` 直接输出纯文本 |
 | `/omni-memory/openapi.json` | GET | — | OpenAPI 3.0 描述：10 条 path（packet/search/list/node/status/tool/ingest/candidates/candidate/consolidate） |
 | `/omni-memory/tool` | POST | body `name` `arguments`；header `x-omni-csrf: 1` | `{ok, name, value, text}`；仅允许 write/search/solution_report/feedback/get/amend/profile/timeline |
 | `/omni-memory/forget` | **POST**（GET 兼容） | `kind`, `id`, `scope`（查询参数优先；空 body 时从 JSON body 兜底） | `{ok, forgotten, scope}` |
@@ -303,7 +304,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 - 左栏图标：`sidebar.panellist`，`id=omni-memory`，`order=20`，`label=记忆`，图标为内联 SVG。
 - 面板：`main`，`key=omni-memory`；`hosts/http/web/panel.html` 是独立 HTTP 外壳的旧列表视图，含搜索、分页、状态和遗忘。
 - 概览：`hosts/http/web/index.html` 是默认 `/` 的「记忆概览」仪表盘；`dashboard.css` / `dashboard.js` 无外部依赖，读取 `/omni-memory/overview`。它展示 5 个 KPI、记忆增长双轴图、健康环、项目分布、84 天活跃日历、项目活跃带、事实关系迷你图、画像/偏好信号和最近动态。顶栏版本角标显示 `/overview.version`。
-- 每日同步：`scripts/daily-sync.mjs` 不是运行中 HTTP 服务的一部分。它只在每天第一次记忆操作前由 AI 调用，负责检查 GitHub `main/package.json`、快进合并、`node --check` 校验、失败回滚和重启 `OmniMemory7788`；状态落 `~/.dsh/omni-daily-sync.json`，同一本地日历日只执行一次。
+- 每日同步：`scripts/daily-sync.mjs` 不是运行中 HTTP 服务的一部分。AI 读取记忆时先由 `lib/version-check.mjs` 做带缓存的轻量检查；只有返回文本顶部出现版本提醒，才调用同步脚本检查 GitHub `main/package.json`、快进合并、`node --check` 校验、失败回滚和重启 `OmniMemory7788`；状态落 `~/.dsh/omni-daily-sync.json`，同一本地日历日只执行一次。
 - 边界：当前 schema 没有任务起止、状态、依赖字段，所以项目活跃带只画首次/最近写入区间，明确标注「不是任务甘特」；不伪造甘特。`persona` 为空时只展示可回原文的偏好信号，不生成推断画像。
 - 数据口径：活跃笔记 = 未删除且未被 `superseded_by` 替代；活跃事实 = 未删除且 `valid_to` 为空；有争议 = 两类 `contested` 之和；已失效 = 被替代笔记 + 过期事实；召回有用率在 `recall_count=0` 时返回 `null`，页面显示「暂无反馈」。
 
@@ -533,6 +534,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | FR-23 | `test/fixes.test.mjs`、`test/compact.test.mjs` | 墓碑后同文重捕、compact 事务 |
 | FR-26/27/28 | `test/scope-model-judge.test.mjs`、`test/fixes.test.mjs` | HTTP scope、`scope=all` 拒写、跨 scope 事实隔离 |
 | FR-43 | `test/daily-sync.test.mjs`、`test/api.test.mjs` | 版本解析、数字段比较、本地日期 gate；`/status` 与 `/overview` 暴露 `version` |
+| FR-44 | `test/version-check.test.mjs` | 提醒文本、contents API、raw 回退、缓存复用、网络失败降级、`memory_context` 顶部提醒 |
 | FR-38 | `test/ingest.test.mjs`、`test/capture-rules.test.mjs` | ingest 候选、接受/拒绝、隔离、去重、hook 解析 |
 | FR-39 | `test/consolidation.test.mjs` | dry-run、apply、supersede、来源链、scope 隔离 |
 | FR-40 | `test/rerank.test.mjs`、`test/prompt.test.mjs` | rerank 开关、远程评分顺序、分层画像预算 |
@@ -557,8 +559,9 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 |---|---|
 | 版本 | 语义化：新增需求 → minor；缺陷修复 → patch；不兼容改动 → major |
 | 版本可见 | 面板顶栏 `vX.Y.Z`、`GET /health.version`、`GET /omni-memory/status.version`、`GET /omni-memory/overview.version` 四处一致，均来自 `package.json` |
+| 读取时版本提醒 | `memory_context`、CLI `context`、`/omni-memory/packet` 读取时检查云端 `main/package.json`；远端更高时返回文本顶部插入“先运行 daily-sync”的提醒，JSON `update` 同步给出两版版本号；检查失败不阻塞读取 |
 | 发布渠道 | GitHub Releases 按 `vX.Y.Z` 发布并写变更说明；包为 `private:true`，没有 npm 通道；用户通过面板版本、Releases 和 `scripts/daily-sync.mjs` 感知更新 |
-| 每日同步 | 每天第一次记忆操作前运行 `node scripts/daily-sync.mjs`；本地日期 gate 写 `~/.dsh/omni-daily-sync.json`；只允许 tracked 干净、可快进、`node --check` 通过时更新，失败回到原提交 |
+| 每日同步 | 读取记忆时 `lib/version-check.mjs` 先查云端版本（成功缓存 30 分钟、失败 5 分钟、网络上限 2.5s）；有提醒才运行 `node scripts/daily-sync.mjs`；本地日期 gate 写 `~/.dsh/omni-daily-sync.json`；只允许 tracked 干净、可快进、`node --check` 通过时更新，失败回到原提交 |
 | 发布 | `plugin_manager remove_bundle` → `install_bundle` → 刷新页面 → 跑 `npm test` |
 | 回滚 | 保留上一版目录/归档；数据库向后兼容（只加列不删列）；每日同步校验失败自动 `git reset --hard` 回到更新前提交 |
 | 服务退出 | `OmniMemory7788` 的 `LastTaskResult=3221225786`（`0xC000013A`）表示收到 Ctrl+C / 控制台关闭；若任务显示 Running 但 `/health` 仍是旧版本，多半是旧 node 子进程成了孤儿并占着 7788。启动脚本会先只杀命令行含 `cli.mjs ... serve ... 7788` 的监听进程，再起新 node；日常用 `schtasks /Run /TN OmniMemory7788` 重启并等 `/health` 恢复 |

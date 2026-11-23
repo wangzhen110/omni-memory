@@ -2,6 +2,19 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.11.3] — 2026-11-23
+
+### 新增 · 读取记忆时自动提醒云端新版本
+- **读路径检查**：新增 `lib/version-check.mjs`。`memory_context`（MCP/CLI）、`/omni-memory/packet` 在读取时并发检查 GitHub `main/package.json`；发现远端更高，就在返回文本最前面插入 `## 版本提醒（优先处理）`，告诉 AI 先运行 `node scripts/daily-sync.mjs`。
+- **不拖慢读取**：检查带缓存（成功 30 分钟、失败 5 分钟），单次网络上限 2.5 秒，超时或 GitHub 不可达只返回“无更新”，不阻塞记忆读取；`OMNI_VERSION_CHECK_DISABLED=1` 可关闭。
+- **结构化字段**：`memory_context` 与 `/packet` 的返回对象新增 `update`（无更新为 `null`），调用方可直接读 `localVersion` / `remoteVersion`，不用解析中文文本。
+- **边界**：只提醒，不自动改代码；真正更新仍由 `daily-sync` 做 dirty/分叉/校验/重启检查。
+
+### 测试与发布
+- 新增 `test/version-check.test.mjs`：无更新不提示、contents API 命中并复用缓存、API 403 回退 raw 且网络失败不抛、`memory_context` 顶部带提醒和 `update.remoteVersion` 4 项。
+- HTTP/MCP/boot 测试显式关闭版本检查，避免全量测试访问 GitHub。
+- 完整 `npm test` **384/384** 通过；`npm run check` 同步为 23 个内核工具、25 个 MCP 工具、21 路由、31 ADR、schema v17、3.11.3。
+
 ## [3.11.2] — 2026-11-23
 
 ### 新增 · 用户怎么知道云端更新了

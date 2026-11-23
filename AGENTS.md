@@ -43,10 +43,11 @@
 - 连接器只是可选增强；用户不主动要求时，不要提“去插件页保存连接器”。
 - Agent 不自动修改豆包设置、配置或注册表。
 
-## 每日版本对齐（每天只做一次）
+## 读取记忆时的版本提醒（优先于记笔记）
 
-1. 每天第一次进入本项目、调用 `memory_context` 之前，先在项目根目录执行 `node scripts/daily-sync.mjs`（`node` 不在 PATH 时用本机 Node 绝对路径）。
-2. 返回 `already-ran-today` 就直接继续，不要重复执行；返回 `up-to-date` 也继续。
-3. 返回 `updated` 时先看 `service.healthy`：为 `true` 才继续任务；为 `false` 或 `exists:false` 时明确告诉用户“代码已更新，但 7788 服务未重启成功”，不要假装已生效。
-4. 返回 `blocked-dirty`、`diverged`、`check-failed`、`network-error` 时不要强拉，按返回的 `reason` 报告并继续用当前版本。
-5. `--check` 只检查不写状态；`--force` 才会在同一天重跑。除排障外，不要用 `--force` 绕过每日 gate。
+1. 每天第一次进入本项目，直接调用 `memory_context`（或 CLI `context`）。它会在返回文本顶部做一次带缓存的云端版本检查。
+2. 如果顶部出现 `## 版本提醒（优先处理）`，说明云端版本更高：先在项目根目录执行 `node scripts/daily-sync.mjs`（`node` 不在 PATH 时用本机 Node 绝对路径），更新并确认 `service.healthy=true`，再重新读取记忆继续任务。
+3. 没有版本提醒就直接继续，不要为了“确认版本”额外反复调用检查；`daily-sync` 自身按本地日期只执行一次。
+4. `daily-sync` 返回 `updated` 但 `service.healthy=false` 或 `exists:false` 时，明确告诉用户“代码已更新，但 7788 服务未重启成功”，不要假装已生效。
+5. 返回 `blocked-dirty`、`blocked-diverged`、`verification-failed`、`network-error` 时不要强拉，按返回的 `reason` 报告并继续用当前版本。
+

@@ -23,6 +23,7 @@ test('http adapter: routes mount, MCP over HTTP works, panel is served', async (
   const home = mkdtempSync(path.join(tmpdir(), 'omni-http-'));
   // The store path is resolved when index.js is imported, so set it first.
   process.env.OMNI_HOME = home;
+  process.env.OMNI_VERSION_CHECK_DISABLED = '1';
 
   const { startHttpServer } = await import('../hosts/http/server.mjs');
   const server = await startHttpServer({

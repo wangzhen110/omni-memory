@@ -29,6 +29,7 @@ import { extractCandidateTexts } from './lib/capture-rules.mjs';
 import { rerankConfig, rerankRemote } from './lib/rerank-provider.mjs';
 import { semanticConfig, embedSemantic } from './lib/semantic-embed.mjs';
 import { createBaseSchema, createFtsTables } from './lib/schema.mjs';
+import { checkForUpdate, formatUpdateNotice } from './lib/version-check.mjs';
 
 // Data home resolution, in priority order:
 //   1. OMNI_HOME   — set by non-DSH adapters (MCP, CLI, HTTP) to point at a shared store
@@ -4663,6 +4664,7 @@ const PACKET_BUDGET = 1800;
 async function buildMemoryPacket(scope, query, options = {}) {
   const limit = Math.min(10, Math.max(1, Number(options.limit ?? 5) || 5));
   const budget = Math.min(4000, Math.max(400, Number(options.budget ?? PACKET_BUDGET) || PACKET_BUDGET));
+  const versionPromise = checkForUpdate({ localVersion: PKG_VERSION }).catch(() => null);
   const s = openStore();
   const persona = personaLines(s.db);
   const personaBody = persona.length ? persona.slice(1).join('\n').trim() : '';
@@ -4671,10 +4673,13 @@ async function buildMemoryPacket(scope, query, options = {}) {
   const profileScope = scope && scope !== 'project' && scope !== 'all' ? scope : null;
   const profile = buildProfileText(profileScope).trim();
   const search = query ? await runSearch(s, query, limit, scope) : { hits: [] };
+  const version = await versionPromise;
+  const updateNotice = formatUpdateNotice(version);
   const hits = (search.hits ?? [])
     .filter(hit => hit.kind !== 'note' || !['failed', 'expired'].includes(String(hit.solutionStatus ?? 'unverified')))
     .slice(0, limit);
   const sections = [];
+  if (updateNotice) sections.push(updateNotice);
   if (personaBody) sections.push('## 用户设定\n' + personaBody);
   if (profile && profile !== 'memory is empty') sections.push('## 常驻画像\n' + profile);
   if (hits.length) {
@@ -4686,7 +4691,7 @@ async function buildMemoryPacket(scope, query, options = {}) {
     }).join('\n'));
   }
   if (!sections.length) {
-    return { text: '', chars: 0, hits: 0, truncated: false, memories: [] };
+    return { text: '', chars: 0, hits: 0, truncated: false, memories: [], update: null };
   }
   sections.push('以上内容可能过时。涉及删除、覆盖、外部发送等不可逆动作前，先 memory_search 复核。');
   const full = sections.join('\n\n');
@@ -4701,6 +4706,12 @@ async function buildMemoryPacket(scope, query, options = {}) {
       solutionStatus: hit.solutionStatus ?? null, contested: Boolean(hit.contested),
       text: String(hit.text ?? '').slice(0, 220),
     })),
+    update: version?.updateAvailable ? {
+      localVersion: version.localVersion,
+      remoteVersion: version.remoteVersion,
+      checkedAt: version.checkedAt,
+      source: version.source,
+    } : null,
   };
 }
 

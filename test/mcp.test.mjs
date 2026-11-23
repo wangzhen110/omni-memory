@@ -40,7 +40,7 @@ test('MCP: id:null is a request and notifications never receive a frame', async 
 function startServer(home) {
   const child = spawn(process.execPath, [entry], {
     cwd: root,
-    env: { ...process.env, OMNI_HOME: home, OMNI_PROJECT_DIR: root, OMNI_SESSION_ID: 'mcp-contract-test' },
+    env: { ...process.env, OMNI_HOME: home, OMNI_PROJECT_DIR: root, OMNI_SESSION_ID: 'mcp-contract-test', OMNI_VERSION_CHECK_DISABLED: '1' },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 

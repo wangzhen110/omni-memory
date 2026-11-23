@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 3.11.2 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
+> 版本 3.11.3 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -314,7 +314,9 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 - `scope` string，可选；省略则用当前项目层 + global。
 - `limit` number，默认 5，最大 10。
 
-返回：`text`（用户设定 + 常驻画像 + 相关记忆 + 风险提示）。
+返回：`text`（用户设定 + 常驻画像 + 相关记忆 + 风险提示；发现云端新版本时，`text` 顶部先出现 `## 版本提醒（优先处理）`），`hits`（召回条数），`update`（有更新时为 `{localVersion, remoteVersion, checkedAt, source}`，否则 `null`）。
+
+版本检查在读取时自动触发：成功缓存 30 分钟，失败缓存 5 分钟，网络上限 2.5 秒；GitHub 不可达不会阻塞记忆读取。它只负责告诉模型，不自动改代码；模型看到提醒后运行 `scripts/daily-sync.mjs`。
 
 ### 5.2 memory_rules
 参数：无。返回工作规则全文。
@@ -440,7 +442,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 | `/restore` | POST | `kind` `id` `scope` | 复活墓碑；同 key 已有 active 值/同文本 active 笔记时返回 `restored:false` 与 `activeId`，不制造双活 |
 | `/status` | GET | — | 运行态：`version`（来自 `package.json`）、注入统计、嵌入后端、`routes`（pending/registered/disposed、count、lastError）、`aliasRepair`、`aliasMigration`；`embedding.dropped` / `lastDropAt` 与 `semantic.gcError` / `gcFailedAt` 可观测队列丢弃和启动 GC 失败 |
 | `/search` | GET | `q` `limit` `scope` | 混合检索 |
-| `/packet` | GET | `q` `scope` `cwd` `limit` `budget` `format` | 无 MCP 宿主的可注入记忆包；`cwd` 先走 `resolveProjectKey()`（3.10.2 起），`format=text` 直接输出纯文本 |
+| `/packet` | GET | `q` `scope` `cwd` `limit` `budget` `format` | 无 MCP 宿主的可注入记忆包；`cwd` 先走 `resolveProjectKey()`（3.10.2 起），`format=text` 直接输出纯文本；有云端新版本时 `text` 顶部带版本提醒，JSON 含 `update` |
 | `/openapi.json` | GET | — | HTTP adapter 的 OpenAPI 3.0 描述（packet/search/list/node/status/tool） |
 | `/tool` | POST | body `name` `arguments`；header `x-omni-csrf: 1` | 受限工具桥：write/search/solution_report/feedback/get/amend/profile/timeline |
 | `/ingest` | POST | `text` 必填；`role` `scope` `cwd` `sessionId` `source` `importance` `extract`；body 上限 64KB（长中文走 JSON body，不塞 URL） | 写转录 + 抽取 pending 候选；超限返回 413 |
@@ -453,9 +455,11 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 
 静态面板挂在 `GET /`：记忆列表 / 搜索 / 星图 / 规则。星图默认读 `scope=all`，四旋臂三维投影（移植客户端 `MemoryGraph`），自动旋转、拖拽旋转、滚轮缩放、点选节点查详情；`/?tab=map` 可直接打开星图页签。
 
-### 6.1 版本可见与每日同步
+### 6.1 版本可见、读取提醒与每日同步
 
 当前版本在四处可见：面板顶栏 `vX.Y.Z`、`GET /health.version`、`GET /omni-memory/status.version`、`GET /omni-memory/overview.version`。`/health` 便于脚本探测，`/status` 与 `/overview` 便于面板和 AI 读取；历史版本看 GitHub Releases。
+
+`memory_context`、CLI `context` 和 `/omni-memory/packet` 在读取时会调用 `lib/version-check.mjs`：读取 GitHub contents API 的 `main/package.json`，失败回退 raw CDN；发现远端更高时，在返回文本顶部插入 `## 版本提醒（优先处理）`，并把 `update` 字段放进 JSON。成功检查缓存 30 分钟，失败缓存 5 分钟，网络上限 2.5 秒；`OMNI_VERSION_CHECK_DISABLED=1` 可关闭该检查。它只提醒，不自动更新。
 
 每日同步不是常驻服务，而是按需脚本：
 

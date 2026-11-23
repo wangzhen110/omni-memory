@@ -35,6 +35,7 @@ export async function boot(options = {}) {
   // tests against production memory. Always pin both names to the temp home.
   process.env.OMNI_HOME = home;
   process.env.DSH_HOME = home;
+  process.env.OMNI_VERSION_CHECK_DISABLED = '1';
   delete process.env.OMNI_BACKUP_DIR;
   delete process.env.OMNI_TRUSTED_HOSTS;
   // The bundled model costs ~216MB RSS per process. Tests opt in with

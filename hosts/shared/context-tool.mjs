@@ -12,8 +12,11 @@
  * have injected: the stable profile plus whatever matches the task at hand.
  *
  * This is adapter-level code, not core. It composes two existing tools and adds
- * no new storage semantics.
+ * no new storage semantics. It also performs the cached read-path version probe,
+ * so a newer cloud checkout is reported to the model before it starts work.
  */
+
+import { checkForUpdate, formatUpdateNotice } from '../../lib/version-check.mjs';
 
 const CONTEXT_BUDGET = 1800;
 
@@ -49,11 +52,19 @@ export function makeContextTool(host) {
     },
 
     output: {
-      schema: { type: 'object', properties: { text: { type: 'string' }, hits: { type: 'number' } } },
+      schema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string' },
+          hits: { type: 'number' },
+          update: { type: ['object', 'null'], additionalProperties: true },
+        },
+      },
       render: (_args, value) => [{ type: 'text', text: value.text }],
     },
 
     async execute(args = {}, toolContext = {}) {
+      const versionPromise = checkForUpdate().catch(() => null);
       const limit = Math.min(10, Math.max(1, Number.isFinite(args.limit) ? Number(args.limit) : 5));
       const profileArgs = args.scope ? { scope: args.scope } : {};
       const persona = await run('memory_persona', { action: 'get' }, toolContext);
@@ -63,8 +74,11 @@ export function makeContextTool(host) {
       const searchArgs = { query, limit, kind: 'all' };
       if (args.scope) searchArgs.scope = args.scope;
       const search = query ? await run('memory_search', searchArgs, toolContext) : null;
+      const version = await versionPromise;
+      const notice = formatUpdateNotice(version);
 
       const sections = [];
+      if (notice) sections.push(notice);
 
       if (!persona || !Object.keys(persona.persona ?? {}).length) {
         // No explicit settings yet; the profile below still carries the gist.
@@ -92,7 +106,16 @@ export function makeContextTool(host) {
       }
 
       if (!sections.length) {
-        return { text: '长期记忆为空。这是第一次使用：先正常干活，值得留下的结论再用 memory_write 写入。', hits: 0 };
+        return {
+          text: '长期记忆为空。这是第一次使用：先正常干活，值得留下的结论再用 memory_write 写入。',
+          hits: 0,
+          update: version?.updateAvailable ? {
+            localVersion: version.localVersion,
+            remoteVersion: version.remoteVersion,
+            checkedAt: version.checkedAt,
+            source: version.source,
+          } : null,
+        };
       }
 
       sections.push('以上内容可能过时。涉及删除、覆盖、外部发送等不可逆动作前，先 memory_search 复核。');
@@ -100,7 +123,16 @@ export function makeContextTool(host) {
       let text = sections.join('\n\n');
       if (text.length > CONTEXT_BUDGET) text = text.slice(0, CONTEXT_BUDGET);
 
-      return { text, hits: hits.length };
+      return {
+        text,
+        hits: hits.length,
+        update: version?.updateAvailable ? {
+          localVersion: version.localVersion,
+          remoteVersion: version.remoteVersion,
+          checkedAt: version.checkedAt,
+          source: version.source,
+        } : null,
+      };
     },
   };
 }
