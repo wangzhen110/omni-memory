@@ -464,13 +464,13 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 每日同步不是常驻服务，而是按需脚本：
 
 ```bash
-node scripts/daily-sync.mjs            # 当天第一次：检查、必要时更新、校验、重启、写状态
+node scripts/daily-sync.mjs            # 当天第一次，或读取缓存发现更高版本时：检查、必要时更新、校验、重启、写状态
 node scripts/daily-sync.mjs --check    # 只检查，不更新、不重启、不写状态
 node scripts/daily-sync.mjs --force    # 强制重跑当天检查
 node scripts/daily-sync.mjs --no-restart  # 只更新代码，不重启 7788
 ```
 
-状态文件默认 `$DSH_HOME/omni-daily-sync.json`（未设置时 `~/.dsh/omni-daily-sync.json`），记录 `lastCheckDate`、`localVersion`、`remoteVersion`、`action`、`headBefore/headAfter`。`localDateKey()` 按用户本地日历日计算，不按 UTC；所以 `lastCheckDate` 与本地 `YYYY-MM-DD` 相同即返回 `already-ran-today`。
+状态文件默认 `$DSH_HOME/omni-daily-sync.json`（未设置时 `~/.dsh/omni-daily-sync.json`），记录 `lastCheckDate`、`localVersion`、`remoteVersion`、`action`、`headBefore/headAfter`。`localDateKey()` 按用户本地日历日计算，不按 UTC；`lastCheckDate` 与本地 `YYYY-MM-DD` 相同通常返回 `already-ran-today`，但若 `omni-version-check.json` 缓存的远端版本高于当前本地版本，这次 gate 会自动放行。
 
 更新顺序：读 GitHub `main/package.json` → 远端更高才继续 → `git status --porcelain` 检查 tracked 文件 → `git fetch` + `git merge --ff-only` → `node --check index.js` → 重启 `OmniMemory7788` → 轮询 `/health` 等版本一致。任何一步失败都返回结构化 JSON；dirty tracked tree、分叉、fetch 失败、语法校验失败都不覆盖现有代码，校验失败会 `git reset --hard` 回到更新前提交。没有 `OmniMemory7788` 计划任务时只返回 `service.exists=false`，不自动创建系统任务。
 
