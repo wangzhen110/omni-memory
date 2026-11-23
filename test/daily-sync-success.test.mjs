@@ -21,6 +21,10 @@ function gitIn(dir, args) {
 }
 
 test('daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher', t => {
+  if (process.platform !== 'win32') {
+    t.skip('launcher installation is Windows-only');
+    return;
+  }
   const git = spawnSync(GIT, ['--version'], { encoding: 'utf8' });
   if (git.status !== 0 || !existsSync(LAUNCHER)) {
     t.skip('git or the launcher binary is unavailable');

@@ -61,3 +61,7 @@ ssh -L 7788:127.0.0.1:7788 user@server
 ## CI 覆盖
 
 `.github/workflows/ci.yml` 在 `ubuntu-latest` 与 `windows-latest` 上跑 Node 22.13 / 24：`npm run check`、`npm test`、`npm run bench:golden`。Linux 真机结果以 GitHub Actions 日志为准；本机当前是 Windows，没有 WSL，不能替代 Linux 验收。
+
+## FTS5 边界
+
+部分 Linux Node 构建的 `node:sqlite` 没有编译 FTS5。产品会退化为 LIKE 字面召回，功能仍可用，但 trigram 子串检索会变慢；FTS5 专项测试在这些构建上显式 skip，不用失败冒充“平台不支持”。如果要完整 trigram 行为，选带 FTS5 的 Node 构建，或在 Linux 上自编译 Node。

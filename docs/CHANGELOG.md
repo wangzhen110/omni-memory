@@ -20,6 +20,7 @@
 ### 测试
 - 完整 `npm test` **425/425** 通过（423 + quality 1 + recovery 1）。
 - `npm run check` 覆盖文档、客户端 hook、语法、启动器、语义资产与 update log。
+- **跨平台守卫**：Linux CI 的 Node 构建没有 FTS5 时，FTS5 专项测试显式 skip；Windows-only 的 launcher 安装测试在非 Windows 上 skip。产品在没有 FTS5 时继续用 LIKE 字面召回，不把平台能力差异伪装成代码失败。
 
 ## [3.11.9] — 2026-11-23
 

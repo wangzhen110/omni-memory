@@ -17,6 +17,7 @@
 
 | 项 | 现状 | 下一步 |
 |---|---|---|
+| FTS5 构建差异 | Linux CI 的 Node 构建没有 FTS5；产品退化为 LIKE，FTS5 专项测试 skip | 提供可选的 FTS5 构建说明/自编译脚本；或在 Linux 上用带 FTS5 的 Node 复测 |
 | 多进程并发压测 | 已有真实多进程正确性测试（`concurrency.test.mjs`、迁移并发），但没有并发吞吐/延迟压测 | 两进程持续写入 + 检索，记录 busy/retry、p95 与丢行数 |
 | 远程 HTTP 鉴权 | loopback-only，明确不暴露 LAN | 若要托管，需要 token/OAuth、TLS、租户隔离；不能只改 bind |
 | Docker HTTP 入口 | 容器只提供 stdio MCP | 远程 HTTP 方案确定后再加；现在加端口没有意义 |

@@ -15,6 +15,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { boot } from './helpers.mjs';
+import { supportsFts5 } from './fts-support.mjs';
 
 const P95_BUDGET_MS = 300; // ADR-020 / NFR-01 — never replace with a per-machine number
 const WARMUP = 3;
@@ -96,6 +97,10 @@ async function runScenario(rows) {
 }
 
 test('ADR-020 p95 budget: 10k rows < 300ms with real hits', { timeout: 120_000 }, async t => {
+  if (!supportsFts5()) {
+    t.skip('FTS5 is not compiled into this Node build');
+    return;
+  }
   const r = await runScenario(10_000);
   t.diagnostic(`10k rows: seed=${r.seedMs}ms p95=${r.p95}ms max=${r.max}ms hitTotal=${r.hitTotal} total=${r.totalMs}ms`);
   assert.ok(
@@ -106,6 +111,10 @@ test('ADR-020 p95 budget: 10k rows < 300ms with real hits', { timeout: 120_000 }
 });
 
 test('ADR-020 p95 budget: 100k rows < 300ms with real hits', { timeout: 120_000, skip: skip100k }, async t => {
+  if (!supportsFts5()) {
+    t.skip('FTS5 is not compiled into this Node build');
+    return;
+  }
   const r = await runScenario(100_000);
   t.diagnostic(`100k rows: seed=${r.seedMs}ms p95=${r.p95}ms max=${r.max}ms hitTotal=${r.hitTotal} total=${r.totalMs}ms`);
   assert.ok(

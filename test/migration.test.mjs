@@ -7,6 +7,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { boot } from './helpers.mjs';
+import { supportsFts5 } from './fts-support.mjs';
 import { SCHEMA_VERSION } from '../index.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -97,7 +98,11 @@ test('D-08 v6 turns legacy manual project scopes into the global layer', async (
   check.close();
 });
 
-test('D-03 note and fact FTS tables are created and populated', async () => {
+test('D-03 note and fact FTS tables are created and populated', async t => {
+  if (!supportsFts5()) {
+    t.skip('FTS5 is not compiled into this Node build');
+    return;
+  }
   const app = await boot();
   await app.call('memory_write', { kind: 'note', text: 'fts note row' });
   await app.call('memory_write', {
@@ -112,7 +117,12 @@ test('D-03 note and fact FTS tables are created and populated', async () => {
   db.close();
 });
 
-test('D-03 backfill indexes rows that predate the FTS tables', async () => {  const home = mkdtempSync(path.join(tmpdir(), 'omni-backfill-'));
+test('D-03 backfill indexes rows that predate the FTS tables', async t => {
+  if (!supportsFts5()) {
+    t.skip('FTS5 is not compiled into this Node build');
+    return;
+  }
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-backfill-'));
   mkdirSync(path.join(home, 'memory'), { recursive: true });
   const legacy = openDb(home);
   legacy.exec(`

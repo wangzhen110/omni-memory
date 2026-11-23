@@ -16,7 +16,11 @@ function gitIn(dir, args) {
   return result.stdout.trim();
 }
 
-test('install-launcher stages a content-addressed binary and a sidecar config', () => {
+test('install-launcher stages a content-addressed binary and a sidecar config', t => {
+  if (process.platform !== 'win32') {
+    t.skip('launcher installation is Windows-only');
+    return;
+  }
   const repo = mkdtempSync(path.join(tmpdir(), 'omni-install-launcher-repo-'));
   const home = mkdtempSync(path.join(tmpdir(), 'omni-install-launcher-home-'));
   try {

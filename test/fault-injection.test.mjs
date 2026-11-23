@@ -4,6 +4,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { boot, fakeReq, fakeRes } from './helpers.mjs';
+import { hasFtsTable } from './fts-support.mjs';
 
 /**
  * Subsystem fault injection against a throwaway store.
@@ -54,6 +55,10 @@ test('删除 notes_fts 后 memory_search 退化为字面召回，结果合法且
   const token = 'faultftsdelta42';
   const noteId = await writeNote(`故障注入笔记 ${token}`);
   const db = openDb();
+  if (!hasFtsTable(db, 'notes_fts')) {
+    t.skip('FTS5 is not compiled into this Node build');
+    return;
+  }
 
   // index.js: ftsRowIds() wraps the MATCH query in try/catch -> [] (line 2709),
   // and rowsByIds() returns [] for empty ids. The LIKE recent window still
@@ -80,6 +85,10 @@ test('notes_fts 被破坏为普通表后 memory_search 不抛未捕获异常', a
   const token = 'faultftscorrupt77';
   const noteId = await writeNote(`损坏的 FTS ${token}`);
   const db = openDb();
+  if (!hasFtsTable(db, 'notes_fts')) {
+    t.skip('FTS5 is not compiled into this Node build');
+    return;
+  }
 
   db.exec('DROP TABLE notes_fts');
   db.exec('CREATE TABLE notes_fts (text TEXT)');
