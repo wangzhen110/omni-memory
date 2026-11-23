@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 93 次提交；更新记录自身的提交不计入列表。
+> 共 94 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-23
 
+- 14:32:52 `2f104f03` — fix: close v3.11.6 audit P0/P1 and harden 3.11.7 release gates — [提交](https://github.com/wangzhen110/omni-memory/commit/2f104f030f1129a9657e62111235d5c3201fc45a)
 - 13:32:30 `26355034` — feat: signed update chain, migration backups and silent 7788 launcher (3.11.6) — [提交](https://github.com/wangzhen110/omni-memory/commit/2635503415b715c2e439516996ac36a0c9002c15)
 - 11:57:30 `e4b66227` — fix: make read-path version reminder report-only (3.11.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/e4b66227bfd86d60750443b13d387f795e6ffe90)
 - 10:52:24 `bbbdc079` — docs: describe conditional daily-sync gate — [提交](https://github.com/wangzhen110/omni-memory/commit/bbbdc079d86eb70507e8c62adc3d4eb9faa2e658)
