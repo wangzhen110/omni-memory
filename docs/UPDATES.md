@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 99 次提交；更新记录自身的提交不计入列表。
+> 共 100 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-23
 
+- 22:34:00 `ea943b4f` — feat: v3.12.1 adaptive retrieval bounds and lease wait — [提交](https://github.com/wangzhen110/omni-memory/commit/ea943b4fa4900cd1276038f8383279b39af854cf)
 - 21:31:17 `2862bee9` — fix: skip FTS5 and Windows-only tests on unsupported runners — [提交](https://github.com/wangzhen110/omni-memory/commit/2862bee99fa33bbe4208bbc0c8b7271030744422)
 - 21:25:46 `125cf575` — feat: v3.12.0 benchmarks, metrics, container and licensing — [提交](https://github.com/wangzhen110/omni-memory/commit/125cf57512cb4aff6bd7ce597998a148eb360e4c)
 - 17:16:24 `effeaec3` — feat: v3.11.9 product hub, mobile entry, one-command setup and doctor — [提交](https://github.com/wangzhen110/omni-memory/commit/effeaec39d7a4321e90f0556a46662888e64346a)
