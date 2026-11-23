@@ -15,7 +15,7 @@
 
 ## 2026-11-23
 
-- 11:57:30 `97337ea6` — fix: make read-path version reminder report-only (3.11.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/97337ea68a021499e0b8c681b536545469d59f31)
+- 11:57:30 `e4b66227` — fix: make read-path version reminder report-only (3.11.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/e4b66227bfd86d60750443b13d387f795e6ffe90)
 - 10:52:24 `bbbdc079` — docs: describe conditional daily-sync gate — [提交](https://github.com/wangzhen110/omni-memory/commit/bbbdc079d86eb70507e8c62adc3d4eb9faa2e658)
 - 10:51:47 `3658dac1` — docs: note automatic same-day gate bypass — [提交](https://github.com/wangzhen110/omni-memory/commit/3658dac1da279e84cf405950e9f28be87c1ab389)
 - 10:50:25 `31a9324d` — fix: let read-path version probe bypass the same-day sync gate (3.11.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/31a9324d36685190b8938037b0d9846498c21fdb)
