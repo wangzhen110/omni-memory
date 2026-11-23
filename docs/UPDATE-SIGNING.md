@@ -48,7 +48,7 @@
 
    默认读取 `~/.dsh/omni-update-signing-key.pem`，输出 `omni-update-manifest.json`。可用 `--key`、`--out`、`--issued-at` 覆盖，但发布流程不应把私钥路径写进仓库。
 4. 创建 `v3.11.6` tag 和 GitHub Release，把 `omni-update-manifest.json` 作为 Release asset 上传。清单不放进 git 仓库：它包含 commit，如果又提交进仓库，会形成“清单包含 commit、commit 又包含清单”的循环哈希。
-5. 在旧版本 checkout 上先跑 `node scripts/daily-sync.mjs --check`，确认返回 `signatureRequired: true`；再跑 `--apply` 验证真实更新。成功后才考虑 `--restart`。
+5. 在旧版本 checkout 上先跑 `node scripts/daily-sync.mjs --check`，确认返回 `update-available`；再跑 `--apply` 验证真实更新。`--check` 只比较版本，不读取也不验证签名；签名校验只在 `--apply` 发生。成功后才考虑 `--restart`。
 
 ## `--apply` 的拒绝条件
 
