@@ -28,6 +28,20 @@ const WEB_DIR = path.join(HERE, 'web');
 
 const STATIC_CACHE = new Map();
 
+// Extensionless product entry points. They are still served from WEB_DIR and
+// still loopback-only; this is only a pretty-URL alias, not a new route surface.
+const STATIC_ALIASES = Object.freeze({
+  '/hub': 'hub.html',
+  '/hub/': 'hub.html',
+  '/m': 'm.html',
+  '/m/': 'm.html',
+});
+
+export function staticAssetName(pathname) {
+  if (pathname === '/') return 'index.html';
+  return STATIC_ALIASES[pathname] ?? pathname.replace(/^\/+/, '');
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -160,7 +174,7 @@ export async function startHttpServer({
   });
 
   async function serveStatic(req, res, pathname) {
-    const name = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+    const name = staticAssetName(pathname);
     if (name.includes('..')) return sendJson(res, 403, { ok: false, error: 'bad path' });
 
     const file = path.join(WEB_DIR, name);
@@ -293,7 +307,7 @@ export async function startHttpServer({
         return;
       }
 
-      if (req.method === 'GET' && (pathname === '/' || MIME[path.extname(pathname)])) {
+      if (req.method === 'GET' && (pathname === '/' || STATIC_ALIASES[pathname] || MIME[path.extname(pathname)])) {
         if (!isLoopback(req)) {
           sendJson(res, 403, { ok: false, error: 'forbidden' });
           return;

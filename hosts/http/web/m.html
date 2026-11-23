@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080b10">
+<title>全息记忆 · 手机端</title>
+<link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+<header class="m-top">
+  <a class="m-brand" href="/hub" aria-label="返回记忆中枢">
+    <span class="m-mark" aria-hidden="true"></span>
+    <span>全息记忆</span>
+  </a>
+  <span class="m-online" id="online"><i></i>连接中</span>
+</header>
+
+<main class="m-main">
+  <div class="m-error" id="mError" role="alert"></div>
+
+  <section class="m-hero">
+    <p class="m-eyebrow">AI MEMORY · 本地优先</p>
+    <h1>你记得的，<br><em>它都记得。</em></h1>
+    <p>换模型、换宿主、重启之后，记忆还在。这里是你的本地记忆库。</p>
+    <div class="m-stats">
+      <div class="m-stat"><strong id="mMemory">—</strong><span>活跃记忆</span></div>
+      <div class="m-stat"><strong id="mHealth">—</strong><span>健康度</span></div>
+      <div class="m-stat"><strong id="mTools">—</strong><span>工具</span></div>
+    </div>
+  </section>
+
+  <section class="m-search-wrap" aria-label="搜索记忆">
+    <label class="m-search">
+      <span class="m-search-icon" aria-hidden="true">⌕</span>
+      <input id="mQuery" type="search" inputmode="search" enterkeyhint="search" placeholder="搜一句话：上次那件事…" autocomplete="off">
+      <button id="mClear" type="button" aria-label="清空搜索" hidden>×</button>
+    </label>
+    <p class="m-search-hint" id="mHint">最近写入 · 点开任意一条展开全文</p>
+  </section>
+
+  <section class="m-list" id="mList" aria-live="polite">
+    <div class="m-skeleton"></div>
+    <div class="m-skeleton"></div>
+    <div class="m-skeleton"></div>
+  </section>
+
+  <section class="m-links">
+    <a href="/hub">记忆中枢 <span>→</span></a>
+    <a href="/star-map.html">完整星图 <span>↗</span></a>
+  </section>
+</main>
+
+<nav class="m-nav" aria-label="手机端导航">
+  <a href="/hub"><span class="m-nav-icon">◈</span>中枢</a>
+  <a class="active" href="/m"><span class="m-nav-icon">⌕</span>搜索</a>
+  <a href="/"><span class="m-nav-icon">▦</span>桌面</a>
+</nav>
+
+<script src="/mobile.js"></script>
+</body>
+</html>

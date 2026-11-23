@@ -453,7 +453,13 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 
 响应统一带 `ok`。错误为 `{ ok: false, error }`。
 
-静态面板挂在 `GET /`：记忆列表 / 搜索 / 星图 / 规则。星图默认读 `scope=all`，四旋臂三维投影（移植客户端 `MemoryGraph`），自动旋转、拖拽旋转、滚轮缩放、点选节点查详情；`/?tab=map` 可直接打开星图页签。
+静态入口挂在 `GET /`、`GET /hub`、`GET /m`，三者都只允许 loopback：
+
+- `/`：原有完整仪表盘（KPI、健康度、增长、项目、热力图、画像、活跃带、星图、动态）。
+- `/hub`：面向普通用户的六卡总览（记忆库 / 检索 / 星图 / 项目 / 工具 / 状态），数字来自 `/overview` 与 `/health`；搜索框跳转 `/panel.html?q=`。
+- `/m`：竖屏只读手机端，最近写入与 `/omni-memory/search` 搜索；不提供写入入口。
+
+`/hub` 与 `/m` 是无扩展名的 pretty-path，由 `hosts/http/server.mjs` 的 `STATIC_ALIASES` 映射到 `hub.html` / `m.html`，不是新增 REST 路由。星图默认读 `scope=all`，四旋臂三维投影（移植客户端 `MemoryGraph`），自动旋转、拖拽旋转、滚轮缩放、点选节点查详情；`/?tab=map` 可直接打开星图页签。
 
 ### 6.1 版本可见、读取提醒与每日同步
 
@@ -526,10 +532,15 @@ forget   --kind note|fact|chunk --id <行id>
 scope-alias --from <旧proj键> --to <新proj键> [--apply]
          默认预览；--apply 事务内合并 scope；--list 列出已记录别名
 serve    [--port <端口>] [--bind <地址>]
+doctor   [--home <目录>] [--port <端口>] [--task <任务名>] [--json] [--strict]
+         [--skip-http] [--skip-task]
+         只读诊断 Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务
 mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 ```
 
 所有命令共用 `--dir`（项目目录）与 `OMNI_*` 环境变量。`write` / `report` / `forget` 走的是与 MCP 完全相同的工具实现，不存在第二套写入路径。
+
+一键安装不在 CLI 里，而是独立入口：`npm run setup:dry` 看计划，`npm run setup` 等价于 `node scripts/install.mjs --apply --start`；它先跑 `omni doctor` 的只读 preflight，再安装内容寻址启动器、写侧车配置，并在任务缺失时用 `--create-task` 创建 `OmniMemory7788`。
 
 ---
 

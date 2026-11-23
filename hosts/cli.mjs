@@ -17,6 +17,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Keep node:sqlite's ExperimentalWarning off stderr; hook runs read stderr as an error.
 process.removeAllListeners('warning');
@@ -54,6 +55,8 @@ const USAGE = `全息记忆 · omni
   omni scope-alias --list
                列出已记录的旧键 → canonical 键映射
   omni serve   [--port <端口>] [--bind <地址>]
+  omni doctor  [--home <目录>] [--port <端口>] [--task <任务名>] [--json] [--strict]
+               只读诊断：Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务
   omni mcp     以 stdio 方式启动 MCP 服务（等同 hosts/mcp/bin.mjs）
 
 环境变量:
@@ -464,6 +467,23 @@ async function commandMcp() {
   await import('./mcp/bin.mjs');
 }
 
+async function commandDoctor() {
+  const { runDoctor, formatDoctor } = await import('./shared/doctor.mjs');
+  const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const port = flags['skip-http'] === true ? false : Number(flags.port ?? process.env.OMNI_HTTP_PORT ?? 7788);
+  const task = flags['skip-task'] === true ? false : String(flags.task ?? process.env.OMNI_SERVICE_TASK ?? 'OmniMemory7788');
+  const result = await runDoctor({
+    repo,
+    home: flags.home,
+    port,
+    task,
+    strict: flags.strict === true,
+  });
+  if (flags.json === true) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  else process.stdout.write(`${formatDoctor(result)}\n`);
+  if (!result.ok) process.exitCode = 1;
+}
+
 switch (command) {
   case 'rules':
     await commandRules();
@@ -500,6 +520,9 @@ switch (command) {
     break;
   case 'serve':
     await commandServe();
+    break;
+  case 'doctor':
+    await commandDoctor();
     break;
   case 'mcp':
     await commandMcp();

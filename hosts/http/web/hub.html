@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>全息记忆 · 记忆中枢</title>
+<link rel="stylesheet" href="/dashboard.css">
+<link rel="stylesheet" href="/hub.css">
+</head>
+<body>
+<div class="shell hub-shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div><div class="brand-name">全息记忆</div><div class="brand-sub">OMNI MEMORY · HUB</div></div>
+    </div>
+    <nav class="nav" aria-label="主导航">
+      <a class="active" href="/hub">中枢</a>
+      <a href="/">概览</a>
+      <a href="/panel.html">记忆</a>
+      <a href="/star-map.html">星图</a>
+      <a href="/m">手机</a>
+    </nav>
+    <div class="top-right">
+      <span class="pill version-pill" id="versionPill" title="当前版本">v—</span>
+      <span class="pill"><span class="dot"></span><span id="dbPill">本地库 · 连接中</span></span>
+      <span class="pill demo-pill" id="asOfPill">读取中</span>
+    </div>
+  </header>
+
+  <main class="hub-main">
+    <div class="error-banner" id="errorBanner" role="alert"></div>
+
+    <section class="hub-hero">
+      <div class="hub-hero-copy">
+        <p class="eyebrow"><b>AI MEMORY HUB</b> · 本地优先 · 不上传</p>
+        <h1>你的 AI，<br><em>不再失忆</em>。</h1>
+        <p class="hub-lede">换模型、换宿主、重启之后，记忆还在。转录留底，笔记可校验，事实会失效，星图把关系连起来。</p>
+        <div class="hub-actions">
+          <a class="hub-btn primary" href="/panel.html">打开记忆库 <span>→</span></a>
+          <a class="hub-btn" href="/star-map.html">看星图</a>
+          <a class="hub-btn" href="/m">手机端</a>
+        </div>
+      </div>
+      <aside class="hub-status" aria-label="运行状态">
+        <div class="hub-status-head"><span>运行状态</span><b id="statusWord">读取中</b></div>
+        <div class="hub-status-row"><span>版本</span><b id="statusVersion">—</b></div>
+        <div class="hub-status-row"><span>工具</span><b id="statusTools">—</b></div>
+        <div class="hub-status-row"><span>项目</span><b id="statusProject">—</b></div>
+        <div class="hub-status-row"><span>健康度</span><b id="statusScore">—</b></div>
+        <p class="hub-status-note">只监听 127.0.0.1 · 写操作需要 POST + Origin/CSRF · 数据库在本地</p>
+      </aside>
+    </section>
+
+    <section class="hub-grid" aria-label="记忆中枢的六个模块">
+      <article class="hub-card" id="card-memory">
+        <div class="hub-card-head"><span class="hub-kicker">MEMORY</span><a href="/panel.html">进入 →</a></div>
+        <h2>记忆库</h2>
+        <p>转录、笔记、事实和实体图。原文只增不改，结论可以校验。</p>
+        <div class="hub-metric"><strong id="memoryTotal">—</strong><span>条活跃记忆</span></div>
+        <div class="hub-card-foot"><span id="memorySplit">—</span><span id="memoryHealth">—</span></div>
+      </article>
+
+      <article class="hub-card" id="card-recall">
+        <div class="hub-card-head"><span class="hub-kicker">RECALL</span><span class="hub-static">四路召回</span></div>
+        <h2>检索</h2>
+        <p>词面、中文二元、向量、图游走融合排序；只在需要时把相关记忆送回上下文。</p>
+        <form class="hub-search" action="/panel.html" method="get">
+          <label class="sr-only" for="hubQuery">搜索记忆</label>
+          <input id="hubQuery" name="q" type="search" placeholder="搜一句话：上次那件事…" autocomplete="off">
+          <button type="submit" aria-label="搜索">→</button>
+        </form>
+        <div class="hub-card-foot"><span>FTS · VECTOR · GRAPH</span><span>RRF</span></div>
+      </article>
+
+      <article class="hub-card" id="card-starmap">
+        <div class="hub-card-head"><span class="hub-kicker">STARMAP</span><a href="/star-map.html">打开 →</a></div>
+        <h2>星图</h2>
+        <p>事实的主谓宾关系连成一张可拖拽的网；点开任意星点，看到这条记忆的来源。</p>
+        <div class="hub-metric"><strong id="entityCount">—</strong><span>个实体</span></div>
+        <div class="hub-card-foot"><span id="relationCount">— 条关系</span><span>真实图谱</span></div>
+      </article>
+
+      <article class="hub-card" id="card-projects">
+        <div class="hub-card-head"><span class="hub-kicker">PROJECTS</span><a href="/">项目分布 →</a></div>
+        <h2>项目</h2>
+        <p>按工作目录自动分层。全局规则和项目记忆互不污染，多客户端共用一个库。</p>
+        <div class="hub-metric"><strong id="projectCount">—</strong><span>个活跃项目</span></div>
+        <div class="hub-card-foot"><span id="projectSplit">—</span><span>多客户端共库</span></div>
+      </article>
+
+      <article class="hub-card" id="card-tools">
+        <div class="hub-card-head"><span class="hub-kicker">TOOLS</span><span class="hub-static">可接入</span></div>
+        <h2>工具</h2>
+        <p>同一份内核，MCP、HTTP、OpenAPI、CLI 和 DSH 都能接；不是另一套记忆。</p>
+        <div class="hub-metric"><strong id="toolCount">—</strong><span>个 MCP 工具</span></div>
+        <div class="hub-card-foot"><span>MCP · HTTP · CLI</span><span>OpenAPI</span></div>
+      </article>
+
+      <article class="hub-card" id="card-status">
+        <div class="hub-card-head"><span class="hub-kicker">STATUS</span><a href="/">详细状态 →</a></div>
+        <h2>状态</h2>
+        <p>记忆不是只求多，还要知道哪些可信、哪些待处理。健康度和待处理队列一眼可见。</p>
+        <div class="hub-metric"><strong id="healthScore">—</strong><span>/ 100 健康度</span></div>
+        <div class="hub-card-foot"><span id="pendingCount">— 待处理</span><span id="engineState">本地引擎</span></div>
+      </article>
+    </section>
+
+    <section class="hub-lower">
+      <article class="hub-recent">
+        <div class="hub-section-head"><div><h2>最近写入</h2><p>来自当前数据库的笔记、事实和候选。</p></div><a href="/panel.html">全部记忆 →</a></div>
+        <div id="recentList" class="hub-recent-list"></div>
+      </article>
+      <article class="hub-note-card">
+        <div class="hub-note-mark" aria-hidden="true">✦</div>
+        <p class="hub-note-kicker">LOCAL FIRST</p>
+        <h2>记忆是你的，<br>不是平台的。</h2>
+        <p>SQLite 在本机，原文不上传。换一个宿主，只要接上同一个 <code>omni.db</code>，它仍然记得你。</p>
+        <a href="/rules">查看工作规则 →</a>
+      </article>
+    </section>
+  </main>
+
+  <footer class="footer hub-footer">
+    <div><b>口径</b>：活跃 = 未删除且未被替代；健康度 = 有效 / 总量，待处理 = 争议 + 候选 + 失效。数字来自本机真实库。</div>
+    <div><b>数据源</b>：<span id="footerSource">本地记忆库</span></div>
+  </footer>
+</div>
+<script src="/hub.js"></script>
+</body>
+</html>

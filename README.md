@@ -1,18 +1,39 @@
 # 全息记忆（Omni Memory）
 
-> 给任意 AI 宿主的长期记忆内核：DSH 原生插件，MCP / HTTP / OpenAPI / CLI 通用接入；**只增不改的原文留底 + 会自我校验的结论 + 按项目分层 + 四路混合召回 + 可复用的故障经验沉淀**。
+> **让 AI 不再失忆的本地长期记忆中枢。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
 
-> ⚠️ **许可提醒**：本项目采用 **全息记忆个人使用许可 1.1** —— 仅允许个人、非商业使用；
-> **禁止任何形式的商业使用**，包括直接商用、修改后商用，以及复制、改写或提取本软件
-> **源码/架构**后做商业替代、竞品或商业服务；且**必须署名作者**。
-> 商用请走 [商业授权](#商业授权) 流程。
-
-[![tests](https://img.shields.io/badge/tests-420%2F420-brightgreen)](#测试)
+[![tests](https://img.shields.io/badge/tests-423%2F423-brightgreen)](#测试与指标)
+[![node](https://img.shields.io/badge/node-%3E%3D22.13-8de1ff)](#本地安装开发者)
 [![license](https://img.shields.io/badge/license-Personal%20Use%201.1-lightgrey)](LICENSE)
 
----
+![全息记忆 · 记忆中枢](docs/images/hub.png)
+
+[查看完整六卡截图](docs/images/hub-full.png)
+
+**它不是聊天记录导出，也不是把上下文窗口调大。** 它把「原文」「结论」「事实」「关系」分成四层：原文只增不改，笔记带来源可校验，事实有有效期，关系进星图；检索时四路召回，只把相关的那一小段送回模型。
 
 **完整机理与接口参考**：[`docs/REFERENCE.md`](docs/REFERENCE.md) —— schema、写入与检索机理、25 个 MCP 工具（23 个内核工具 + `memory_context` / `memory_rules` 适配工具）、21 条路由、MCP 协议面、CLI、环境变量、AI 调用剧本。执行 `npm run memory:sync` 可把整本手册拆成笔记写进记忆库，之后用 `memory_search` 就能直接检索到。
+
+## 5 分钟跑起来（Windows x64）
+
+```powershell
+node --version                 # 需要 >= 22.13
+npm run setup:dry              # 先看安装计划，不写文件、不碰计划任务
+npm run setup                  # 安装签名启动器 + 计划任务并启动 7788（静默，无控制台黑框）
+node hosts/cli.mjs doctor      # 逐项诊断 Node、数据库、语义资产、服务与任务
+```
+
+打开 **`http://127.0.0.1:7788/hub`** 看六卡总览，**`/m`** 是手机端搜索，**`/`** 仍是原来的完整仪表盘。安装器默认 dry-run；`npm run setup` 才会落盘，`--apply --start` 的边界写在 [`scripts/install.mjs`](scripts/install.mjs)。
+
+macOS / Linux 或不想装计划任务：
+
+```bash
+node hosts/cli.mjs serve --port 7788
+```
+
+**手机端长这样**（真实截图，竖屏只读搜索）：
+
+![全息记忆 · 手机端](docs/images/mobile.png)
 
 ## 它解决什么问题
 
@@ -59,7 +80,7 @@
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 420 个用例
+npm test          # 423 个用例
 npm run check     # 语法、文档计数与模型资产完整性校验
 ```
 
@@ -199,7 +220,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**420 / 420 通过**
+- 自动化用例：**423 / 423 通过**
 - 检索延迟（本机复核，**3.10.1 数据；3.10.4 未重跑，不作为 3.10.4 实测**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **116.8ms**（两段式有界检索，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
@@ -274,4 +295,3 @@ https://github.com/wangzhen110/omni-memory/issues
 **备用渠道**：64271785@qq.com（标题请注明「商业授权 + 用途」）
 
 作者会在 3 个工作日内回复授权范围与费用。
-

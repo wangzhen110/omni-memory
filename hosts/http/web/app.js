@@ -161,6 +161,15 @@ $('q').addEventListener('input', event => {
 
 $('scope').addEventListener('change', event => { state.scope = event.target.value; loadList(); });
 $('audit').addEventListener('change', event => { state.audit = event.target.checked; loadList(); });
+
+// `/hub` search submits `?q=`; show the same query in the panel instead of
+// dropping it on arrival. The input listener handles later edits.
+const initialQuery = new URLSearchParams(location.search).get('q');
+if (initialQuery) {
+  $('q').value = initialQuery;
+  state.query = initialQuery;
+}
+
 loadStats();
 setInterval(() => { if (!document.hidden) loadStats(); }, 30_000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStats(); });

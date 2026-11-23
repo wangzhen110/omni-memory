@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.11.8 |
-| 插件版本 | 3.11.8 |
+| 文档版本 | 3.11.9 |
+| 插件版本 | 3.11.9 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-23 |
@@ -82,6 +82,7 @@
 | FR-42 | 跨平台项目键稳定 | Windows/macOS 同一路径不同大小写生成同一项目键；旧键首次打开时按路径迁移到 canonical key，迁移幂等且不误合并同名目录 | ✅ 已实现（schema v15，ADR-031） |
 | FR-43 | 版本可见与受控更新 | `/health`、`/omni-memory/status`、`/overview` 与面板顶栏显示当前版本；`daily-sync` 默认只报告，`--apply` 才更新；更新前必须验证 GitHub Release 的 Ed25519 清单、包哈希、启动器哈希与签名提交谱系，只快进到签名提交；启动器安装到内容寻址路径后再切换任务；`--restart` 才重启服务 | ✅ 已实现（3.11.8；`scripts/daily-sync.mjs`、`lib/update-signature.mjs`、`scripts/install-launcher.mjs`） |
 | FR-44 | 读取记忆时版本提醒 | `memory_context`（MCP/CLI）与 `/omni-memory/packet` 读取时检查云端 `main/package.json`；发现更高版本时在返回文本顶部提示“云端有新版，是否更新由用户决定”，不命令 AI 自动执行；成功结果缓存 30 分钟，失败 5 分钟，Contents API 与 raw 回退共享 2.5s 总预算，检查失败不阻塞记忆读取；缓存回读校验版本结构与 TTL，失败不保留旧远端版本；并发读取用跨进程单飞锁只发一次请求 | ✅ 已实现（3.11.6；`lib/version-check.mjs`） |
+| FR-45 | 产品化入口与诊断 | `/hub` 六卡总览（记忆库/检索/星图/项目/工具/状态）与 `/m` 手机端只读搜索；`omni doctor` 只读诊断 Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务；`npm run setup` 校验签名启动器并安装/创建计划任务，默认 dry-run，`--apply --start` 才落盘与启动 | ✅ 已实现（3.11.9；`hosts/shared/doctor.mjs`、`scripts/install.mjs`） |
 
 ### 1.2 非功能需求
 
@@ -96,9 +97,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 420/420（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 423/423（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 420 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 423 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -535,6 +536,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | FR-26/27/28 | `test/scope-model-judge.test.mjs`、`test/fixes.test.mjs` | HTTP scope、`scope=all` 拒写、跨 scope 事实隔离 |
 | FR-43 | `test/update-signature.test.mjs`、`test/sign-release.test.mjs`、`test/daily-sync-cli.test.mjs`、`test/daily-sync-success.test.mjs`、`test/install-launcher.test.mjs`、`test/uninstall-launcher.test.mjs`、`test/api.test.mjs` | Ed25519 v1/v2 签名/验签、发布清单生成、启动器哈希绑定、字段篡改/未知字段/错误密钥/时间窗拒绝、默认只报告不移动 HEAD、`--apply` 脏树拒绝、完整成功主链、安装/卸载、版本/预发布解析、本地日期 gate；`/status` 与 `/overview` 暴露 `version` |
 | FR-44 | `test/version-check.test.mjs`、`test/daily-sync.test.mjs`、`test/api.test.mjs` | 提醒文本、contents API、raw 回退、缓存复用、缓存注入拒绝、失败清空旧远端版本、网络失败降级、并发单飞锁、`memory_context` 顶部提醒、`/packet` 文本提醒 |
+| FR-45 | `test/productization.test.mjs`、`test/api.test.mjs`、`test/install-launcher.test.mjs` | doctor 只读诊断、fresh home 不落库、安装 dry-run 不写文件/不建任务、`/hub` 与 `/m` 由静态服务返回、计划任务缺失时 `--create-task` 才创建 |
 | FR-38 | `test/ingest.test.mjs`、`test/capture-rules.test.mjs` | ingest 候选、接受/拒绝、隔离、去重、hook 解析 |
 | FR-39 | `test/consolidation.test.mjs` | dry-run、apply、supersede、来源链、scope 隔离 |
 | FR-40 | `test/rerank.test.mjs`、`test/prompt.test.mjs` | rerank 开关、远程评分顺序、分层画像预算 |

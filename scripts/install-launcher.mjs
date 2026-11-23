@@ -93,6 +93,18 @@ function changeTaskCommand(taskName, target, home) {
   return run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script]);
 }
 
+function createTask(taskName, target) {
+  // A fresh checkout has no OmniMemory7788 task. `/SC ONLOGON` is enough for a
+  // user-level memory daemon: it starts when the user logs in, in the user's
+  // own token, and the launcher reads its config from the executable's folder.
+  // The path is quoted for schtasks; `/F` makes an interrupted previous run
+  // recoverable without a password prompt.
+  return run(SCHTASKS, [
+    '/Create', '/SC', 'ONLOGON', '/TN', taskName,
+    '/TR', `"${target}"`, '/RL', 'LIMITED', '/F',
+  ]);
+}
+
 export function installLauncherFromCommit(options = {}) {
   const repo = path.resolve(options.repo || ROOT);
   const home = path.resolve(options.home || DEFAULT_HOME);
@@ -121,10 +133,24 @@ export function installLauncherFromCommit(options = {}) {
   };
   const apply = Boolean(options.apply);
   const restart = Boolean(options.restart);
-  const noTask = Boolean(options.noTask) || taskCommand(taskName) === null;
+  const taskMissing = taskCommand(taskName) === null;
+  const createTaskIfMissing = Boolean(options.createTask);
+  const noTask = Boolean(options.noTask) || (taskMissing && !createTaskIfMissing);
   const installed = existsSync(target) && sha256(readFileSync(target)) === actual;
   if (!apply) {
-    return { ok: true, dryRun: true, commit, sha256: actual, target, configFile, installed, task: taskName, noTask };
+    return {
+      ok: true,
+      dryRun: true,
+      commit,
+      sha256: actual,
+      target,
+      configFile,
+      installed,
+      task: taskName,
+      noTask,
+      taskMissing,
+      taskWillBeCreated: taskMissing && createTaskIfMissing && !noTask,
+    };
   }
   if (process.platform !== 'win32') throw new Error('launcher installation is Windows-only');
   writeConfig(home, config);
@@ -134,22 +160,50 @@ export function installLauncherFromCommit(options = {}) {
     renameSync(temporary, target);
   }
   if (!noTask) {
-    const changed = changeTaskCommand(taskName, target, home);
-    if (!changed.ok) return { ok: false, commit, sha256: actual, target, configFile, installed: true, noTask, error: changed.stderr || changed.stdout || 'schtasks /Change failed' };
+    if (taskMissing && createTaskIfMissing) {
+      const created = createTask(taskName, target);
+      if (!created.ok) return {
+        ok: false, commit, sha256: actual, target, configFile, installed: true, noTask,
+        error: created.stderr || created.stdout || 'schtasks /Create failed',
+      };
+    } else {
+      const changed = changeTaskCommand(taskName, target, home);
+      if (!changed.ok) return {
+        ok: false, commit, sha256: actual, target, configFile, installed: true, noTask,
+        error: changed.stderr || changed.stdout || 'schtasks /Change failed',
+      };
+    }
     if (restart) {
       stopTask(taskName);
       const started = startTask(taskName);
-      if (!started.ok) return { ok: false, commit, sha256: actual, target, configFile, installed: true, noTask, error: started.stderr || started.stdout || 'schtasks /Run failed' };
+      if (!started.ok) return {
+        ok: false, commit, sha256: actual, target, configFile, installed: true, noTask,
+        error: started.stderr || started.stdout || 'schtasks /Run failed',
+      };
     }
   }
-  return { ok: true, dryRun: false, commit, sha256: actual, target, configFile, installed: true, task: taskName, noTask, restart };
+  return {
+    ok: true,
+    dryRun: false,
+    commit,
+    sha256: actual,
+    target,
+    configFile,
+    installed: true,
+    task: taskName,
+    noTask,
+    taskMissing,
+    taskWillBeCreated: taskMissing && createTaskIfMissing && !noTask,
+    restart,
+  };
 }
 
 function main() {
   const argv = process.argv.slice(2);
   if (argv.includes('--help') || argv.includes('-h')) {
-    console.log('Usage: node scripts/install-launcher.mjs [--repo <dir>] [--commit <sha>] [--home <dir>] [--task <name>] [--target <exe>] [--node <node.exe>] [--port <port>] [--apply] [--restart] [--no-task]');
+    console.log('Usage: node scripts/install-launcher.mjs [--repo <dir>] [--commit <sha>] [--home <dir>] [--task <name>] [--target <exe>] [--node <node.exe>] [--port <port>] [--apply] [--restart] [--no-task] [--create-task]');
     console.log('Without --apply it only prints the planned content-addressed target.');
+    console.log('--create-task creates the scheduled task when it does not exist; without it a missing task is reported as noTask.');
     return;
   }
   const value = name => {
@@ -167,6 +221,7 @@ function main() {
     apply: argv.includes('--apply'),
     restart: argv.includes('--restart'),
     noTask: argv.includes('--no-task'),
+    createTask: argv.includes('--create-task'),
   });
   console.log(JSON.stringify(result, null, 2));
   if (!result.ok) process.exitCode = 2;
