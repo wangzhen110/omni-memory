@@ -42,3 +42,11 @@
 - CLI 也不可用时，才用 `GET http://127.0.0.1:7788/omni-memory/packet?cwd=<项目目录>&q=<任务>` 做只读兜底；必须带 `cwd`，否则默认 global，不能当项目层用。写入等 CLI 恢复。
 - 连接器只是可选增强；用户不主动要求时，不要提“去插件页保存连接器”。
 - Agent 不自动修改豆包设置、配置或注册表。
+
+## 每日版本对齐（每天只做一次）
+
+1. 每天第一次进入本项目、调用 `memory_context` 之前，先在项目根目录执行 `node scripts/daily-sync.mjs`（`node` 不在 PATH 时用本机 Node 绝对路径）。
+2. 返回 `already-ran-today` 就直接继续，不要重复执行；返回 `up-to-date` 也继续。
+3. 返回 `updated` 时先看 `service.healthy`：为 `true` 才继续任务；为 `false` 或 `exists:false` 时明确告诉用户“代码已更新，但 7788 服务未重启成功”，不要假装已生效。
+4. 返回 `blocked-dirty`、`diverged`、`check-failed`、`network-error` 时不要强拉，按返回的 `reason` 报告并继续用当前版本。
+5. `--check` 只检查不写状态；`--force` 才会在同一天重跑。除排障外，不要用 `--force` 绕过每日 gate。

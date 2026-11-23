@@ -97,6 +97,7 @@ function renderAll(data) {
   const asOf = new Date(data.asOf);
   $('#asOf').textContent = `${asOf.getFullYear()}.${String(asOf.getMonth() + 1).padStart(2, '0')}.${String(asOf.getDate()).padStart(2, '0')} · 快照 ${String(asOf.getHours()).padStart(2, '0')}:${String(asOf.getMinutes()).padStart(2, '0')}`;
   $('#sourcePill').textContent = `真实库 · ${scopeLabel[data.scope] || data.scope}`;
+  $('#versionPill').textContent = `v${data.version || '—'}`;
   $('#snapshotPill').textContent = `快照 ${String(asOf.getHours()).padStart(2, '0')}:${String(asOf.getMinutes()).padStart(2, '0')}`;
   $('#footerSource').textContent = `本地记忆库 · ${scopeLabel[data.scope] || data.scope}`;
   renderHero(data);

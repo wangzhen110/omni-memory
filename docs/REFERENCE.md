@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 3.11.1 · 生成日期 2026-11-22 · 依据源码与真实 schema v17 核对
+> 版本 3.11.2 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -428,7 +428,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 | 路径 | 方法 | 参数 | 说明 |
 |---|---|---|---|
 | `/list` | GET | `limit` `offset` `scope` `audit` | 记忆列表 + 统计 + 项目目录；`audit=1` 含墓碑与被替代 |
-| `/overview` | GET | `range`（`4w`/`6w`/`12w`/`26w`，默认 `12w`）`scope` | 网页概览用真实聚合：`stats` / `health` / `series` / `daily` / `projects` / `profile` / `activity` / `graph`；不返回全文 |
+| `/overview` | GET | `range`（`4w`/`6w`/`12w`/`26w`，默认 `12w`）`scope` | 网页概览用真实聚合：`version` / `stats` / `health` / `series` / `daily` / `projects` / `profile` / `activity` / `graph`；不返回全文 |
 | `/graph` | GET | `scope` | 星图：`nodes[]`、`links[]`（`source/target/rel`）、`scopes[]` |
 | `/node` | GET | `node` `scope` | 单实体详情与关联事实 |
 | `/persona` | GET/POST | body `values`（≤64KB），清空显式 `action=clear` | 读/写用户设定；空/非法 body 返回 400，不静默清空 |
@@ -438,7 +438,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 | `/dream/rollback` | POST | `noteId` | 撤销替代 |
 | `/export` | GET | `activeOnly` `download` | 备份；`download=1` 走附件下载 |
 | `/restore` | POST | `kind` `id` `scope` | 复活墓碑；同 key 已有 active 值/同文本 active 笔记时返回 `restored:false` 与 `activeId`，不制造双活 |
-| `/status` | GET | — | 运行态：注入统计、嵌入后端、`routes`（pending/registered/disposed、count、lastError）、`aliasRepair`、`aliasMigration`；`embedding.dropped` / `lastDropAt` 与 `semantic.gcError` / `gcFailedAt` 可观测队列丢弃和启动 GC 失败 |
+| `/status` | GET | — | 运行态：`version`（来自 `package.json`）、注入统计、嵌入后端、`routes`（pending/registered/disposed、count、lastError）、`aliasRepair`、`aliasMigration`；`embedding.dropped` / `lastDropAt` 与 `semantic.gcError` / `gcFailedAt` 可观测队列丢弃和启动 GC 失败 |
 | `/search` | GET | `q` `limit` `scope` | 混合检索 |
 | `/packet` | GET | `q` `scope` `cwd` `limit` `budget` `format` | 无 MCP 宿主的可注入记忆包；`cwd` 先走 `resolveProjectKey()`（3.10.2 起），`format=text` 直接输出纯文本 |
 | `/openapi.json` | GET | — | HTTP adapter 的 OpenAPI 3.0 描述（packet/search/list/node/status/tool） |
@@ -452,6 +452,23 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 响应统一带 `ok`。错误为 `{ ok: false, error }`。
 
 静态面板挂在 `GET /`：记忆列表 / 搜索 / 星图 / 规则。星图默认读 `scope=all`，四旋臂三维投影（移植客户端 `MemoryGraph`），自动旋转、拖拽旋转、滚轮缩放、点选节点查详情；`/?tab=map` 可直接打开星图页签。
+
+### 6.1 版本可见与每日同步
+
+当前版本在四处可见：面板顶栏 `vX.Y.Z`、`GET /health.version`、`GET /omni-memory/status.version`、`GET /omni-memory/overview.version`。`/health` 便于脚本探测，`/status` 与 `/overview` 便于面板和 AI 读取；历史版本看 GitHub Releases。
+
+每日同步不是常驻服务，而是按需脚本：
+
+```bash
+node scripts/daily-sync.mjs            # 当天第一次：检查、必要时更新、校验、重启、写状态
+node scripts/daily-sync.mjs --check    # 只检查，不更新、不重启、不写状态
+node scripts/daily-sync.mjs --force    # 强制重跑当天检查
+node scripts/daily-sync.mjs --no-restart  # 只更新代码，不重启 7788
+```
+
+状态文件默认 `$DSH_HOME/omni-daily-sync.json`（未设置时 `~/.dsh/omni-daily-sync.json`），记录 `lastCheckDate`、`localVersion`、`remoteVersion`、`action`、`headBefore/headAfter`。`localDateKey()` 按用户本地日历日计算，不按 UTC；所以 `lastCheckDate` 与本地 `YYYY-MM-DD` 相同即返回 `already-ran-today`。
+
+更新顺序：读 GitHub `main/package.json` → 远端更高才继续 → `git status --porcelain` 检查 tracked 文件 → `git fetch` + `git merge --ff-only` → `node --check index.js` → 重启 `OmniMemory7788` → 轮询 `/health` 等版本一致。任何一步失败都返回结构化 JSON；dirty tracked tree、分叉、fetch 失败、语法校验失败都不覆盖现有代码，校验失败会 `git reset --hard` 回到更新前提交。没有 `OmniMemory7788` 计划任务时只返回 `service.exists=false`，不自动创建系统任务。
 
 ---
 

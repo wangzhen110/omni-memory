@@ -37,6 +37,7 @@ import { createBaseSchema, createFtsTables } from './lib/schema.mjs';
 // The store file itself stays `memory/omni.db` under that home, so a DSH install and a
 // standalone adapter that resolve to the same home share one database instead of forking.
 const DSH_HOME = process.env.OMNI_HOME || process.env.DSH_HOME || path.join(homedir(), '.dsh');
+const PKG_VERSION = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
 const DB_DIR = path.join(DSH_HOME, 'memory');
 const DB_FILE = path.join(DB_DIR, 'omni.db');
 // Backups are the one place a model-facing tool is allowed to touch the disk.
@@ -7070,6 +7071,7 @@ function registerReadRoutes(add) {
 
       return json(res, 200, {
         ok: true,
+        version: PKG_VERSION,
         asOf: now,
         range,
         scope,
@@ -7301,6 +7303,7 @@ function registerAdminRoutes(add) {
       const count = table => Number(prepareCached(s.db, `SELECT COUNT(*) AS n FROM ${table} WHERE deleted_at IS NULL`).get().n);
       return json(res, 200, {
         ok: true,
+        version: PKG_VERSION,
         autoRecall: autoRecallEnabled(),
         lastInjection,
         routes: routeState,

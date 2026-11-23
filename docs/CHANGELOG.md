@@ -2,6 +2,19 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.11.2] — 2026-11-23
+
+### 新增 · 用户怎么知道云端更新了
+- **三个可见面**：`/health` 保留 `version`；`/omni-memory/status` 与 `/omni-memory/overview` 新增 `version`；HTTP 概览顶栏新增 `v3.11.2` 版本角标。打开面板即可看到当前版本，不必再翻日志或目录。
+- **发布通道补齐**：GitHub Releases 已补 `v3.11.1`（tag 指向 `3c5c504`），后续版本按 `vX.Y.Z` 建 Release；仓库仍是 `private:true`，不引入 npm 发布通道。
+- **每日一次云端对齐**：新增 `lib/daily-sync.mjs`（版本解析/数字段比较/本地日期 gate）与 `scripts/daily-sync.mjs`。每天第一次记忆操作前，脚本读取 GitHub `main/package.json`；远端版本更高且工作树无 tracked 修改时 `git merge --ff-only origin/main`，`node --check index.js` 通过后再重启 `OmniMemory7788` 并探测 `/health`。状态写入 `~/.dsh/omni-daily-sync.json`，同一天后续调用直接返回 `already-ran-today`。
+- **安全边界**：dirty tracked tree、分叉、fetch 失败、语法校验失败都不更新；校验失败自动 `git reset --hard` 回滚到更新前提交；无计划任务时只报告 `service.exists=false`，不擅自创建系统任务。`--check` 只检查不写状态、不更新、不重启；`--force` 强制重跑当天检查；`--no-restart` 只更新代码。
+
+### 测试与发布
+- 新增 `test/daily-sync.test.mjs`：版本解析、数字段比较、本地日期 gate 3 项。
+- `test/api.test.mjs` 新增 `/status` 与 `/overview` 版本字段断言。
+- 完整 `npm test` **380/380** 通过；`npm run check` 同步为 23 个内核工具、25 个 MCP 工具、21 路由、31 ADR、schema v17、3.11.2。
+
 ## [3.11.1] — 2026-11-22
 
 ### 修复 · 3.11.0 复审 P2/P3

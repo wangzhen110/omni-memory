@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { boot, fakeReq, fakePost, fakePostConsumed, fakeRes } from './helpers.mjs';
+
+const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 test('twenty one loopback routes are registered', async () => {
   const app = await boot();
@@ -28,6 +31,22 @@ test('twenty one loopback routes are registered', async () => {
     '/omni-memory/status',
     '/omni-memory/tool',
   ]);
+});
+
+test('GET /omni-memory/status and /overview expose the package version', async () => {
+  const app = await boot();
+  const status = fakeRes();
+  await app.route('/omni-memory/status').handler(fakeReq('/omni-memory/status'), status.res);
+  assert.equal(status.state.statusCode, 200);
+  assert.equal(status.json().version, PKG_VERSION);
+
+  const overview = fakeRes();
+  await app.route('/omni-memory/overview').handler(
+    fakeReq('/omni-memory/overview?range=4w&scope=all'),
+    overview.res,
+  );
+  assert.equal(overview.state.statusCode, 200);
+  assert.equal(overview.json().version, PKG_VERSION);
 });
 
 test('GET /omni-memory/overview aggregates growth, health and profile signals', async () => {

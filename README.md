@@ -7,7 +7,7 @@
 > **源码/架构**后做商业替代、竞品或商业服务；且**必须署名作者**。
 > 商用请走 [商业授权](#商业授权) 流程。
 
-[![tests](https://img.shields.io/badge/tests-376%2F376-brightgreen)](#测试)
+[![tests](https://img.shields.io/badge/tests-380%2F380-brightgreen)](#测试)
 [![license](https://img.shields.io/badge/license-Personal%20Use%201.1-lightgrey)](LICENSE)
 
 ---
@@ -59,11 +59,23 @@
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 376 个用例
+npm test          # 380 个用例
 npm run check     # 语法、文档计数与模型资产完整性校验
 ```
 
 然后在 DSH 插件管理器中选择本地目录安装。
+
+### 怎么知道云端更新了
+
+三个地方都能看到当前版本：HTTP 面板顶栏的 `vX.Y.Z` 角标、`GET /health` 的 `version`、`GET /omni-memory/status` 与 `/overview` 的 `version` 字段。历史版本看 [GitHub Releases](https://github.com/wangzhen110/omni-memory/releases)，每个 `vX.Y.Z` 都有对应 tag 和变更说明。
+
+如果希望本机自动跟上云端，每天第一次记忆操作前运行一次：
+
+```bash
+node scripts/daily-sync.mjs
+```
+
+它读取 GitHub `main` 的 `package.json`，仅在远端版本更高且 tracked 文件干净时快进合并；更新后用 `node --check` 校验，失败自动回滚，再重启 `OmniMemory7788` 并等 `/health` 返回新版本。同一天重复调用直接返回 `already-ran-today`；`--check` 只检查，`--force` 强制重查，`--no-restart` 只更新代码。
 
 ### 在 DSH 之外使用（MCP / HTTP / CLI）
 
@@ -162,7 +174,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**376 / 376 通过**
+- 自动化用例：**380 / 380 通过**
 - 检索延迟（本机复核，**3.10.1 数据；3.10.4 未重跑，不作为 3.10.4 实测**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **116.8ms**（两段式有界检索，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
