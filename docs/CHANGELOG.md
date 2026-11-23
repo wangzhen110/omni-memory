@@ -2,6 +2,22 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.11.5] — 2026-11-23
+
+### 修复 · 读路径版本提醒不再驱动自动更新
+- **撤回 3.11.4 的同日自动放行**：`daily-sync` 恢复本地日期 gate，同一天只自动执行一次；任何失败态都不会在当天自动重开。用户确认后要重试，必须显式 `--force`。这消除了“读记忆 → 被要求同步 → `git merge` → 校验失败 `reset --hard` → 再读再擦”的循环。
+- **提醒改为只报告**：文本标题从 `## 版本提醒（优先处理）` 改为 `## 版本提醒（需用户确认）`，不再命令 AI 执行；`AGENTS.md` 与用户 skill 同步改为“告诉用户，等用户同意后再运行”。
+- **缓存不再能注入上下文**：回读缓存时校验 `ok`、`localVersion`、`remoteVersion` 的 semver 结构、`checkedAtMs`、`source` 白名单；`formatUpdateNotice` 再次校验版本，非法内容直接丢弃。网络失败不再继承旧 `remoteVersion`，改为写 `null`。
+- **超时与版本解析**：Contents API 与 raw 回退共享一个 2.5 秒总预算；本地版本改为按需读取并容忍 BOM；版本解析支持 `-rc.1` 与 `+build`，预发布版本不再静默关闭整条功能。
+- **服务副作用收敛**：`blocked-dirty`、`blocked-diverged`、`verification-failed` 等 7 条失败分支只探测 `/health`，不再重启 7788；重启只保留在真正更新成功后。`ensureService` 的失败返回值补 `error`，端口占用、任务缺失、版本不符不再都是同一个 `healthy:false`。
+- **更新作用域收紧**：`daily-sync` 默认操作脚本自身所在 checkout；执行前校验包名 `@local/omni-memory` 与 `origin` 必须是 `wangzhen110/omni-memory`，拒绝在任意有 `package.json` 的仓库里 fetch/merge。`node --check` 从只查 `index.js` 扩大到 `index.js`、`client.js`、`lib/`、`hosts/`、`scripts/` 的全部运行时 JS。
+- **分发补齐**：`files` 加入 `scripts/`、`AGENTS.md`、`package.json`，提醒指向的同步脚本在非 git 分发包里也存在。
+
+### 测试与发布
+- 新增 `test/daily-sync-cli.test.mjs`：非本仓库拒绝、坏版本结构化报错、缺 `package.json` 不崩溃。
+- `test/daily-sync.test.mjs` 补预发布比较与“同日失败不自动重开 gate”；`test/version-check.test.mjs` 补缓存注入拒绝、失败清空旧远端版本、无效提醒不输出；`test/api.test.mjs` 补 `/packet` 文本提醒。
+- 完整 `npm test` **391/391** 通过；`npm run check` 同步为 23 个内核工具、25 个 MCP 工具、21 路由、31 ADR、schema v17、3.11.5。
+
 ## [3.11.4] — 2026-11-23
 
 ### 修复 · 读取提醒不再被“今天已同步”挡住

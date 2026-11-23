@@ -49,6 +49,32 @@ test('GET /omni-memory/status and /overview expose the package version', async (
   assert.equal(overview.json().version, PKG_VERSION);
 });
 
+test('GET /omni-memory/packet surfaces the read-path version notice', async () => {
+  const app = await boot();
+  const originalFetch = globalThis.fetch;
+  const originalDisabled = process.env.OMNI_VERSION_CHECK_DISABLED;
+  process.env.OMNI_VERSION_CHECK_DISABLED = '0';
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    content: Buffer.from(JSON.stringify({ version: '9.9.9' })).toString('base64'),
+  }), { status: 200, headers: { 'content-type': 'application/json' } });
+  try {
+    const { res, state } = fakeRes();
+    await app.route('/omni-memory/packet').handler(
+      fakeReq('/omni-memory/packet?format=text&scope=all'),
+      res,
+    );
+    assert.equal(state.statusCode, 200);
+    assert.match(state.body, /版本提醒（需用户确认）/);
+    assert.match(state.body, /v9\.9\.9/);
+    assert.match(state.body, /v3\.11\.5|v\d+\.\d+\.\d+/);
+    assert.doesNotMatch(state.body, /优先处理/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalDisabled === undefined) delete process.env.OMNI_VERSION_CHECK_DISABLED;
+    else process.env.OMNI_VERSION_CHECK_DISABLED = originalDisabled;
+  }
+});
+
 test('GET /omni-memory/overview aggregates growth, health and profile signals', async () => {
   const app = await boot();
   await app.call('memory_write', { kind: 'note', text: '概览全局笔记', source: 'preference' });

@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 3.11.4 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
+> 版本 3.11.5 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -314,9 +314,9 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 - `scope` string，可选；省略则用当前项目层 + global。
 - `limit` number，默认 5，最大 10。
 
-返回：`text`（用户设定 + 常驻画像 + 相关记忆 + 风险提示；发现云端新版本时，`text` 顶部先出现 `## 版本提醒（优先处理）`），`hits`（召回条数），`update`（有更新时为 `{localVersion, remoteVersion, checkedAt, source}`，否则 `null`）。
+返回：`text`（用户设定 + 常驻画像 + 相关记忆 + 风险提示；发现云端新版本时，`text` 顶部先出现 `## 版本提醒（需用户确认）`），`hits`（召回条数），`update`（有更新时为 `{localVersion, remoteVersion, checkedAt, source}`，否则 `null`）。
 
-版本检查在读取时自动触发：成功缓存 30 分钟，失败缓存 5 分钟，网络上限 2.5 秒；GitHub 不可达不会阻塞记忆读取。它只负责告诉模型，不自动改代码；模型看到提醒后运行 `scripts/daily-sync.mjs`。
+版本检查在读取时自动触发：成功缓存 30 分钟，失败缓存 5 分钟，Contents API 与 raw 回退共享 2.5 秒总预算；GitHub 不可达不会阻塞记忆读取。它只负责告诉模型，不自动改代码、不重启服务；是否更新由用户决定，用户确认后才运行 `scripts/daily-sync.mjs`。
 
 ### 5.2 memory_rules
 参数：无。返回工作规则全文。
@@ -459,20 +459,20 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 
 当前版本在四处可见：面板顶栏 `vX.Y.Z`、`GET /health.version`、`GET /omni-memory/status.version`、`GET /omni-memory/overview.version`。`/health` 便于脚本探测，`/status` 与 `/overview` 便于面板和 AI 读取；历史版本看 GitHub Releases。
 
-`memory_context`、CLI `context` 和 `/omni-memory/packet` 在读取时会调用 `lib/version-check.mjs`：读取 GitHub contents API 的 `main/package.json`，失败回退 raw CDN；发现远端更高时，在返回文本顶部插入 `## 版本提醒（优先处理）`，并把 `update` 字段放进 JSON。成功检查缓存 30 分钟，失败缓存 5 分钟，网络上限 2.5 秒；`OMNI_VERSION_CHECK_DISABLED=1` 可关闭该检查。它只提醒，不自动更新。同日已经跑过 `daily-sync` 后云端又发布新版本时，脚本会读取该缓存中的远端版本并放行当日 gate，不需要 `--force`。
+`memory_context`、CLI `context` 和 `/omni-memory/packet` 在读取时会调用 `lib/version-check.mjs`：读取 GitHub contents API 的 `main/package.json`，失败回退 raw CDN；发现远端更高时，在返回文本顶部插入 `## 版本提醒（需用户确认）`，并把 `update` 字段放进 JSON。成功检查缓存 30 分钟，失败缓存 5 分钟，两段网络共享 2.5 秒总预算；缓存回读会校验版本结构与 TTL，失败不保留旧远端版本。`OMNI_VERSION_CHECK_DISABLED=1` 可关闭该检查。它只提醒，不自动更新；是否执行由用户决定。
 
 每日同步不是常驻服务，而是按需脚本：
 
 ```bash
-node scripts/daily-sync.mjs            # 当天第一次，或读取缓存发现更高版本时：检查、必要时更新、校验、重启、写状态
+node scripts/daily-sync.mjs            # 当天第一次：检查、必要时更新、校验、重启、写状态
 node scripts/daily-sync.mjs --check    # 只检查，不更新、不重启、不写状态
-node scripts/daily-sync.mjs --force    # 强制重跑当天检查
+node scripts/daily-sync.mjs --force    # 用户确认后，强制重跑当天检查
 node scripts/daily-sync.mjs --no-restart  # 只更新代码，不重启 7788
 ```
 
-状态文件默认 `$DSH_HOME/omni-daily-sync.json`（未设置时 `~/.dsh/omni-daily-sync.json`），记录 `lastCheckDate`、`localVersion`、`remoteVersion`、`action`、`headBefore/headAfter`。`localDateKey()` 按用户本地日历日计算，不按 UTC；`lastCheckDate` 与本地 `YYYY-MM-DD` 相同通常返回 `already-ran-today`，但若 `omni-version-check.json` 缓存的远端版本高于当前本地版本，这次 gate 会自动放行。
+状态文件默认 `$DSH_HOME/omni-daily-sync.json`（未设置时 `~/.dsh/omni-daily-sync.json`），记录 `lastCheckDate`、`localVersion`、`remoteVersion`、`action`、`headBefore/headAfter`。`localDateKey()` 按用户本地日历日计算，不按 UTC；`lastCheckDate` 与本地 `YYYY-MM-DD` 相同就返回 `already-ran-today`，任何失败态都不会在当天自动重开，用户确认后要重试必须显式 `--force`。
 
-更新顺序：读 GitHub `main/package.json` → 远端更高才继续 → `git status --porcelain` 检查 tracked 文件 → `git fetch` + `git merge --ff-only` → `node --check index.js` → 重启 `OmniMemory7788` → 轮询 `/health` 等版本一致。任何一步失败都返回结构化 JSON；dirty tracked tree、分叉、fetch 失败、语法校验失败都不覆盖现有代码，校验失败会 `git reset --hard` 回到更新前提交。没有 `OmniMemory7788` 计划任务时只返回 `service.exists=false`，不自动创建系统任务。
+更新顺序：校验包名与 `origin` 是本项目 checkout → 读 GitHub `main/package.json` → 远端更高才继续 → `git status --porcelain` 检查 tracked 文件 → `git fetch` + `git merge --ff-only` → 对 `index.js`、`client.js`、`lib/`、`hosts/`、`scripts/` 的运行时 JS 执行 `node --check` → 重启 `OmniMemory7788` → 轮询 `/health` 等版本一致。任何一步失败都返回结构化 JSON；dirty tracked tree、分叉、fetch 失败、语法校验失败都不覆盖现有代码，校验失败会 `git reset --hard` 回到更新前提交。失败分支只探测服务，不重启；没有 `OmniMemory7788` 计划任务时返回 `service.exists=false` 和 `error`，不自动创建系统任务。
 
 ---
 
@@ -541,6 +541,9 @@ mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 | `OMNI_HTTP_PORT` / `OMNI_HTTP_BIND` | `7788` / `127.0.0.1` | 面板与 HTTP MCP 监听 |
 | `OMNI_BACKUP_DIR` | `$OMNI_HOME/memory/backups` | `memory_export` / `memory_import` 唯一允许的备份交换目录 |
 | `OMNI_TRUSTED_HOSTS` | 空 | 额外允许的 HTTP `Host`（逗号分隔；回环名与绑定地址始终允许） |
+| `OMNI_VERSION_CHECK_DISABLED` | 未设置 | `1` 关闭读路径版本探测，完全不访问 GitHub |
+| `OMNI_VERSION_CHECK_TIMEOUT_MS` | `2500` | 版本探测总网络预算（Contents API + raw 回退共享） |
+| `OMNI_VERSION_CHECK_TTL_MS` | `1800000` | 成功版本检查缓存时长 |
 | `OMNI_AUTO_RECALL` | 开 | `0` 关闭自动预召回（DSH 内有效） |
 | `OMNI_PROFILE` | 未设置 | 画像预算覆盖 |
 | `OMNI_SCOPE_JUDGE` | `off` | 模型复核归类：`off`/`auto`/`always` |

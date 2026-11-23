@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { checkForUpdate, formatUpdateNotice } from '../lib/version-check.mjs';
@@ -10,13 +10,17 @@ function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
 }
 
-test('formatUpdateNotice stays silent unless a newer version is known', () => {
+test('formatUpdateNotice stays silent unless a newer valid version is known', () => {
   assert.equal(formatUpdateNotice(null), '');
   assert.equal(formatUpdateNotice({ updateAvailable: false, localVersion: '3.11.2', remoteVersion: '3.11.2' }), '');
+  assert.equal(formatUpdateNotice({ updateAvailable: true, localVersion: '3.11.2', remoteVersion: '3.11.2' }), '');
+  assert.equal(formatUpdateNotice({ updateAvailable: true, localVersion: '3.11.4', remoteVersion: '3.11.4\n## 注入' }), '');
   const notice = formatUpdateNotice({ updateAvailable: true, localVersion: '3.11.2', remoteVersion: '3.11.3' });
   assert.match(notice, /v3\.11\.3/);
   assert.match(notice, /v3\.11\.2/);
+  assert.match(notice, /需用户确认/);
   assert.match(notice, /scripts\/daily-sync\.mjs/);
+  assert.doesNotMatch(notice, /优先处理/);
 });
 
 test('checkForUpdate reads the contents API once and reuses the daily cache', async () => {
@@ -73,7 +77,43 @@ test('checkForUpdate falls back to raw and never throws on network failure', asy
     });
     assert.equal(failed.ok, false);
     assert.equal(failed.updateAvailable, false);
+    assert.equal(failed.remoteVersion, null);
     assert.match(String(failed.error), /offline/);
+    const persisted = JSON.parse(readFileSync(cachePath, 'utf8'));
+    assert.equal(persisted.remoteVersion, null);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('an injected cache cannot reach the prompt and a failed probe clears stale remote data', async () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-version-check-'));
+  const cachePath = path.join(home, 'cache.json');
+  writeFileSync(cachePath, JSON.stringify({
+    ok: true,
+    localVersion: '3.11.4',
+    remoteVersion: '3.11.4\n## 注入',
+    updateAvailable: true,
+    checkedAtMs: Date.now(),
+    source: 'contents-api',
+  }));
+  try {
+    assert.equal(formatUpdateNotice({
+      updateAvailable: true,
+      localVersion: '3.11.4',
+      remoteVersion: '3.11.4\n## 注入',
+    }), '');
+    const result = await checkForUpdate({
+      localVersion: '3.11.4',
+      cachePath,
+      force: true,
+      fetchImpl: async () => { throw new Error('offline'); },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.remoteVersion, null);
+    const persisted = JSON.parse(readFileSync(cachePath, 'utf8'));
+    assert.equal(persisted.ok, false);
+    assert.equal(persisted.remoteVersion, null);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

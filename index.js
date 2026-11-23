@@ -29,7 +29,7 @@ import { extractCandidateTexts } from './lib/capture-rules.mjs';
 import { rerankConfig, rerankRemote } from './lib/rerank-provider.mjs';
 import { semanticConfig, embedSemantic } from './lib/semantic-embed.mjs';
 import { createBaseSchema, createFtsTables } from './lib/schema.mjs';
-import { checkForUpdate, formatUpdateNotice } from './lib/version-check.mjs';
+import { checkForUpdate, formatUpdateNotice, readLocalVersion } from './lib/version-check.mjs';
 
 // Data home resolution, in priority order:
 //   1. OMNI_HOME   — set by non-DSH adapters (MCP, CLI, HTTP) to point at a shared store
@@ -38,7 +38,7 @@ import { checkForUpdate, formatUpdateNotice } from './lib/version-check.mjs';
 // The store file itself stays `memory/omni.db` under that home, so a DSH install and a
 // standalone adapter that resolve to the same home share one database instead of forking.
 const DSH_HOME = process.env.OMNI_HOME || process.env.DSH_HOME || path.join(homedir(), '.dsh');
-const PKG_VERSION = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
+const PKG_VERSION = readLocalVersion() ?? '0.0.0';
 const DB_DIR = path.join(DSH_HOME, 'memory');
 const DB_FILE = path.join(DB_DIR, 'omni.db');
 // Backups are the one place a model-facing tool is allowed to touch the disk.
@@ -4664,7 +4664,9 @@ const PACKET_BUDGET = 1800;
 async function buildMemoryPacket(scope, query, options = {}) {
   const limit = Math.min(10, Math.max(1, Number(options.limit ?? 5) || 5));
   const budget = Math.min(4000, Math.max(400, Number(options.budget ?? PACKET_BUDGET) || PACKET_BUDGET));
-  const versionPromise = checkForUpdate({ localVersion: PKG_VERSION }).catch(() => null);
+  const versionPromise = checkForUpdate({
+    localVersion: PKG_VERSION === '0.0.0' ? undefined : PKG_VERSION,
+  }).catch(() => null);
   const s = openStore();
   const persona = personaLines(s.db);
   const personaBody = persona.length ? persona.slice(1).join('\n').trim() : '';
