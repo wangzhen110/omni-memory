@@ -35,6 +35,8 @@
 - 可观测性：`/metrics`（loopback-only，进程/请求/MCP/内存计数）。
 - 交付：`Dockerfile`、`.dockerignore`、Linux/Docker 文档、CI container job。
 - 许可：`LICENSING.md` 双轨框架 + 修正商业授权 Issue 模板。
+- **3.12.1 A-06**：大库自适应窗口/采样；本机 1M + 5 万向量 + 100 万 bigram p95 226.9ms → 129.4ms，报告机器同配置 257ms；黄金集 full MRR 0.979 无退化。
+- **3.12.1 C-02**：`OMNI_OPEN_LEASE_WAIT_MS`（默认 150s）替代固定 5s；新增 `test/open-lease-wait.test.mjs`，6s 持锁后第二个打开者成功。
 
 ## 判断规则
 

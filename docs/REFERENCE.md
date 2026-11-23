@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 3.12.0 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
+> 版本 3.12.1 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -576,7 +576,9 @@ mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 | `OMNI_EMBED_BATCH` / `OMNI_EMBED_RETRIES` / `OMNI_EMBED_TIMEOUT_MS` | `64` / `2` / `10000` | 嵌入批处理与重试 |
 | `OMNI_DREAM_INTERVAL_MS` | `0`（关） | 定时做梦校验 |
 | `OMNI_BUSY_TIMEOUT_MS` | `5000` | 写锁等待上限（毫秒，上限 60000）；多客户端共用一库时调大更稳 |
-| `OMNI_SEARCH_WINDOW` / `OMNI_VECTOR_SAMPLE` | 内部默认 | 检索候选窗口与向量采样 |
+| `OMNI_SEARCH_WINDOW` / `OMNI_VECTOR_SAMPLE` | 自适应：小库 20000/5000；大库 5000/1000 | 检索候选窗口与向量采样；显式设置即固定，不再自适应 |
+| `OMNI_LARGE_STORE_ROWS` | `250000` | 最大 id 超过该值视为大库，启用收紧窗口/采样 |
+| `OMNI_OPEN_LEASE_WAIT_MS` | `150000` | 打开时等待迁移租约的上限（毫秒，上限 300000）；0 表示立即失败 |
 | `OMNI_DISABLE_VECTOR` / `OMNI_DISABLE_GRAPH` / `OMNI_DISABLE_SEMANTIC` | 未设置 | 诊断：关闭对应路线；`DISABLE_VECTOR` 同时关本地语义 |
 
 ---

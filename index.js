@@ -62,6 +62,16 @@ const BUSY_TIMEOUT_MS = (() => {
   if (!Number.isFinite(raw) || raw < 0) return 5000;
   return Math.min(raw, 60_000);
 })();
+// A second process opening the same store must outlive the first process's
+// 1M-row migration (measured at 73–80s), not just a normal write lock. The old
+// fixed 25 × 200ms window failed at ~5.2s and looked like corruption to the
+// caller. This is a wait budget, not a lease TTL: an active owner releases at
+// the end of migration, and a crashed owner's lease still expires on its own.
+const OPEN_LEASE_WAIT_MS = (() => {
+  const raw = Number(process.env.OMNI_OPEN_LEASE_WAIT_MS ?? 150_000);
+  if (!Number.isFinite(raw) || raw < 0) return 150_000;
+  return Math.min(raw, 300_000);
+})();
 
 let store;
 
@@ -758,11 +768,15 @@ function openStore() {
   // two hosts opening at the same moment never run DDL against each other.
   const MAINTENANCE = 'open-maintenance';
   let lease = acquireLease(db, MAINTENANCE, 120_000);
-  for (let attempt = 0; !lease && attempt < 25; attempt += 1) {
-    sleepSync(200);
+  const waitStarted = Date.now();
+  while (!lease && Date.now() - waitStarted < OPEN_LEASE_WAIT_MS) {
+    const remaining = OPEN_LEASE_WAIT_MS - (Date.now() - waitStarted);
+    sleepSync(Math.min(200, Math.max(1, remaining)));
     lease = acquireLease(db, MAINTENANCE, 120_000);
   }
-  if (!lease) throw new Error('database maintenance lease unavailable; refusing to read an unmigrated store');
+  if (!lease) {
+    throw new Error(`database maintenance lease unavailable after ${Date.now() - waitStarted}ms; refusing to read an unmigrated store`);
+  }
 
   let migrationBackup = null;
   let schemaVersion = SCHEMA_VERSION;
@@ -3226,9 +3240,42 @@ function rank(items) {
  * bigram index capped by owner id) followed by JS scoring. Window size is
  * configurable; the window never replaces exact matches, it adds recent ones.
  */
-const SEARCH_WINDOW = Math.max(1000, Number(process.env.OMNI_SEARCH_WINDOW ?? 20000));
+const SEARCH_WINDOW_DEFAULT = 20_000;
+const SEARCH_WINDOW_LARGE = 5_000;
+const VECTOR_SAMPLE_DEFAULT = 5_000;
+const VECTOR_SAMPLE_LARGE = 1_000;
+const LARGE_STORE_ROWS = (() => {
+  const raw = Number(process.env.OMNI_LARGE_STORE_ROWS ?? 250_000);
+  if (!Number.isFinite(raw) || raw < 10_000) return 250_000;
+  return Math.floor(raw);
+})();
+const SEARCH_WINDOW_OVERRIDE = process.env.OMNI_SEARCH_WINDOW === undefined
+  ? null
+  : Math.max(1000, Number(process.env.OMNI_SEARCH_WINDOW) || 1000);
+const VECTOR_SAMPLE_OVERRIDE = process.env.OMNI_VECTOR_SAMPLE === undefined
+  ? null
+  : Math.max(1000, Number(process.env.OMNI_VECTOR_SAMPLE) || 1000);
 const FTS_SAMPLE = 120;
 const BIGRAM_SAMPLE = 200;
+
+/** Largest id without COUNT(*): a 1M-row COUNT on every query is avoidable. */
+function maxRowId(db, table) {
+  try {
+    return Number(prepareCached(db, `SELECT MAX(id) AS n FROM ${table}`).get()?.n ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+function effectiveSearchWindow(db, table, max = maxRowId(db, table)) {
+  if (SEARCH_WINDOW_OVERRIDE !== null) return SEARCH_WINDOW_OVERRIDE;
+  return max > LARGE_STORE_ROWS ? SEARCH_WINDOW_LARGE : SEARCH_WINDOW_DEFAULT;
+}
+
+function effectiveVectorSample(db) {
+  if (VECTOR_SAMPLE_OVERRIDE !== null) return VECTOR_SAMPLE_OVERRIDE;
+  return maxRowId(db, 'notes') > LARGE_STORE_ROWS ? VECTOR_SAMPLE_LARGE : VECTOR_SAMPLE_DEFAULT;
+}
 
 /** Recent-window substring scan: bounded by window size, recency biased. */
 function recentWindowRows(db, table, terms, columns, filter, limit, extra = '') {
@@ -3236,11 +3283,12 @@ function recentWindowRows(db, table, terms, columns, filter, limit, extra = '') 
   try {
     const max = Number(prepareCached(db, `SELECT MAX(id) AS n FROM ${table}`).get()?.n ?? 0);
     if (!max) return [];
+    const window = effectiveSearchWindow(db, table, max);
     return prepareCached(db, `
       SELECT * FROM ${table}
       WHERE id > ? AND deleted_at IS NULL ${extra} AND ${clause.sql} ${filter.sql}
       ORDER BY id DESC LIMIT ?
-    `).all(max - SEARCH_WINDOW, ...clause.params, ...filter.params, Math.max(limit * 4, 16));
+    `).all(max - window, ...clause.params, ...filter.params, Math.max(limit * 4, 16));
   } catch {
     return [];
   }
@@ -3865,9 +3913,8 @@ function dreamRollback(s, noteId, scope = SCOPE_GLOBAL) {
  */
 // Vectors are scanned in JS. An unbounded scan over 1M rows reads gigabytes per
 // query, so both vector routes sample the most recent rows and add lexical
-// candidates. A real ANN index is the next step, not a requirement for bounded
-// latency.
-const VECTOR_SAMPLE = Math.max(1000, Number(process.env.OMNI_VECTOR_SAMPLE ?? 5000));
+// candidates. The sample shrinks on large stores (effectiveVectorSample); a real
+// ANN index is the next step, not a requirement for bounded latency.
 
 async function semanticSearch(s, queryText, limit, scope, candidates = []) {
   const config = semanticConfig();
@@ -3906,6 +3953,7 @@ async function semanticSearch(s, queryText, limit, scope, candidates = []) {
     candidateIds.set(hit.kind, list);
   }
   const out = [];
+  const sampleLimit = effectiveVectorSample(s.db);
   for (const spec of specList) {
     const sampleIds = [];
     try {
@@ -3913,7 +3961,7 @@ async function semanticSearch(s, queryText, limit, scope, candidates = []) {
         SELECT owner_id FROM semantic_vectors
         WHERE model = ? AND kind = ? AND dim = ?
         ORDER BY owner_id DESC LIMIT ?
-      `).all(config.signature, spec.kind, config.dim, VECTOR_SAMPLE)) sampleIds.push(Number(row.owner_id));
+      `).all(config.signature, spec.kind, config.dim, sampleLimit)) sampleIds.push(Number(row.owner_id));
     } catch { /* semantic table may not exist on a pre-v14 store */ }
     const extraIds = (candidateIds.get(spec.kind) ?? []).filter(id => Number.isFinite(id) && id > 0);
     const ids = [...new Set([...sampleIds, ...extraIds])];
@@ -3997,6 +4045,7 @@ async function vectorSearch(s, queryText, limit, scope, candidates = []) {
     candidateIds.set(hit.kind, list);
   }
   const collected = new Map();
+  const sampleLimit = effectiveVectorSample(s.db);
   for (const spec of specs) {
     // Sample owner ids first: a JOIN with a scope filter does not stop at LIMIT
     // when the filter rejects the first rows, so a project-scoped search used to
@@ -4006,7 +4055,7 @@ async function vectorSearch(s, queryText, limit, scope, candidates = []) {
       for (const row of prepareCached(s.db, `
         SELECT owner_id FROM vectors WHERE kind = ? AND dim = ?
         ORDER BY owner_id DESC LIMIT ?
-      `).all(spec.kind, dim, VECTOR_SAMPLE)) sampleIds.push(Number(row.owner_id));
+      `).all(spec.kind, dim, sampleLimit)) sampleIds.push(Number(row.owner_id));
     } catch { /* no vectors */ }
     const candidateIdsForKind = (candidateIds.get(spec.kind) ?? []).filter(id => Number.isFinite(id) && id > 0);
     const ids = [...new Set([...sampleIds, ...candidateIdsForKind])];
