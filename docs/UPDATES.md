@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 88 次提交；更新记录自身的提交不计入列表。
+> 共 89 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-23
 
+- 10:50:25 `31a9324d` — fix: let read-path version probe bypass the same-day sync gate (3.11.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/31a9324d36685190b8938037b0d9846498c21fdb)
 - 10:33:11 `ad8874ba` — feat: report cloud version on memory reads (3.11.3) — [提交](https://github.com/wangzhen110/omni-memory/commit/ad8874ba35300a4ce94131a42e5fd1e0a32cd4d4)
 - 10:09:34 `9652ca12` — fix: make daily sync restart reliable and use fresh GitHub metadata — [提交](https://github.com/wangzhen110/omni-memory/commit/9652ca1251813d90ace3f10a2eab8d676344d356)
 - 10:05:33 `020a7c34` — release: v3.11.2 version visibility and daily cloud sync — [提交](https://github.com/wangzhen110/omni-memory/commit/020a7c342fb45d1b5fced3238b6f8113a4b156dc)
