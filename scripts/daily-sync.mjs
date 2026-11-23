@@ -39,6 +39,9 @@ const GIT_CANDIDATES = [
 const GIT = GIT_CANDIDATES.find(candidate => candidate === 'git' || existsSync(candidate)) || 'git';
 const TASK_NAME = process.env.OMNI_SERVICE_TASK || SERVICE_TASK;
 const HEALTH_URL = process.env.OMNI_HEALTH_URL || 'http://127.0.0.1:7788/health';
+const SCHTASKS = process.platform === 'win32'
+  ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'schtasks.exe')
+  : 'schtasks.exe';
 
 function run(command, args, options = {}) {
   try {
@@ -142,18 +145,20 @@ async function fetchText(url) {
 
 async function remotePackageVersion() {
   const stamp = Date.now();
-  const raw = `https://raw.githubusercontent.com/${GITHUB_REPO}/${UPDATE_BRANCH}/package.json?ts=${stamp}`;
-  try {
-    const pkg = JSON.parse(await fetchText(raw));
-    if (parseVersion(pkg.version)) return { version: pkg.version, source: 'raw-main' };
-  } catch {
-    // Fall back to the authenticated-less GitHub contents API below.
-  }
+  // GitHub's contents API reflects a fresh push immediately; raw.githubusercontent
+  // can serve a stale CDN copy for minutes. Daily volume is tiny, so API first.
   const api = `https://api.github.com/repos/${GITHUB_REPO}/contents/package.json?ref=${UPDATE_BRANCH}&ts=${stamp}`;
-  const envelope = JSON.parse(await fetchText(api));
-  const pkg = JSON.parse(Buffer.from(String(envelope.content ?? ''), 'base64').toString('utf8'));
+  try {
+    const envelope = JSON.parse(await fetchText(api));
+    const pkg = JSON.parse(Buffer.from(String(envelope.content ?? ''), 'base64').toString('utf8'));
+    if (parseVersion(pkg.version)) return { version: pkg.version, source: 'contents-api' };
+  } catch {
+    // Fall back to the raw CDN below.
+  }
+  const raw = `https://raw.githubusercontent.com/${GITHUB_REPO}/${UPDATE_BRANCH}/package.json?ts=${stamp}`;
+  const pkg = JSON.parse(await fetchText(raw));
   if (!parseVersion(pkg.version)) throw new Error('remote package.json has no valid version');
-  return { version: pkg.version, source: 'contents-api' };
+  return { version: pkg.version, source: 'raw-main' };
 }
 
 function gitFetch(dir) {
@@ -198,7 +203,7 @@ async function healthVersion(timeout = 1500) {
 
 function taskExists() {
   if (process.platform !== 'win32') return false;
-  return run('schtasks.exe', ['/Query', '/TN', TASK_NAME, '/FO', 'LIST']);
+  return run(SCHTASKS, ['/Query', '/TN', TASK_NAME, '/FO', 'LIST']);
 }
 
 async function ensureService(version, noRestart) {
@@ -216,8 +221,8 @@ async function ensureService(version, noRestart) {
     return { exists: true, restarted: false, version: observed, healthy: false };
   }
 
-  run('schtasks.exe', ['/End', '/TN', TASK_NAME]);
-  const start = run('schtasks.exe', ['/Run', '/TN', TASK_NAME]);
+  run(SCHTASKS, ['/End', '/TN', TASK_NAME]);
+  const start = run(SCHTASKS, ['/Run', '/TN', TASK_NAME]);
   if (!start.ok) {
     return { exists: true, restarted: false, version: observed, healthy: false, error: start.stderr };
   }

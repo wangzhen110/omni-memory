@@ -561,7 +561,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | 每日同步 | 每天第一次记忆操作前运行 `node scripts/daily-sync.mjs`；本地日期 gate 写 `~/.dsh/omni-daily-sync.json`；只允许 tracked 干净、可快进、`node --check` 通过时更新，失败回到原提交 |
 | 发布 | `plugin_manager remove_bundle` → `install_bundle` → 刷新页面 → 跑 `npm test` |
 | 回滚 | 保留上一版目录/归档；数据库向后兼容（只加列不删列）；每日同步校验失败自动 `git reset --hard` 回到更新前提交 |
-| 服务退出 | `OmniMemory7788` 的 `LastTaskResult=3221225786`（`0xC000013A`）表示收到 Ctrl+C / 控制台关闭；先确认是否有手动启动的可见黑框被关，再用 `schtasks /Run /TN OmniMemory7788` 重启，并等 `/health` 恢复 |
+| 服务退出 | `OmniMemory7788` 的 `LastTaskResult=3221225786`（`0xC000013A`）表示收到 Ctrl+C / 控制台关闭；若任务显示 Running 但 `/health` 仍是旧版本，多半是旧 node 子进程成了孤儿并占着 7788。启动脚本会先只杀命令行含 `cli.mjs ... serve ... 7788` 的监听进程，再起新 node；日常用 `schtasks /Run /TN OmniMemory7788` 重启并等 `/health` 恢复 |
 | 数据备份 | 复制 `$DSH_HOME/memory/omni.db`（建议先 `PRAGMA wal_checkpoint`） |
 
 ---
