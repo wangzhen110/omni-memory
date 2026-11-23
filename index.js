@@ -19,8 +19,8 @@
  */
 
 import { DatabaseSync } from 'node:sqlite';
-import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { appendFileSync, chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { DIM, embedText, dot, toBlob, fromBlob, tokenize } from './lib/embed.mjs';
@@ -39,6 +39,11 @@ import { checkForUpdate, formatUpdateNotice, readLocalVersion } from './lib/vers
 // standalone adapter that resolve to the same home share one database instead of forking.
 const DSH_HOME = process.env.OMNI_HOME || process.env.DSH_HOME || path.join(homedir(), '.dsh');
 const PKG_VERSION = readLocalVersion() ?? '0.0.0';
+/** Read the checkout's current version on demand; a long-lived HTTP process must
+ * not keep reporting the version frozen at module load after an update. */
+function currentPackageVersion() {
+  return readLocalVersion() ?? PKG_VERSION;
+}
 const DB_DIR = path.join(DSH_HOME, 'memory');
 const DB_FILE = path.join(DB_DIR, 'omni.db');
 // Backups are the one place a model-facing tool is allowed to touch the disk.
@@ -661,36 +666,56 @@ function backupBeforeMigration(db, fromVersion) {
   if (process.env.OMNI_MIGRATION_BACKUP === '0') {
     return { skipped: true, reason: 'OMNI_MIGRATION_BACKUP=0' };
   }
-  const backupDir = path.join(DB_DIR, 'backups');
+  const backupDir = BACKUP_DIR;
   mkdirSync(backupDir, { recursive: true });
+  // The filename must be unique across processes, not merely across calls in
+  // one process. A millisecond stamp collides when several hosts open the same
+  // store at once; pid + UUID makes each VACUUM INTO target private.
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const file = path.join(backupDir, `pre-migrate-v${fromVersion}-to-v${SCHEMA_VERSION}-${stamp}.db`);
-  // VACUUM INTO writes a consistent copy without requiring the main file to be
-  // closed; it also avoids copying a live WAL file by hand.
+  const unique = `${stamp}-p${process.pid}-${randomUUID().slice(0, 8)}`;
+  const file = path.join(backupDir, `pre-migrate-v${fromVersion}-to-v${SCHEMA_VERSION}-${unique}.db`);
+  const temporary = `${file}.tmp`;
+  // VACUUM INTO refuses to overwrite; write to this call's private temp file,
+  // verify it, then rename it into place so retention never sees a half copy.
+  let existedBefore = false;
   try {
-    db.exec(`VACUUM INTO '${file.replaceAll("'", "''")}'`);
+    existedBefore = existsSync(temporary);
+    db.exec(`VACUUM INTO '${temporary.replaceAll("'", "''")}'`);
   } catch (error) {
-    // Never leave a half-written file where retention would count it as a
-    // usable backup and prune older, intact copies.
-    try { unlinkSync(file); } catch { /* the failed VACUUM may not have created it */ }
+    // Only remove the private temp path. Never unlink a final path that another
+    // process may have created.
+    if (!existedBefore) {
+      try { unlinkSync(temporary); } catch { /* the failed VACUUM may not have created it */ }
+    }
     throw error;
   }
   let size = 0;
   try {
-    size = statSync(file).size;
+    size = statSync(temporary).size;
   } catch {
     size = 0;
   }
-  if (size <= 0) throw new Error(`migration backup is empty: ${file}`);
+  if (size <= 0) {
+    try { unlinkSync(temporary); } catch { /* best effort */ }
+    throw new Error(`migration backup is empty: ${temporary}`);
+  }
   let check;
   try {
-    check = new DatabaseSync(file, { readOnly: true });
+    check = new DatabaseSync(temporary, { readOnly: true });
     const row = check.prepare('PRAGMA integrity_check').get();
     const verdict = row ? Object.values(row)[0] : null;
     if (verdict !== 'ok') throw new Error(`migration backup failed integrity_check: ${verdict}`);
+  } catch (error) {
+    try { check?.close(); } catch { /* already closed */ }
+    try { unlinkSync(temporary); } catch { /* best effort */ }
+    throw error;
   } finally {
     try { check?.close(); } catch { /* already closed */ }
   }
+  renameSync(temporary, file);
+  // The backup contains the entire memory database. Keep it private even when
+  // the platform's default umask would otherwise widen it.
+  try { chmodSync(file, 0o600); } catch { /* Windows ACLs are managed separately */ }
   const configuredKeep = Number(process.env.OMNI_MIGRATION_BACKUP_KEEP ?? 5);
   const keep = Number.isInteger(configuredKeep) && configuredKeep > 0 ? configuredKeep : 5;
   try {
@@ -721,18 +746,11 @@ function openStore() {
   // Keep the WAL from growing without bound when many readers keep snapshots
   // alive; the limit is applied at the next checkpoint.
   db.exec('PRAGMA journal_size_limit = 16777216');
-  const priorSchemaVersion = sizeBefore > 0 ? schemaVersionOnDisk(db) : 0;
-  let migrationBackup = null;
-  if (sizeBefore > 0 && priorSchemaVersion < SCHEMA_VERSION) {
-    migrationBackup = backupBeforeMigration(db, priorSchemaVersion);
-  }
-  createBaseSchema(db);
+  // The lease table must exist before the cross-process lock can be taken. Do
+  // not create the rest of the base schema yet: the pre-migration backup must
+  // capture the store before any DDL that this process adds.
+  db.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
 
-  const { chunksMode, notesMode, factsMode, ftsMode } = createFtsTables(db);
-
-
-  // Schema migrations. A fresh database and an upgraded one must converge on the
-  // same structure, so every structural change is a numbered migration.
   // Schema migrations. A fresh database and an upgraded one must converge on the
   // same structure, so every structural change is a numbered migration.
   // One process migrates and rebuilds; the rest wait for the lease to clear so
@@ -745,14 +763,39 @@ function openStore() {
   }
   if (!lease) throw new Error('database maintenance lease unavailable; refusing to read an unmigrated store');
 
-  // Migration and derived-index maintenance are one owner-only unit. Running
-  // migrate() outside the lease let a second process replay destructive DDL
-  // (for example the v4 vector reset) after the first process already set the
-  // backfill marker, silently breaking vector recall.
+  let migrationBackup = null;
   let schemaVersion = SCHEMA_VERSION;
   let semanticGcReport = null;
   let aliasRepair = null;
+  let chunksMode;
+  let notesMode;
+  let factsMode;
+  let ftsMode;
   try {
+    // Re-read under the lease. A competing process may have completed the
+    // migration while this one waited; in that case there is nothing to back
+    // up, and a second backup would be pure noise.
+    const versionAtLease = sizeBefore > 0 ? schemaVersionOnDisk(db) : 0;
+    if (sizeBefore > 0 && versionAtLease < SCHEMA_VERSION) {
+      try {
+        migrationBackup = backupBeforeMigration(db, versionAtLease);
+      } catch (error) {
+        const warning = String(error?.message ?? error);
+        migrationBackup = { skipped: true, error: warning, fromVersion: versionAtLease, toVersion: SCHEMA_VERSION };
+        // A backup failure must not make the plugin unloadable (NFR-07). The
+        // migration itself is transactional and still has the previous WAL as
+        // an emergency copy; operators who want a hard stop can opt in.
+        if (process.env.OMNI_MIGRATION_BACKUP_STRICT === '1') throw error;
+        try { process.stderr.write(`[omni] migration backup skipped: ${warning}\n`); } catch { /* stderr unavailable */ }
+      }
+    }
+    createBaseSchema(db);
+    ({ chunksMode, notesMode, factsMode, ftsMode } = createFtsTables(db));
+
+    // Migration and derived-index maintenance are one owner-only unit. Running
+    // migrate() outside the lease let a second process replay destructive DDL
+    // (for example the v4 vector reset) after the first process already set the
+    // backfill marker, silently breaking vector recall.
     schemaVersion = migrate(db);
     try {
       aliasRepair = repairScopeAliases(db);
@@ -4773,8 +4816,9 @@ const PACKET_BUDGET = 1800;
 async function buildMemoryPacket(scope, query, options = {}) {
   const limit = Math.min(10, Math.max(1, Number(options.limit ?? 5) || 5));
   const budget = Math.min(4000, Math.max(400, Number(options.budget ?? PACKET_BUDGET) || PACKET_BUDGET));
+  const localVersion = currentPackageVersion();
   const versionPromise = checkForUpdate({
-    localVersion: PKG_VERSION === '0.0.0' ? undefined : PKG_VERSION,
+    localVersion: localVersion === '0.0.0' ? undefined : localVersion,
   }).catch(() => null);
   const s = openStore();
   const persona = personaLines(s.db);
@@ -7193,7 +7237,7 @@ function registerReadRoutes(add) {
 
       return json(res, 200, {
         ok: true,
-        version: PKG_VERSION,
+        version: currentPackageVersion(),
         asOf: now,
         range,
         scope,
@@ -7425,7 +7469,7 @@ function registerAdminRoutes(add) {
       const count = table => Number(prepareCached(s.db, `SELECT COUNT(*) AS n FROM ${table} WHERE deleted_at IS NULL`).get().n);
       return json(res, 200, {
         ok: true,
-        version: PKG_VERSION,
+        version: currentPackageVersion(),
         autoRecall: autoRecallEnabled(),
         lastInjection,
         routes: routeState,

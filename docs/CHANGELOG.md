@@ -2,6 +2,26 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.11.7] — 2026-11-23
+
+### 修复 · v3.11.6 复验 P0
+- **迁移备份并发竞态**：备份文件名由“毫秒时间戳”改为“pid + UUID”，每个进程写自己的 `.tmp`，校验通过后再原子 rename；失败只清理本进程的临时文件，不再删除别的进程刚完成的备份。
+- **备份移入维护租约**：`openStore()` 先建立 `meta` 表并取得 `open-maintenance` 租约，再备份、建 FTS 表和迁移；第二个进程拿到租约后会重新读取 schema 版本，已迁移则不再产生第二份备份。
+- **备份失败降级**：备份抛错默认只向 stderr 告警并继续迁移，不再让插件加载失败；需要硬停的运维场景显式设置 `OMNI_MIGRATION_BACKUP_STRICT=1`。备份目录改为尊重 `OMNI_BACKUP_DIR`，备份文件按 `0600` 收紧。
+- **回归用例**：新增两个真实进程同时首启 v16 库、备份失败仍可迁移、`--apply` 并发锁、伪造 origin、签名主路径包哈希/缺失提交拒绝等断言。
+
+### 安全 · 签名链与更新入口
+- **私钥权限门禁**：`sign-release.mjs` 在签名前检查私钥权限；POSIX 要求 `0600`，Windows 检查 ACL 不允许 `Users`/`Everyone`/`Interactive` 等宽泛主体。
+- **origin 精确匹配**：更新器解析 remote URL 的 host 与 path，只接受 `github.com/wangzhen110/omni-memory`，不再用 `includes` 子串匹配。
+- **apply 并发锁**：`--apply` 使用 `~/.dsh/omni-daily-sync.json.apply.lock`，同一时间只允许一个更新进程；锁按 pid 归属释放，30 分钟后才视为 stale。
+- **长驻进程版本**：`/omni-memory/packet` 与 `/health` 按需读取当前 `package.json` 版本，不再返回模块加载时冻结的版本。
+
+### 工具链与交付
+- **语法门禁**：新增 `scripts/check-syntax.mjs`，递归检查 `index.js`、`client.js`、`lib/`、`hosts/`、`scripts/` 的全部运行时 JS，替换原先手工列举的漏网清单。
+- **跨平台测试**：`--run-tests` 在非 Windows 使用 npm 命令或 `npm_execpath`，不再固定拼 `npm.cmd`。
+- **启动器源码入库**：`scripts/launchers/omni-serve-7788-launcher.cs` 与部署的 `omni-serve-7788.exe` 对应，源码与构建命令见 `docs/SILENT-LAUNCHER.md`。
+- 完整 `npm test` **408/408** 通过；`npm run check` 的语法门禁覆盖 34 个运行时文件，版本 3.11.7。
+
 ## [3.11.6] — 2026-11-23
 
 ### 安全 · 更新链加入 Ed25519 签名校验

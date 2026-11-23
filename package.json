@@ -1,6 +1,6 @@
 {
   "name": "@local/omni-memory",
-  "version": "3.11.6",
+  "version": "3.11.7",
   "private": true,
   "type": "module",
   "description": "Omni Memory for any AI host: append-only transcripts, bi-temporal facts, self-verifying notes, hybrid retrieval, zero-config local semantic recall, project scoping and an interactive star map. Native DSH plugin, with MCP, HTTP, OpenAPI and CLI adapters.",
@@ -36,7 +36,7 @@
     "memory:sync": "node scripts/reference-to-memory.mjs",
     "bench": "node bench/bench.mjs",
     "bench:golden": "node bench/golden.mjs",
-    "check": "node scripts/check-docs.mjs && node scripts/check-client-hooks.mjs && node --check index.js && node --check client.js && node scripts/check-client-load.mjs && node --check lib/embed.mjs && node --check lib/embed-provider.mjs && node --check lib/semantic-embed.mjs && node --check lib/schema.mjs && node --check lib/capture-rules.mjs && node --check lib/rerank-provider.mjs && node --check lib/version-check.mjs && node --check lib/daily-sync.mjs && node --check lib/update-signature.mjs && node --check scripts/daily-sync.mjs && node --check scripts/sign-release.mjs && node --check hosts/shared/context-tool.mjs && node scripts/check-semantic-assets.mjs && node -e \"['package.json','locale/zh.json','locale/en.json'].forEach(f=>JSON.parse(require('fs').readFileSync(f,'utf8')))\" && node scripts/check-update-log.mjs",
+    "check": "node scripts/check-docs.mjs && node scripts/check-client-hooks.mjs && node scripts/check-syntax.mjs && node scripts/check-client-load.mjs && node scripts/check-semantic-assets.mjs && node -e \"['package.json','locale/zh.json','locale/en.json'].forEach(f=>JSON.parse(require('fs').readFileSync(f,'utf8')))\" && node scripts/check-update-log.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "check:update-log": "node scripts/check-update-log.mjs",
     "update-log": "node scripts/update-log.mjs"

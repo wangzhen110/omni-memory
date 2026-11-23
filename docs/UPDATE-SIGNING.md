@@ -1,6 +1,6 @@
 # 更新链签名
 
-3.11.6 起，`scripts/daily-sync.mjs --apply` 不再直接合并 `origin/main`。它先从要升级到的 GitHub Release 下载 `omni-update-manifest.json`，用内置的 Ed25519 公钥验签，再校验包哈希和提交谱系，只快进到清单里签名的那个提交。
+3.11.6 起，`scripts/daily-sync.mjs --apply` 不再直接合并 `origin/main`。它先 `git fetch origin main` 取到签名提交对象，再下载要升级到的 GitHub Release 的 `omni-update-manifest.json`，用内置的 Ed25519 公钥验签，再校验包哈希和提交谱系，只快进到清单里签名的那个提交。
 
 ## 为什么要签名
 
@@ -18,7 +18,7 @@
 - Release 资产名：`omni-update-manifest.json`
 - 清单 schema：`omni-update-manifest-v1`
 
-私钥文件权限必须只允许当前用户读写。Windows 上用 ACL 限制；类 Unix 上用 `chmod 600`。私钥丢失后无法用旧版本内置的公钥签出新清单，只能手工分发新版本并更换公钥。
+私钥文件权限必须只允许当前用户读写。Windows 上用 ACL 限制；类 Unix 上用 `chmod 600`。3.11.7 起 `scripts/sign-release.mjs` 在签名前强制检查：POSIX 模式不得有 group/other 位，Windows ACL 不允许 `Users`、`Everyone`、`Interactive` 等宽泛主体，否则拒绝签名。私钥丢失后无法用旧版本内置的公钥签出新清单，只能手工分发新版本并更换公钥。
 
 ## 清单字段
 
@@ -43,11 +43,11 @@
 3. 生成清单：
 
    ```bash
-   node scripts/sign-release.mjs --version 3.11.6 --commit <sha> --tag v3.11.6
+   node scripts/sign-release.mjs --version 3.11.7 --commit <sha> --tag v3.11.7
    ```
 
    默认读取 `~/.dsh/omni-update-signing-key.pem`，输出 `omni-update-manifest.json`。可用 `--key`、`--out`、`--issued-at` 覆盖，但发布流程不应把私钥路径写进仓库。
-4. 创建 `v3.11.6` tag 和 GitHub Release，把 `omni-update-manifest.json` 作为 Release asset 上传。清单不放进 git 仓库：它包含 commit，如果又提交进仓库，会形成“清单包含 commit、commit 又包含清单”的循环哈希。
+4. 创建 `v3.11.7` tag 和 GitHub Release，把 `omni-update-manifest.json` 作为 Release asset 上传。清单不放进 git 仓库：它包含 commit，如果又提交进仓库，会形成“清单包含 commit、commit 又包含清单”的循环哈希。
 5. 在旧版本 checkout 上先跑 `node scripts/daily-sync.mjs --check`，确认返回 `update-available`；再跑 `--apply` 验证真实更新。`--check` 只比较版本，不读取也不验证签名；签名校验只在 `--apply` 发生。成功后才考虑 `--restart`。
 
 ## `--apply` 的拒绝条件

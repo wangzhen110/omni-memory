@@ -16,7 +16,7 @@
  */
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -92,6 +92,38 @@ function packageAtCommit(repo, commit) {
   return { raw, pkg };
 }
 
+/**
+ * The signing key is the root of the update trust chain. Do not sign with a
+ * key that ordinary local users can read; on Windows Node's stat mode is not
+ * meaningful, so inspect the ACL instead of pretending 0666 is 0600.
+ */
+function assertPrivateKeyPermissions(keyPath) {
+  if (process.platform === 'win32') {
+    let acl;
+    try {
+      acl = execFileSync('C:\\Windows\\System32\\icacls.exe', [keyPath], { encoding: 'utf8' });
+    } catch (error) {
+      throw new Error(`cannot verify signing key ACL: ${error.message}`);
+    }
+    const broadPrincipals = [
+      /BUILTIN\\Users/i,
+      /BUILTIN\\Guests/i,
+      /Everyone/i,
+      /Authenticated Users/i,
+      /\bINTERACTIVE\b/i,
+      /Remote Desktop Users/i,
+    ];
+    if (broadPrincipals.some(pattern => pattern.test(acl))) {
+      throw new Error(`signing key ACL is too broad; remove Users/Everyone/Interactive grants: ${keyPath}`);
+    }
+    return;
+  }
+  const mode = statSync(keyPath).mode & 0o777;
+  if ((mode & 0o077) !== 0) {
+    throw new Error(`signing key permissions are ${mode.toString(8)}; chmod 600 is required: ${keyPath}`);
+  }
+}
+
 function main() {
   let options;
   try {
@@ -119,6 +151,7 @@ function main() {
   const tag = String(options.tag || `v${version}`).trim();
   if (tag !== `v${version}`) throw new Error(`tag ${tag} does not match version ${version}`);
   if (!existsSync(options.key)) throw new Error(`signing key not found: ${options.key}`);
+  assertPrivateKeyPermissions(options.key);
 
   const manifest = {
     schema: UPDATE_MANIFEST_SCHEMA,

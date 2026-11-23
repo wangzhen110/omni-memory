@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 3.11.6 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
+> 版本 3.11.7 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -541,13 +541,14 @@ mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 | `OMNI_PROJECT_DIR` | 当前目录 | 项目层绑定目录（MCP/CLI/HTTP） |
 | `OMNI_SESSION_ID` | `host-<哈希>` | 作用域标识 |
 | `OMNI_HTTP_PORT` / `OMNI_HTTP_BIND` | `7788` / `127.0.0.1` | 面板与 HTTP MCP 监听 |
-| `OMNI_BACKUP_DIR` | `$OMNI_HOME/memory/backups` | `memory_export` / `memory_import` 唯一允许的备份交换目录 |
+| `OMNI_BACKUP_DIR` | `$OMNI_HOME/memory/backups` | `memory_export` / `memory_import` 与迁移前备份共用的目录；迁移备份也写入这里 |
+| `OMNI_MIGRATION_BACKUP` | 未设置 | `0` 关闭迁移前 `VACUUM INTO` 备份；默认开启 |
+| `OMNI_MIGRATION_BACKUP_KEEP` | `5` | 保留最近几份 `pre-migrate-*.db` |
+| `OMNI_MIGRATION_BACKUP_STRICT` | 未设置 | `1` 时备份失败直接阻断启动；默认只告警并继续迁移 |
 | `OMNI_TRUSTED_HOSTS` | 空 | 额外允许的 HTTP `Host`（逗号分隔；回环名与绑定地址始终允许） |
 | `OMNI_VERSION_CHECK_DISABLED` | 未设置 | `1` 关闭读路径版本探测，完全不访问 GitHub |
 | `OMNI_VERSION_CHECK_TIMEOUT_MS` | `2500` | 版本探测总网络预算（Contents API + raw 回退共享） |
 | `OMNI_VERSION_CHECK_TTL_MS` | `1800000` | 成功版本检查缓存时长 |
-| `OMNI_MIGRATION_BACKUP` | 未设置 | `0` 关闭迁移前 `VACUUM INTO` 备份；默认开启 |
-| `OMNI_MIGRATION_BACKUP_KEEP` | `5` | 保留最近几份 `pre-migrate-*.db` |
 | `OMNI_UPDATE_SIGNING_KEY` | `~/.dsh/omni-update-signing-key.pem` | 仅发布端 `scripts/sign-release.mjs` 使用的 Ed25519 私钥路径；不要放进仓库 |
 | `OMNI_GITHUB_TOKEN` / `GITHUB_TOKEN` / `GH_TOKEN` | 未设置 | 私有仓库下载 Release 签名资产时可选；公开仓库不需要 |
 | `OMNI_AUTO_RECALL` | 开 | `0` 关闭自动预召回（DSH 内有效） |

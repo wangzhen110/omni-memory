@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { boot } from './helpers.mjs';
 import { SCHEMA_VERSION } from '../index.js';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
 
 function openDb(home) {
   return new DatabaseSync(path.join(home, 'memory', 'omni.db'));
@@ -164,6 +167,108 @@ test('a fresh database does not create a pointless migration backup', async () =
   await app.call('memory_profile');
   const backupDir = path.join(app.home, 'memory', 'backups');
   assert.equal(existsSync(backupDir) ? readdirSync(backupDir).filter(name => name.endsWith('.db')).length : 0, 0);
+});
+
+test('P0 concurrent first opens share one migration owner and keep a verified backup', async () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-concurrent-migrate-'));
+  const env = {
+    ...process.env,
+    OMNI_HOME: home,
+    DSH_HOME: home,
+    OMNI_VERSION_CHECK_DISABLED: '1',
+    OMNI_DISABLE_SEMANTIC: '1',
+    OMNI_MIGRATION_BACKUP_KEEP: '5',
+  };
+  delete env.OMNI_BACKUP_DIR;
+  // Start from a real v17 store, then rewind only the version marker. A
+  // minimal hand-built v16 schema would not exercise the actual migration path.
+  const seed = spawnSync(process.execPath, [
+    path.join(ROOT, 'hosts', 'cli.mjs'), 'search', 'seed', '--limit', '1',
+  ], { cwd: ROOT, env, encoding: 'utf8', timeout: 15_000 });
+  assert.equal(seed.status, 0, seed.stderr || seed.stdout);
+  const legacy = openDb(home);
+  legacy.prepare("UPDATE meta SET value = '16' WHERE key = 'schema_version'").run();
+  legacy.prepare('INSERT INTO notes(ts, scope, text, importance, text_hash) VALUES (?, ?, ?, ?, ?)')
+    .run(1, 'global', 'concurrent migration survivor', 0.9, createHash('sha256').update('concurrent migration survivor').digest('hex').slice(0, 32));
+  legacy.close();
+
+  const run = () => new Promise(resolve => {
+    const child = spawn(process.execPath, [
+      path.join(ROOT, 'hosts', 'cli.mjs'), 'search', 'concurrency probe', '--limit', '1',
+    ], {
+      cwd: ROOT,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', chunk => { stdout += String(chunk); });
+    child.stderr.on('data', chunk => { stderr += String(chunk); });
+    child.on('close', code => resolve({ code, stdout, stderr }));
+    child.on('error', error => resolve({ code: -1, stdout, stderr: String(error) }));
+  });
+
+  const [first, second] = await Promise.all([run(), run()]);
+  assert.equal(first.code, 0, first.stderr || first.stdout);
+  assert.equal(second.code, 0, second.stderr || second.stdout);
+
+  const db = openDb(home);
+  assert.equal(String(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), String(SCHEMA_VERSION));
+  assert.equal(Number(db.prepare("SELECT COUNT(*) AS n FROM notes WHERE text='concurrent migration survivor'").get().n), 1);
+  db.close();
+
+  const backupDir = path.join(home, 'memory', 'backups');
+  const names = readdirSync(backupDir).filter(name => /^pre-migrate-v16-to-v17-.*\.db$/.test(name));
+  assert.ok(names.length >= 1, 'at least one complete pre-migration backup must survive');
+  for (const name of names) {
+    const file = path.join(backupDir, name);
+    assert.ok(statSync(file).size > 0, `${name} must not be empty`);
+    const backup = new DatabaseSync(file, { readOnly: true });
+    const check = backup.prepare('PRAGMA integrity_check').get();
+    assert.equal(Object.values(check)[0], 'ok');
+    assert.equal(String(backup.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), '16');
+    backup.close();
+  }
+});
+
+test('P1 a backup failure warns and does not block the migration', () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-backup-fail-'));
+  const env = {
+    ...process.env,
+    OMNI_HOME: home,
+    DSH_HOME: home,
+    OMNI_VERSION_CHECK_DISABLED: '1',
+    OMNI_DISABLE_SEMANTIC: '1',
+  };
+  delete env.OMNI_MIGRATION_BACKUP_STRICT;
+  const seed = spawnSync(process.execPath, [
+    path.join(ROOT, 'hosts', 'cli.mjs'), 'search', 'seed', '--limit', '1',
+  ], { cwd: ROOT, env, encoding: 'utf8', timeout: 15_000 });
+  assert.equal(seed.status, 0, seed.stderr || seed.stdout);
+
+  const legacy = openDb(home);
+  legacy.prepare("UPDATE meta SET value = '16' WHERE key = 'schema_version'").run();
+  legacy.prepare('INSERT INTO notes(ts, scope, text, importance, text_hash) VALUES (?, ?, ?, ?, ?)')
+    .run(1, 'global', 'backup failure survivor', 0.9, createHash('sha256').update('backup failure survivor').digest('hex').slice(0, 32));
+  legacy.close();
+
+  const blocker = path.join(home, 'backups-is-a-file');
+  writeFileSync(blocker, 'not a directory');
+  const run = spawnSync(process.execPath, [
+    path.join(ROOT, 'hosts', 'cli.mjs'), 'search', 'backup failure survivor', '--limit', '1',
+  ], {
+    cwd: ROOT,
+    env: { ...env, OMNI_BACKUP_DIR: blocker },
+    encoding: 'utf8',
+    timeout: 15_000,
+  });
+  assert.equal(run.status, 0, run.stderr || run.stdout);
+  assert.match(run.stderr, /migration backup skipped/);
+  const db = openDb(home);
+  assert.equal(String(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), String(SCHEMA_VERSION));
+  assert.equal(Number(db.prepare("SELECT COUNT(*) AS n FROM notes WHERE text='backup failure survivor'").get().n), 1);
+  db.close();
 });
 
 test('v17 backfills in batches, indexes the empty probe and keeps collisions distinct', async () => {

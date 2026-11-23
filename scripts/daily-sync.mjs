@@ -17,7 +17,7 @@
  */
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
@@ -50,10 +50,11 @@ const GITHUB_TOKEN = process.env.OMNI_GITHUB_TOKEN || process.env.GITHUB_TOKEN |
 const SCHTASKS = process.platform === 'win32'
   ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'schtasks.exe')
   : 'schtasks.exe';
-const NPM = [process.env.NPM_BIN, path.join(path.dirname(process.execPath), 'npm.cmd'), 'npm.cmd']
+const NPM = [process.env.NPM_BIN, process.platform === 'win32' ? 'npm.cmd' : 'npm']
   .filter(Boolean)
-  .find(candidate => candidate === 'npm.cmd' || existsSync(candidate)) || 'npm.cmd';
-const NPM_CLI = [process.env.NPM_CLI, path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')]
+  .find(candidate => candidate === 'npm.cmd' || candidate === 'npm' || existsSync(candidate))
+  || (process.platform === 'win32' ? 'npm.cmd' : 'npm');
+const NPM_CLI = [process.env.NPM_CLI, process.env.npm_execpath, path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')]
   .filter(Boolean)
   .find(candidate => existsSync(candidate)) || null;
 
@@ -111,6 +112,51 @@ function writeState(file, state) {
   writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
   renameSync(temporary, file);
 }
+
+// One updater at a time. The state file alone cannot serialize two `--apply`
+// processes: both can pass the same-day gate before either writes it, then one
+// resets the tree underneath the other's verification. The lock is released
+// on process exit, so early error branches do not need a release call.
+let applyLockPath = null;
+
+function acquireApplyLock(statePath) {
+  const lockPath = `${statePath}.apply.lock`;
+  mkdirSync(path.dirname(lockPath), { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const fd = openSync(lockPath, 'wx', 0o600);
+      closeSync(fd);
+      writeFileSync(lockPath, `${JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() })}\n`, {
+        encoding: 'utf8',
+        mode: 0o600,
+      });
+      return lockPath;
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error;
+      // A killed updater leaves a lock behind. Recover only after it is clearly
+      // stale; a live updater may legitimately take longer than a few minutes.
+      try {
+        if (Date.now() - statSync(lockPath).mtimeMs > 30 * 60 * 1000) {
+          unlinkSync(lockPath);
+          continue;
+        }
+      } catch { /* the owner may have removed it between stat and unlink */ }
+      return null;
+    }
+  }
+  return null;
+}
+
+function releaseApplyLock(lockPath) {
+  if (!lockPath) return;
+  try {
+    const owner = JSON.parse(readFileSync(lockPath, 'utf8'));
+    if (Number(owner?.pid) !== process.pid) return;
+  } catch { /* empty or already removed: fall through to unlink */ }
+  try { unlinkSync(lockPath); } catch { /* already removed */ }
+}
+
+process.on('exit', () => releaseApplyLock(applyLockPath));
 
 function argValue(argv, index, name) {
   const value = argv[index + 1];
@@ -245,9 +291,11 @@ function gitBlob(dir, commit, file) {
   }
 }
 
-function verifyManifestForRepo(repo, candidate, expectedVersion) {
+export function verifyManifestForRepo(repo, candidate, expectedVersion, options = {}) {
   const verdict = verifyUpdateManifest(candidate, {
-    expectedFingerprint: UPDATE_PUBLIC_KEY_SHA256,
+    expectedFingerprint: options.expectedFingerprint ?? UPDATE_PUBLIC_KEY_SHA256,
+    ...(options.publicKeyPem ? { publicKeyPem: options.publicKeyPem } : {}),
+    ...(options.keyId ? { keyId: options.keyId } : {}),
   });
   if (!verdict.ok) throw new UpdateError('signature-invalid', verdict.error);
   const manifest = verdict.manifest;
@@ -408,6 +456,40 @@ function originUrl(dir) {
  * `--dir` on any repository with a package.json would fetch and merge that
  * repository's origin/main, while still sharing this project's global state.
  */
+/**
+ * Parse a Git remote URL into an exact host + repository path. Substring
+ * matching would accept `github.com.evil/...` or `evil.com/github.com/...`.
+ */
+function parseGitHubOrigin(origin) {
+  const raw = String(origin ?? '').trim();
+  let host;
+  let repoPath;
+  try {
+    if (/^https?:\/\//i.test(raw)) {
+      const url = new URL(raw);
+      host = url.hostname;
+      repoPath = decodeURIComponent(url.pathname);
+    } else if (/^ssh:\/\//i.test(raw)) {
+      const url = new URL(raw);
+      host = url.hostname;
+      repoPath = decodeURIComponent(url.pathname);
+    } else {
+      const scp = raw.match(/^(?:[^@/]+@)?([^:/]+):(.+)$/);
+      if (scp) {
+        host = scp[1];
+        repoPath = scp[2];
+      }
+    }
+  } catch {
+    return null;
+  }
+  if (!host || !repoPath) return null;
+  return {
+    host: host.toLowerCase(),
+    repo: repoPath.replace(/^\/+/, '').replace(/\.git$/i, '').replace(/\/+$/i, '').toLowerCase(),
+  };
+}
+
 function checkoutIdentityError(dir) {
   let pkg;
   try {
@@ -422,13 +504,9 @@ function checkoutIdentityError(dir) {
   if (!root) return 'not a git checkout';
   const origin = originUrl(dir);
   if (!origin) return 'git origin is missing';
-  const normalized = origin
-    .replace(/^git@github\.com:/i, 'github.com/')
-    .replace(/^ssh:\/\/git@github\.com\//i, 'github.com/')
-    .replace(/\.git$/i, '')
-    .toLowerCase();
-  if (!normalized.includes(`github.com/${GITHUB_REPO.toLowerCase()}`)) {
-    return `git origin ${origin} is not ${GITHUB_REPO}`;
+  const parsed = parseGitHubOrigin(origin);
+  if (!parsed || parsed.host !== 'github.com' || parsed.repo !== GITHUB_REPO.toLowerCase()) {
+    return `git origin ${origin} is not https://github.com/${GITHUB_REPO}`;
   }
   return null;
 }
@@ -473,6 +551,20 @@ async function main() {
     console.log(JSON.stringify({ ok: false, action: 'not-omni-checkout', repo, error: identityError }));
     process.exitCode = 2;
     return;
+  }
+
+  if (options.apply) {
+    applyLockPath = acquireApplyLock(options.state);
+    if (!applyLockPath) {
+      console.log(JSON.stringify({
+        ok: false,
+        action: 'already-running',
+        repo,
+        error: `another update is already in progress: ${options.state}.apply.lock`,
+      }));
+      process.exitCode = 2;
+      return;
+    }
   }
 
   if (!options.apply && !options.check && !options.force && !isSyncDue(state, today)) {

@@ -46,7 +46,7 @@
 | 全量记忆被导出扩散 | 导出仅 loopback、需本机访问；文件落在 `$DSH_HOME/memory/`，明文与数据库同一边界 | `memory_export` / `/omni-memory/export` |
 | 恶意备份注入记忆 | 导入只接受**本地文件路径**（工具参数），不做 HTTP 上传；默认 dry-run；合并去重 | `memory_import` |
 | 误删无法挽回 | 墓碑保留 + 审计视图 + `memory_restore`（POST + CSRF） | 恢复链路 |
-| 上游仓库被改写后投毒 | `daily-sync` 默认只报告；`--apply` 必须验 Ed25519 签名清单、固定公钥指纹、`package.json` 哈希与签名提交谱系，只快进到签名提交 | 更新链（3.11.6） |
+| 上游仓库被改写后投毒 | `daily-sync` 默认只报告；`--apply` 必须验 Ed25519 签名清单、固定公钥指纹、`package.json` 哈希与签名提交谱系，只快进到签名提交 | 更新链（3.11.7） |
 
 ## 4. 明确不解决的问题（残余风险）
 

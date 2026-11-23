@@ -62,6 +62,66 @@ test('daily-sync reports a missing package without crashing', () => {
   }
 });
 
+test('daily-sync rejects an origin whose host only contains the repo string', t => {
+  const git = spawnSync(GIT, ['--version'], { encoding: 'utf8' });
+  if (git.status !== 0) {
+    t.skip('git is unavailable');
+    return;
+  }
+  const dir = mkdtempSync(path.join(tmpdir(), 'omni-daily-sync-origin-'));
+  try {
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      name: '@local/omni-memory',
+      version: '3.11.0',
+    }));
+    const gitIn = args => {
+      const result = spawnSync(GIT, ['-C', dir, ...args], { encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+    };
+    gitIn(['init', '-q']);
+    gitIn(['remote', 'add', 'origin', 'https://github.com.evil/wangzhen110/omni-memory.git']);
+    const first = runIn(dir);
+    assert.equal(first.code, 2);
+    assert.equal(first.json.action, 'not-omni-checkout');
+    assert.match(first.json.error, /not https:\/\/github\.com\/wangzhen110\/omni-memory/);
+
+    gitIn(['remote', 'set-url', 'origin', 'https://evil.com/github.com/wangzhen110/omni-memory.git']);
+    const second = runIn(dir);
+    assert.equal(second.code, 2);
+    assert.equal(second.json.action, 'not-omni-checkout');
+    assert.match(second.json.error, /not https:\/\/github\.com\/wangzhen110\/omni-memory/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('daily-sync refuses a second apply while the lock is held', t => {
+  const git = spawnSync(GIT, ['--version'], { encoding: 'utf8' });
+  if (git.status !== 0) {
+    t.skip('git is unavailable');
+    return;
+  }
+  const dir = mkdtempSync(path.join(tmpdir(), 'omni-daily-sync-lock-'));
+  try {
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      name: '@local/omni-memory',
+      version: '3.11.0',
+    }));
+    const gitIn = args => {
+      const result = spawnSync(GIT, ['-C', dir, ...args], { encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+    };
+    gitIn(['init', '-q']);
+    gitIn(['remote', 'add', 'origin', 'https://github.com/wangzhen110/omni-memory.git']);
+    writeFileSync(path.join(dir, 'state.json.apply.lock'), JSON.stringify({ pid: 999999, startedAt: new Date().toISOString() }));
+    const result = runIn(dir, ['--apply']);
+    assert.equal(result.code, 2);
+    assert.equal(result.json.action, 'already-running');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('daily-sync default is report-only and never fast-forwards the checkout', t => {
   const git = spawnSync(GIT, ['--version'], { encoding: 'utf8' });
   if (git.status !== 0) {
