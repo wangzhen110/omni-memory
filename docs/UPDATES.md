@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 90 次提交；更新记录自身的提交不计入列表。
+> 共 91 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-23
 
+- 10:52:24 `bbbdc079` — docs: describe conditional daily-sync gate — [提交](https://github.com/wangzhen110/omni-memory/commit/bbbdc079d86eb70507e8c62adc3d4eb9faa2e658)
 - 10:51:47 `3658dac1` — docs: note automatic same-day gate bypass — [提交](https://github.com/wangzhen110/omni-memory/commit/3658dac1da279e84cf405950e9f28be87c1ab389)
 - 10:50:25 `31a9324d` — fix: let read-path version probe bypass the same-day sync gate (3.11.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/31a9324d36685190b8938037b0d9846498c21fdb)
 - 10:33:11 `ad8874ba` — feat: report cloud version on memory reads (3.11.3) — [提交](https://github.com/wangzhen110/omni-memory/commit/ad8874ba35300a4ce94131a42e5fd1e0a32cd4d4)
