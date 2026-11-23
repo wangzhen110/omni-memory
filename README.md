@@ -77,7 +77,7 @@ AI 读取记忆时也会自动检查：`memory_context`、CLI `context` 和 `/om
 node scripts/daily-sync.mjs
 ```
 
-它读取 GitHub `main` 的 `package.json`，仅在远端版本更高且 tracked 文件干净时快进合并；更新后用 `node --check` 校验，失败自动回滚，再重启 `OmniMemory7788` 并等 `/health` 返回新版本。同一天重复调用直接返回 `already-ran-today`；`--check` 只检查，`--force` 强制重查，`--no-restart` 只更新代码。
+它读取 GitHub `main` 的 `package.json`，仅在远端版本更高且 tracked 文件干净时快进合并；更新后用 `node --check` 校验，失败自动回滚，再重启 `OmniMemory7788` 并等 `/health` 返回新版本。同一天重复调用通常直接返回 `already-ran-today`；但如果读取缓存发现云端又发布了更高版本，这次 gate 会自动放行，不需要 `--force`。`--check` 只检查，`--force` 强制重查，`--no-restart` 只更新代码。
 
 ### 在 DSH 之外使用（MCP / HTTP / CLI）
 

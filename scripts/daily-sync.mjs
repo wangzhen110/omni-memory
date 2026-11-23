@@ -26,9 +26,9 @@ import {
   UPDATE_BRANCH,
   defaultStatePath,
   isNewerVersion,
-  isSyncDue,
   localDateKey,
   parseVersion,
+  shouldRunSync,
 } from '../lib/daily-sync.mjs';
 
 const GIT_CANDIDATES = [
@@ -85,6 +85,11 @@ function readState(file) {
   } catch {
     return {};
   }
+}
+
+function cachedRemoteVersion() {
+  const home = process.env.OMNI_HOME || process.env.DSH_HOME || path.join(homedir(), '.dsh');
+  return readState(path.join(home, 'omni-version-check.json')).remoteVersion ?? null;
 }
 
 function writeState(file, state) {
@@ -260,19 +265,6 @@ async function main() {
   const checkedAt = new Date().toISOString();
   const state = readState(options.state);
 
-  if (!options.check && !options.force && !isSyncDue(state, today)) {
-    console.log(JSON.stringify({
-      ok: true,
-      action: 'already-ran-today',
-      skipped: true,
-      date: today,
-      lastCheckDate: state.lastCheckDate,
-      localVersion: state.localVersion,
-      remoteVersion: state.remoteVersion,
-    }));
-    return;
-  }
-
   if (!existsSync(path.join(repo, 'package.json'))) {
     console.log(JSON.stringify({ ok: false, action: 'not-a-project', repo, error: 'package.json missing' }));
     process.exitCode = 2;
@@ -280,6 +272,22 @@ async function main() {
   }
 
   const localVersion = readPackageVersion(repo);
+  const cachedRemote = cachedRemoteVersion();
+
+  if (!options.check && !options.force
+    && !shouldRunSync(state, today, { localVersion, cachedRemoteVersion: cachedRemote })) {
+    console.log(JSON.stringify({
+      ok: true,
+      action: 'already-ran-today',
+      skipped: true,
+      date: today,
+      lastCheckDate: state.lastCheckDate,
+      localVersion,
+      remoteVersion: state.remoteVersion,
+    }));
+    return;
+  }
+
   const gitRoot = projectRoot(repo);
   const base = { date: today, lastCheckDate: today, checkedAt, repo, localVersion, gitRoot };
 

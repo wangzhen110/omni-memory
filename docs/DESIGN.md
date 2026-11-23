@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.11.3 |
-| 插件版本 | 3.11.3 |
+| 文档版本 | 3.11.4 |
+| 插件版本 | 3.11.4 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-23 |
@@ -81,7 +81,7 @@
 | FR-40 | 分层画像与重排 | 画像分 `## 全局` / `## 当前项目`；可选 cross-encoder rerank（未配置端点零延迟，失败回落融合排序）；本地/远程 embedding 预设 | ✅ 已实现 |
 | FR-42 | 跨平台项目键稳定 | Windows/macOS 同一路径不同大小写生成同一项目键；旧键首次打开时按路径迁移到 canonical key，迁移幂等且不误合并同名目录 | ✅ 已实现（schema v15，ADR-031） |
 | FR-43 | 版本可见与每日一次对齐 | `/health`、`/omni-memory/status`、`/overview` 与面板顶栏显示当前版本；每天第一次记忆操作前检查 GitHub `main`，远端更高且工作树干净时快进合并，校验失败回滚，同一天只执行一次 | ✅ 已实现（3.11.2；`scripts/daily-sync.mjs`） |
-| FR-44 | 读取记忆时版本提醒 | `memory_context`（MCP/CLI）与 `/omni-memory/packet` 读取时检查云端 `main/package.json`；发现更高版本时在返回文本顶部提示 AI 先运行 `scripts/daily-sync.mjs`；成功结果缓存 30 分钟，失败 5 分钟，网络上限 2.5s，检查失败不阻塞记忆读取 | ✅ 已实现（3.11.3；`lib/version-check.mjs`） |
+| FR-44 | 读取记忆时版本提醒 | `memory_context`（MCP/CLI）与 `/omni-memory/packet` 读取时检查云端 `main/package.json`；发现更高版本时在返回文本顶部提示 AI 先运行 `scripts/daily-sync.mjs`；同日已同步后云端又出现更高版本时，读取缓存会让当日 gate 自动放行；成功结果缓存 30 分钟，失败 5 分钟，网络上限 2.5s，检查失败不阻塞记忆读取 | ✅ 已实现（3.11.4；`lib/version-check.mjs`） |
 
 ### 1.2 非功能需求
 

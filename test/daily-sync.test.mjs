@@ -6,6 +6,7 @@ import {
   isSyncDue,
   localDateKey,
   parseVersion,
+  shouldRunSync,
 } from '../lib/daily-sync.mjs';
 
 test('parseVersion accepts a leading v and rejects non-semver', () => {
@@ -32,4 +33,8 @@ test('daily gate uses the local calendar date and only blocks a repeat', () => {
   assert.equal(isSyncDue({ lastCheckDate: '2026-11-22' }, '2026-11-23'), true);
   assert.equal(isSyncDue({ lastCheckDate: '2026-11-23' }, '2026-11-23'), false);
   assert.equal(isSyncDue({ date: '2026-11-23' }, '2026-11-23'), false);
+  const sameDay = { lastCheckDate: '2026-11-23', localVersion: '3.11.2', remoteVersion: '3.11.2' };
+  assert.equal(shouldRunSync(sameDay, '2026-11-23', { localVersion: '3.11.2', cachedRemoteVersion: '3.11.2' }), false);
+  assert.equal(shouldRunSync(sameDay, '2026-11-23', { localVersion: '3.11.2', cachedRemoteVersion: '3.11.3' }), true);
+  assert.equal(shouldRunSync({ lastCheckDate: '2026-11-22' }, '2026-11-23', { localVersion: '3.11.2' }), true);
 });
