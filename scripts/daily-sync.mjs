@@ -928,7 +928,8 @@ async function main() {
   if (!output.ok) process.exitCode = 2;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+const invokedPath = process.argv[1] ? pathToFileURL(process.argv[1]).href : '';
+if (import.meta.url === invokedPath) {
   main().catch(error => {
     console.log(JSON.stringify({ ok: false, action: 'unhandled-error', error: error?.stack || String(error) }));
     process.exitCode = 2;
