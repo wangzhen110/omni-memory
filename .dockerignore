@@ -1,0 +1,14 @@
+.git
+.github
+.gitignore
+.workbuddy
+node_modules
+test
+bench
+docs
+*.log
+*.db
+*.db-wal
+*.db-shm
+omni-update-manifest.json
+omni-update-signing-key.pem

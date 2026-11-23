@@ -2,7 +2,7 @@
 
 > **让 AI 不再失忆的本地长期记忆中枢。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
 
-[![tests](https://img.shields.io/badge/tests-423%2F423-brightgreen)](#测试与指标)
+[![tests](https://img.shields.io/badge/tests-425%2F425-brightgreen)](#测试与指标)
 [![node](https://img.shields.io/badge/node-%3E%3D22.13-8de1ff)](#本地安装开发者)
 [![license](https://img.shields.io/badge/license-Personal%20Use%201.1-lightgrey)](LICENSE)
 
@@ -80,7 +80,7 @@ node hosts/cli.mjs serve --port 7788
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 423 个用例
+npm test          # 425 个用例
 npm run check     # 语法、文档计数与模型资产完整性校验
 ```
 
@@ -220,15 +220,19 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**423 / 423 通过**
+- 自动化用例：**425 / 425 通过**
 - 检索延迟（本机复核，**3.10.1 数据；3.10.4 未重跑，不作为 3.10.4 实测**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **116.8ms**（两段式有界检索，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
+- 3.12.0 新增：100k 短笔记 10M 字符检索 p95 **6.9ms**；10k 长笔记 10M 字符 p95 **27.4ms**；120 条确定性质量用例 **120/120**；LoCoMo session 粒度 evidence recall@10 **0.7134**（检索层，不是官方 QA）。完整方法与边界见 [基准与质量实测](docs/BENCHMARKS.md)。
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
 
 ```bash
 npm test
 npm run bench          # 延迟基准
 npm run bench:golden   # 黄金集
+npm run bench:quality  # 120 条确定性质量集
+npm run bench:scale -- 100000 100 100
+npm run bench:public:fetch && npm run bench:public
 ```
 
 ## 兼容性
@@ -255,6 +259,12 @@ npm run bench:golden   # 黄金集
 - 远程 embedding 加固与 ANN 边界见 [ADR-025](docs/ADR/025-remote-embedding-and-ann.md)
 - [更新日志](docs/CHANGELOG.md)
 - [逐次更新记录](docs/UPDATES.md)
+- [基准与质量实测](docs/BENCHMARKS.md)
+- [竞品与赛道定位](docs/COMPARISON.md)
+- [未完成项与 C 类记录](docs/OPEN-GAPS.md)
+- [Docker / 容器化](docs/DOCKER.md)
+- [Linux 部署](docs/LINUX.md)
+- [许可与商业授权](LICENSING.md)
 - [3.9.0 自动捕获与巩固完成报告](docs/COMPLETION-2026-11-21.md)
 - [3.9.1 复核问题修复报告](docs/COMPLETION-3.9.1-2026-11-21.md)
 - [3.9.2 零配置语义整改报告](docs/COMPLETION-3.9.2-2026-11-21.md)
@@ -282,7 +292,7 @@ https://github.com/wangzhen110/omni-memory · 全息记忆个人使用许可 1.1
 已修改
 ```
 
-完整署名规则与更多模板见 [ATTRIBUTION.md](ATTRIBUTION.md)，法律文本见 [LICENSE](LICENSE)。
+完整署名规则与更多模板见 [ATTRIBUTION.md](ATTRIBUTION.md)，法律文本见 [LICENSE](LICENSE)，双轨许可与商业授权说明见 [LICENSING.md](LICENSING.md)。
 
 ### 商业授权
 

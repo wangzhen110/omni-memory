@@ -164,8 +164,8 @@ function rawRequest({ target, method = 'GET', headers = {}, body = '', localAddr
   });
 }
 
-test('health, rules and static pages reject non-loopback peers', async () => {
-  for (const target of ['/health', '/rules', '/', '/index.html']) {
+test('health, metrics, rules and static pages reject non-loopback peers', async () => {
+  for (const target of ['/health', '/metrics', '/rules', '/', '/index.html']) {
     const response = await rawRequest({ target, localAddress: '127.0.0.2' });
     assert.equal(response.status, 403, `${target} must not be readable from a LAN peer`);
   }

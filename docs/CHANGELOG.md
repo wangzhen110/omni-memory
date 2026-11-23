@@ -2,6 +2,25 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.12.0] — 2026-11-23
+
+### 基准与质量
+- **规模/字符体积**：新增 `bench/scale.mjs`，隔离临时库，测 100k 短笔记与 10k 长笔记各 10M 字符的 seed、库体积、RSS、检索 p50/p95；100k p95 **6.9ms**，10k 长笔记 p95 **27.4ms**。
+- **确定性质量集**：新增 `bench/quality-lib.mjs`、`bench/quality.mjs`、`test/memory-quality.test.mjs`，覆盖 knowledge-update / conflict / scope-isolation / forget-restore 四类各 30 条，120/120 通过。
+- **公开检索层**：新增 `bench/fetch-public.mjs`、`bench/public-retrieval.mjs`，接入 LoCoMo；session 粒度 evidence recall@10 **0.7134**、any-evidence **0.7583**、nDCG@10 **0.5621**；turn 粒度分别为 0.3483 / 0.3845 / 0.2193。明确只测检索，不是官方 QA 分数。
+- **恢复演练**：新增 `test/recovery-drill.test.mjs`，导出备份到全新库导入后可检索；不再只测单点快照。
+- **文档**：新增 [BENCHMARKS.md](BENCHMARKS.md)、[COMPARISON.md](COMPARISON.md)、[OPEN-GAPS.md](OPEN-GAPS.md)；C 类（官方 QA、真实用户、macOS 真机）单列记录。
+
+### 可观测性与交付
+- **`/metrics`**：HTTP 服务新增 loopback-only 指标入口，返回进程 uptime、请求数、错误数、MCP 请求/消息数、工具/路由数、RSS/heap；非回环请求 403。
+- **容器**：新增 `Dockerfile`、`.dockerignore`，只提供 stdio MCP；HTTP 仍保持 loopback-only，不做无鉴权端口暴露。
+- **Linux/CI**：新增 `docs/LINUX.md`（systemd 示例与 SSH 隧道边界）；CI 增加 `container` job，构建镜像并验证 MCP `initialize`；Linux/Windows 矩阵保留。
+- **许可**：新增 `LICENSING.md` 双轨框架（个人非商业免费 / 商业书面授权），修正商业授权 Issue 模板中误写的 CC BY-NC 4.0；`LICENSE` 项目链接更新为 `omni-memory`。
+
+### 测试
+- 完整 `npm test` **425/425** 通过（423 + quality 1 + recovery 1）。
+- `npm run check` 覆盖文档、客户端 hook、语法、启动器、语义资产与 update log。
+
 ## [3.11.9] — 2026-11-23
 
 ### 产品化 · 首屏与入口

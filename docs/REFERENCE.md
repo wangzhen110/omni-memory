@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 3.11.8 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
+> 版本 3.12.0 · 生成日期 2026-11-23 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -452,6 +452,8 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 | `/forget` | POST | `kind` `id`（body 或 query） | 墓碑化 |
 
 响应统一带 `ok`。错误为 `{ ok: false, error }`。
+
+`GET /metrics` 是服务级只读指标，不属于 21 条插件 REST 路由：返回 `uptimeSeconds`、`requests`、`errors`、`mcpRequests`、`mcpMessages`、`tools`、`routes` 与 `process.memoryUsage()` 的 RSS/heap。和 `/health` 一样只接受 loopback，非回环请求 403；不包含记忆正文、查询或凭据。
 
 静态入口挂在 `GET /`、`GET /hub`、`GET /m`，三者都只允许 loopback：
 

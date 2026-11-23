@@ -2,7 +2,7 @@
 Omni Memory Personal Use License 1.1
 
 Copyright (c) 2026 wangzhen110
-https://github.com/wangzhen110/dsh-omni-memory
+https://github.com/wangzhen110/omni-memory
 
 本许可仅允许个人、非商业使用；禁止任何形式的商业使用，
 包括直接商用、修改后商用，以及复制、改写或提取本软件源码/架构后用于商业替代、竞品或商业服务。
@@ -66,7 +66,7 @@ This is a source-available license, not an OSI-approved open-source license.
 
 4.1 分发原版或修改版时，必须保留本许可全文、版权声明和项目链接。
 4.2 必须注明作者与项目名：全息记忆 (Omni Memory) · wangzhen110。
-4.3 必须给出项目链接：https://github.com/wangzhen110/dsh-omni-memory
+4.3 必须给出项目链接：https://github.com/wangzhen110/omni-memory
 4.4 修改版必须显著注明「已修改 / Modified」，并说明修改事实；不得删除原作者信息。
 4.5 署名方式应合理、清晰，不得暗示作者认可或担保你的版本。
 
@@ -108,7 +108,7 @@ This is a source-available license, not an OSI-approved open-source license.
 需要商业使用（包括公司内部生产经营、付费服务、SaaS/托管、外包交付、销售/转售/捆绑收费等）时，必须事先取得作者书面许可。
 
 优先渠道：在仓库开 Issue
-https://github.com/wangzhen110/dsh-omni-memory/issues
+https://github.com/wangzhen110/omni-memory/issues
 
 备用渠道：64271785@qq.com（标题请注明「商业授权 + 用途」）
 

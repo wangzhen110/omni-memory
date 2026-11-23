@@ -11,7 +11,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const FILES = readdirSync(ROOT, { withFileTypes: true })
   .filter(entry => entry.isFile() && /\.(?:mjs|js)$/.test(entry.name))
   .map(entry => entry.name);
-for (const dir of ['lib', 'hosts', 'scripts']) {
+for (const dir of ['lib', 'hosts', 'scripts', 'bench']) {
   const walk = relative => {
     let entries;
     try {

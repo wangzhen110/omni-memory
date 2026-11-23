@@ -148,6 +148,8 @@ export async function startHttpServer({
   version = '0.0.0',
   log = message => console.error(`[omni-http] ${message}`),
 } = {}) {
+  const startedAt = Date.now();
+  const counters = { requests: 0, errors: 0, mcpRequests: 0, mcpMessages: 0 };
   const routes = [];
   const webServer = {
     register(route) {
@@ -213,6 +215,7 @@ export async function startHttpServer({
   }
 
   async function serveMcp(req, res) {
+    counters.mcpRequests += 1;
     if (req.method !== 'POST') {
       res.writeHead(405, { allow: 'POST', 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ ok: false, error: 'use POST' }));
@@ -229,6 +232,7 @@ export async function startHttpServer({
 
     const batch = Array.isArray(payload);
     const messages = batch ? payload : [payload];
+    counters.mcpMessages += messages.length;
     const replies = [];
 
     for (const message of messages) {
@@ -256,6 +260,7 @@ export async function startHttpServer({
   }
 
   const server = createServer(async (req, res) => {
+    counters.requests += 1;
     let url;
     try {
       url = new URL(req.url ?? '/', `http://${bind}`);
@@ -269,13 +274,40 @@ export async function startHttpServer({
     try {
       // Health/rules/static are read surfaces too. When the adapter is explicitly
       // bound to 0.0.0.0 they must not become an unauthenticated metadata leak.
-      if ((pathname === '/health' || pathname === '/rules' || pathname === '/') && !isLoopback(req)) {
+      if ((pathname === '/health' || pathname === '/rules' || pathname === '/metrics' || pathname === '/') && !isLoopback(req)) {
         sendJson(res, 403, { ok: false, error: 'forbidden' });
         return;
       }
 
       if (pathname === '/health') {
         sendJson(res, 200, { ok: true, version, project, sessionId, tools: host.tools.size() });
+        return;
+      }
+
+      if (pathname === '/metrics') {
+        const memory = process.memoryUsage();
+        sendJson(res, 200, {
+          ok: true,
+          version,
+          project,
+          sessionId,
+          pid: process.pid,
+          node: process.version,
+          startedAt: new Date(startedAt).toISOString(),
+          uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+          requests: counters.requests,
+          errors: counters.errors,
+          mcpRequests: counters.mcpRequests,
+          mcpMessages: counters.mcpMessages,
+          tools: host.tools.size(),
+          routes: routes.length,
+          memory: {
+            rss: memory.rss,
+            heapTotal: memory.heapTotal,
+            heapUsed: memory.heapUsed,
+            external: memory.external,
+          },
+        });
         return;
       }
 
@@ -318,6 +350,7 @@ export async function startHttpServer({
 
       sendJson(res, 404, { ok: false, error: 'not found' });
     } catch (err) {
+      counters.errors += 1;
       log(`request failed ${pathname}: ${err?.message ?? err}`);
       if (!res.headersSent) sendJson(res, 500, { ok: false, error: 'internal error' });
       else res.end();

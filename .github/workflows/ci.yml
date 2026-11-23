@@ -25,9 +25,23 @@ jobs:
           cache: npm
       - name: install dependencies
         run: npm ci
+      - name: dependency audit (runtime)
+        run: npm audit --omit=dev --audit-level=high
       - name: syntax + documentation gates
         run: npm run check
       - name: tests
         run: npm test
       - name: retrieval quality gate
         run: npm run bench:golden
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build stdio image
+        run: docker build -t omni-memory:ci .
+      - name: container answers MCP initialize
+        run: |
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
+            | docker run --rm -i -e OMNI_HOME=/tmp/omni omni-memory:ci \
+            | grep -q '"name":"omni-memory"'

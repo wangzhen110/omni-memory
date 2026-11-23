@@ -43,6 +43,16 @@ test('http adapter: routes mount, MCP over HTTP works, panel is served', async (
     assert.equal(health.tools, 25, '23 plugin tools plus memory_context and memory_rules');
     assert.equal(health.routes ?? server.routes, 21);
 
+    const metrics = await (await fetch(`${url}/metrics`)).json();
+    assert.equal(metrics.ok, true);
+    assert.equal(metrics.version, 'test');
+    assert.equal(metrics.tools, 25);
+    assert.equal(metrics.routes, 21);
+    assert.ok(metrics.uptimeSeconds >= 0);
+    assert.ok(metrics.requests >= 2, 'health and metrics are counted');
+    assert.equal(metrics.errors, 0);
+    assert.ok(metrics.memory.rss > 0);
+
     const panel = await fetch(`${url}/`);
     assert.equal(panel.status, 200);
     assert.match(panel.headers.get('content-type') ?? '', /text\/html/);
