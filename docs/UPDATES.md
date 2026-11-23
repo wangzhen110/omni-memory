@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 96 次提交；更新记录自身的提交不计入列表。
+> 共 97 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-23
 
+- 17:16:24 `effeaec3` — feat: v3.11.9 product hub, mobile entry, one-command setup and doctor — [提交](https://github.com/wangzhen110/omni-memory/commit/effeaec39d7a4321e90f0556a46662888e64346a)
 - 15:27:01 `6a982ce0` — fix: guard daily-sync entrypoint when imported without argv — [提交](https://github.com/wangzhen110/omni-memory/commit/6a982ce0c3ef75b72fba86bcd0434c149391d729)
 - 15:21:59 `d066aea5` — feat: v3.11.8 launcher trust chain and P1 hardening — [提交](https://github.com/wangzhen110/omni-memory/commit/d066aea5b54da20b200aafbff530851c450969af)
 - 14:32:52 `2f104f03` — fix: close v3.11.6 audit P0/P1 and harden 3.11.7 release gates — [提交](https://github.com/wangzhen110/omni-memory/commit/2f104f030f1129a9657e62111235d5c3201fc45a)
