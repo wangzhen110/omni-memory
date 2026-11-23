@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -128,6 +128,42 @@ test('D-03 backfill indexes rows that predate the FTS tables', async () => {  co
   const row = db.prepare("SELECT COUNT(*) AS n FROM notes_fts WHERE notes_fts MATCH '\"backfill-me\"'").get();
   assert.equal(Number(row.n), 1);
   db.close();
+});
+
+test('a real schema upgrade writes a verified pre-migration backup first', async () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-migration-backup-'));
+  mkdirSync(path.join(home, 'memory'), { recursive: true });
+  const legacy = openDb(home);
+  legacy.exec(`
+    CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
+    CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, scope TEXT NOT NULL DEFAULT 'global',
+      text TEXT NOT NULL, importance REAL NOT NULL DEFAULT 0.5, source TEXT,
+      revision INTEGER NOT NULL DEFAULT 1, superseded_by INTEGER, contested INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER);
+  `);
+  legacy.prepare("INSERT INTO meta(key, value) VALUES ('schema_version', '1')").run();
+  legacy.prepare('INSERT INTO notes(ts, text, importance, scope) VALUES (?, ?, ?, ?)')
+    .run(1, 'backup me before migration', 0.9, 'global');
+  legacy.close();
+
+  const app = await boot({ home });
+  await app.call('memory_profile');
+
+  const backupDir = path.join(home, 'memory', 'backups');
+  const names = readdirSync(backupDir).filter(name => /^pre-migrate-v1-to-v17-.*\.db$/.test(name));
+  assert.equal(names.length, 1, 'one backup should be written before the upgrade');
+  const backup = new DatabaseSync(path.join(backupDir, names[0]), { readOnly: true });
+  const check = backup.prepare('PRAGMA integrity_check').get();
+  assert.equal(Object.values(check)[0], 'ok');
+  assert.equal(String(backup.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), '1');
+  assert.equal(Number(backup.prepare('SELECT COUNT(*) AS n FROM notes').get().n), 1);
+  backup.close();
+});
+
+test('a fresh database does not create a pointless migration backup', async () => {
+  const app = await boot();
+  await app.call('memory_profile');
+  const backupDir = path.join(app.home, 'memory', 'backups');
+  assert.equal(existsSync(backupDir) ? readdirSync(backupDir).filter(name => name.endsWith('.db')).length : 0, 0);
 });
 
 test('v17 backfills in batches, indexes the empty probe and keeps collisions distinct', async () => {

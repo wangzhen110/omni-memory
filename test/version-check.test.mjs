@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { checkForUpdate, formatUpdateNotice } from '../lib/version-check.mjs';
@@ -81,6 +81,67 @@ test('checkForUpdate falls back to raw and never throws on network failure', asy
     assert.match(String(failed.error), /offline/);
     const persisted = JSON.parse(readFileSync(cachePath, 'utf8'));
     assert.equal(persisted.remoteVersion, null);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('a cache rewritten by another process is read without a second network call', async () => {
+  delete process.env.OMNI_VERSION_CHECK_DISABLED;
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-version-cross-process-'));
+  const cachePath = path.join(home, 'cache.json');
+  let calls = 0;
+  const firstFetch = async () => {
+    calls += 1;
+    const pkg = Buffer.from(JSON.stringify({ version: '3.11.3' })).toString('base64');
+    return jsonResponse({ content: pkg });
+  };
+  try {
+    const first = await checkForUpdate({ localVersion: '3.11.2', cachePath, fetchImpl: firstFetch, force: true, ttlMs: 60_000 });
+    assert.equal(first.remoteVersion, '3.11.3');
+    const before = statSync(cachePath);
+    writeFileSync(cachePath, JSON.stringify({
+      ok: true,
+      localVersion: '3.11.2',
+      remoteVersion: '3.11.7',
+      updateAvailable: true,
+      checkedAtMs: Date.now(),
+      source: 'contents-api',
+    }));
+    utimesSync(cachePath, new Date(before.atimeMs), new Date(before.mtimeMs + 2000));
+    const second = await checkForUpdate({
+      localVersion: '3.11.2',
+      cachePath,
+      ttlMs: 60_000,
+      fetchImpl: async () => { throw new Error('must not fetch'); },
+    });
+    assert.equal(second.cached, true);
+    assert.equal(second.remoteVersion, '3.11.7');
+    assert.equal(calls, 1);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('concurrent readers share one cross-process probe lock', async () => {
+  delete process.env.OMNI_VERSION_CHECK_DISABLED;
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-version-lock-'));
+  const cachePath = path.join(home, 'cache.json');
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const pkg = Buffer.from(JSON.stringify({ version: '3.11.6' })).toString('base64');
+    return jsonResponse({ content: pkg });
+  };
+  try {
+    const [first, second] = await Promise.all([
+      checkForUpdate({ localVersion: '3.11.5', cachePath, fetchImpl, force: true }),
+      checkForUpdate({ localVersion: '3.11.5', cachePath, fetchImpl, force: true }),
+    ]);
+    assert.equal(calls, 1);
+    assert.equal([first, second].filter(item => item.locked).length, 1);
+    assert.equal([first, second].filter(item => item.updateAvailable).length, 1);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

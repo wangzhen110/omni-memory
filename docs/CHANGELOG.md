@@ -2,6 +2,26 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.11.6] — 2026-11-23
+
+### 安全 · 更新链加入 Ed25519 签名校验
+- **默认只报告**：`node scripts/daily-sync.mjs` 不再 fast-forward、不重启 7788；只输出 `update-available` / `up-to-date` 和 `--apply` 命令。更新必须显式传 `--apply`。
+- **签名清单**：发布时由 `scripts/sign-release.mjs` 生成 `omni-update-manifest.json`，用 Ed25519 私钥签名，作为 GitHub Release asset 上传。清单绑定 `version`、`commit`、`tag`、`package.json` SHA-256 和 key id；未知字段一律拒绝。
+- **固定公钥**：`lib/update-signature.mjs` 内置公钥指纹 `76:f3:5c:2d:c5:d6:f7:7e:a8:4d:9b:03:26:c0:7f:fc:d5:94:70:50:8c:bf:c4:41:75:a5:59:c1:67:a9:10:f1`；私钥只放在 `~/.dsh/omni-update-signing-key.pem`，权限限制为当前用户读写，不入库。
+- **apply 闸门**：`--apply` 先验签，再校验签名提交在 `origin/main` 历史内、`package.json` 哈希与版本一致、工作树无 tracked 修改；只快进到签名提交，不再把任意 `origin/main` 合并进来。失败不重启服务，`--restart` 才显式重启。
+- **兼容边界**：3.11.5 及更早的更新链没有签名校验；3.11.6 是第一个带签名清单的 Release。升级到 3.11.6 之后，后续 `--apply` 才会强制验签。
+
+### 可靠性 · 存储迁移与服务启停
+- **迁移前备份**：真实 schema 升级前用 `VACUUM INTO` 写 `memory/backups/pre-migrate-v<old>-to-v<new>-*.db`，做 `PRAGMA integrity_check`，保留最近 5 份；备份失败则拒绝迁移。全新空库不产生无意义备份。
+- **迁移事务化**：`migrate()` 的 DDL、修复和版本标记在同一个 `BEGIN IMMEDIATE` 里提交，失败自动回滚；嵌套写入改用 SQLite savepoint，不再出现 “cannot start a transaction within a transaction”。
+- **7788 静默启停**：计划任务入口改为 `wscript.exe` 启动隐藏 PowerShell，任务不再创建控制台窗口；启动脚本取消 `while($true)` 无限循环，改为单次启动 + 等待退出；任务重启上限从 999 改为 3 次。日志按 10MB 轮转，端口占用会先等待旧监听释放，仍被非 omni 进程占用则拒绝启动。
+- **P2**：版本检查增加跨进程单飞锁（15 秒 stale 回收），多个宿主同时读记忆只发一次 GitHub 请求；`daily-sync` 状态文件按 `0600` 原子写入。
+
+### 测试与发布
+- 新增 `test/update-signature.test.mjs`：固定公钥指纹、签名/验签、字段篡改、未知字段、错误密钥、版本错配；`test/sign-release.test.mjs` 覆盖发布端清单生成与版本错配拒绝。
+- 新增迁移备份/全新库不备份断言；`test/daily-sync-cli.test.mjs` 补“默认不移动 HEAD”和 `--apply` 脏树分支；`test/version-check.test.mjs` 补并发单飞锁与跨进程缓存刷新。
+- 完整 `npm test` **401/401** 通过；`npm run check` 同步为 23 个内核工具、25 个 MCP 工具、21 路由、31 ADR、schema v17、3.11.6。
+
 ## [3.11.5] — 2026-11-23
 
 ### 修复 · 读路径版本提醒不再驱动自动更新

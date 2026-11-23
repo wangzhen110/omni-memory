@@ -3,18 +3,19 @@
 // NonCommercial use only; attribution required. See LICENSE and ATTRIBUTION.md.
 
 /**
- * Once-a-day cloud alignment for this checkout.
+ * Once-a-day cloud version report for this checkout.
  *
- * The AI host calls this before the first memory use of the day. The script
- * checks `main/package.json` on GitHub, fast-forwards a clean checkout when the
- * remote version is newer, and restarts the local 7788 service when its
- * `/health` version does not match the checkout. Every attempt is recorded in
- * `~/.dsh/omni-daily-sync.json`, so later calls that day return
- * `already-ran-today` without touching the network.
+ * The default run only reports `update-available` / `up-to-date`. It never
+ * merges code and never restarts 7788. A real update requires `--apply`, which
+ * verifies the Ed25519 release manifest, package hash and signed-commit
+ * ancestry before fast-forwarding to the signed commit. `--restart` is a
+ * separate opt-in. Every attempt is recorded in `~/.dsh/omni-daily-sync.json`,
+ * so later report-only calls that day return `already-ran-today`.
  *
  * It deliberately refuses to update a dirty tracked tree. Untracked docs are
  * allowed; `git merge --ff-only` will still stop if a remote file would collide.
  */
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -29,6 +30,11 @@ import {
   localDateKey,
   parseVersion,
 } from '../lib/daily-sync.mjs';
+import {
+  UPDATE_PACKAGE_NAME,
+  UPDATE_PUBLIC_KEY_SHA256,
+  verifyUpdateManifest,
+} from '../lib/update-signature.mjs';
 
 const GIT_CANDIDATES = [
   process.env.GIT_BIN,
@@ -38,12 +44,18 @@ const GIT_CANDIDATES = [
 const GIT = GIT_CANDIDATES.find(candidate => candidate === 'git' || existsSync(candidate)) || 'git';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO = path.resolve(SCRIPT_DIR, '..');
-const EXPECTED_PACKAGE_NAME = '@local/omni-memory';
 const TASK_NAME = process.env.OMNI_SERVICE_TASK || SERVICE_TASK;
 const HEALTH_URL = process.env.OMNI_HEALTH_URL || 'http://127.0.0.1:7788/health';
+const GITHUB_TOKEN = process.env.OMNI_GITHUB_TOKEN || process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
 const SCHTASKS = process.platform === 'win32'
   ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'schtasks.exe')
   : 'schtasks.exe';
+const NPM = [process.env.NPM_BIN, path.join(path.dirname(process.execPath), 'npm.cmd'), 'npm.cmd']
+  .filter(Boolean)
+  .find(candidate => candidate === 'npm.cmd' || existsSync(candidate)) || 'npm.cmd';
+const NPM_CLI = [process.env.NPM_CLI, path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')]
+  .filter(Boolean)
+  .find(candidate => existsSync(candidate)) || null;
 
 function run(command, args, options = {}) {
   try {
@@ -96,7 +108,7 @@ function readState(file) {
 function writeState(file, state) {
   mkdirSync(path.dirname(file), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+  writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
   renameSync(temporary, file);
 }
 
@@ -112,7 +124,11 @@ function parseArgs(argv) {
     state: defaultStatePath(),
     force: false,
     check: false,
+    apply: false,
+    restart: false,
     noRestart: false,
+    skipTests: false,
+    runTests: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -126,8 +142,18 @@ function parseArgs(argv) {
       options.force = true;
     } else if (arg === '--check') {
       options.check = true;
+    } else if (arg === '--apply') {
+      options.apply = true;
+    } else if (arg === '--restart') {
+      options.restart = true;
     } else if (arg === '--no-restart') {
       options.noRestart = true;
+    } else if (arg === '--skip-tests') {
+      options.skipTests = true;
+      options.runTests = false;
+    } else if (arg === '--run-tests') {
+      options.runTests = true;
+      options.skipTests = false;
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else {
@@ -137,16 +163,28 @@ function parseArgs(argv) {
   return options;
 }
 
-async function fetchText(url) {
+async function fetchText(url, options = {}) {
+  const headers = {
+    'user-agent': 'omni-memory',
+    accept: options.accept || 'application/vnd.github+json',
+  };
+  if (GITHUB_TOKEN && String(url).includes('api.github.com')) {
+    headers.authorization = `Bearer ${GITHUB_TOKEN}`;
+  }
   const response = await fetch(url, {
-    headers: {
-      'user-agent': 'omni-memory',
-      accept: 'application/vnd.github+json',
-    },
-    signal: AbortSignal.timeout(8000),
+    headers,
+    signal: AbortSignal.timeout(Number(options.timeoutMs ?? 8000)),
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw new UpdateError(`http-${response.status}`, `HTTP ${response.status}`);
   return response.text();
+}
+
+class UpdateError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = 'UpdateError';
+    this.code = code;
+  }
 }
 
 async function remotePackageVersion() {
@@ -166,6 +204,74 @@ async function remotePackageVersion() {
   const version = String(pkg.version ?? '').trim().replace(/^[vV]/, '');
   if (!parseVersion(version)) throw new Error('remote package.json has no valid version');
   return { version, source: 'raw-main' };
+}
+
+async function fetchReleaseManifest(version) {
+  const releaseUrl = `https://api.github.com/repos/${GITHUB_REPO}/releases/tags/v${version}`;
+  let release;
+  try {
+    release = JSON.parse(await fetchText(releaseUrl));
+  } catch (error) {
+    if (error?.code === 'http-404') {
+      throw new UpdateError('unsigned-release', `release v${version} does not exist`);
+    }
+    throw error;
+  }
+  const asset = Array.isArray(release.assets)
+    ? release.assets.find(item => item?.name === 'omni-update-manifest.json')
+    : null;
+  if (!asset?.url) {
+    throw new UpdateError('unsigned-release', `release v${version} has no omni-update-manifest.json asset`);
+  }
+  const body = await fetchText(asset.url, { accept: 'application/octet-stream' });
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new UpdateError('manifest-invalid', `release v${version} manifest is not valid JSON`);
+  }
+}
+
+function gitBlob(dir, commit, file) {
+  try {
+    return {
+      ok: true,
+      data: execFileSync(GIT, ['show', `${commit}:${file}`], {
+        cwd: dir,
+        maxBuffer: 32 * 1024 * 1024,
+      }),
+    };
+  } catch (error) {
+    return { ok: false, error: String(error?.stderr ?? error?.message ?? error) };
+  }
+}
+
+function verifyManifestForRepo(repo, candidate, expectedVersion) {
+  const verdict = verifyUpdateManifest(candidate, {
+    expectedFingerprint: UPDATE_PUBLIC_KEY_SHA256,
+  });
+  if (!verdict.ok) throw new UpdateError('signature-invalid', verdict.error);
+  const manifest = verdict.manifest;
+  if (manifest.version !== expectedVersion) {
+    throw new UpdateError('manifest-version-mismatch', `manifest is ${manifest.version}, remote package is ${expectedVersion}`);
+  }
+  const blob = gitBlob(repo, manifest.commit, 'package.json');
+  if (!blob.ok) throw new UpdateError('signed-commit-missing', blob.error);
+  const actualHash = createHash('sha256').update(blob.data).digest('hex');
+  if (actualHash !== manifest.packageJsonSha256) {
+    throw new UpdateError('package-hash-mismatch', `package.json at ${manifest.commit} does not match the signed hash`);
+  }
+  let pkg;
+  try {
+    pkg = JSON.parse(blob.data.toString('utf8').replace(/^\uFEFF/, ''));
+  } catch {
+    throw new UpdateError('package-json-invalid', `package.json at ${manifest.commit} is not valid JSON`);
+  }
+  if (pkg.name !== UPDATE_PACKAGE_NAME) throw new UpdateError('package-name-mismatch', String(pkg.name));
+  const packageVersion = String(pkg.version ?? '').trim().replace(/^[vV]/, '');
+  if (packageVersion !== manifest.version) {
+    throw new UpdateError('package-version-mismatch', `package.json says ${packageVersion}`);
+  }
+  return { ...verdict, manifest };
 }
 
 function gitFetch(dir) {
@@ -242,7 +348,7 @@ function taskExists() {
   return run(SCHTASKS, ['/Query', '/TN', TASK_NAME, '/FO', 'LIST']);
 }
 
-async function ensureService(version, noRestart) {
+async function probeService(expectedVersion) {
   if (process.platform !== 'win32') {
     return { exists: false, restarted: false, version: null, healthy: false, error: 'unsupported platform' };
   }
@@ -250,32 +356,39 @@ async function ensureService(version, noRestart) {
   if (!task.ok) {
     return { exists: false, restarted: false, version: null, healthy: false, error: task.stderr || 'scheduled task not found' };
   }
+  const observed = await healthVersion();
+  const healthy = observed === expectedVersion;
+  return {
+    exists: true,
+    restarted: false,
+    version: observed,
+    healthy,
+    ...(healthy ? {} : { error: `service reports ${observed ?? 'no version'}, expected ${expectedVersion}` }),
+  };
+}
 
-  let observed = await healthVersion();
-  if (observed === version) {
-    return { exists: true, restarted: false, version: observed, healthy: true };
+async function restartService(version) {
+  if (process.platform !== 'win32') {
+    return { exists: false, restarted: false, version: null, healthy: false, error: 'unsupported platform' };
   }
-  if (noRestart) {
-    return {
-      exists: true, restarted: false, version: observed, healthy: false,
-      error: `service reports ${observed ?? 'no version'}, expected ${version}`,
-    };
+  const task = taskExists();
+  if (!task.ok) {
+    return { exists: false, restarted: false, version: null, healthy: false, error: task.stderr || 'scheduled task not found' };
   }
-
   run(SCHTASKS, ['/End', '/TN', TASK_NAME]);
   const start = run(SCHTASKS, ['/Run', '/TN', TASK_NAME]);
   if (!start.ok) {
-    return { exists: true, restarted: false, version: observed, healthy: false, error: start.stderr || 'schtasks /Run failed' };
+    return { exists: true, restarted: false, version: await healthVersion(), healthy: false, error: start.stderr || 'schtasks /Run failed' };
   }
   for (let attempt = 0; attempt < 20; attempt += 1) {
     await new Promise(resolve => setTimeout(resolve, 500));
-    observed = await healthVersion();
+    const observed = await healthVersion();
     if (observed === version) {
       return { exists: true, restarted: true, version: observed, healthy: true };
     }
   }
   return {
-    exists: true, restarted: true, version: observed, healthy: false,
+    exists: true, restarted: true, version: await healthVersion(), healthy: false,
     error: `service did not report ${version} after restart`,
   };
 }
@@ -302,8 +415,8 @@ function checkoutIdentityError(dir) {
   } catch (error) {
     return `package.json unreadable: ${error.message}`;
   }
-  if (pkg.name !== EXPECTED_PACKAGE_NAME) {
-    return `package name is ${String(pkg.name ?? 'missing')}, expected ${EXPECTED_PACKAGE_NAME}`;
+  if (pkg.name !== UPDATE_PACKAGE_NAME) {
+    return `package name is ${String(pkg.name ?? 'missing')}, expected ${UPDATE_PACKAGE_NAME}`;
   }
   const root = projectRoot(dir);
   if (!root) return 'not a git checkout';
@@ -330,7 +443,8 @@ async function main() {
     return;
   }
   if (options.help) {
-    console.log('Usage: node scripts/daily-sync.mjs [--dir <repo>] [--check] [--force] [--no-restart] [--state <file>]');
+    console.log('Usage: node scripts/daily-sync.mjs [--dir <repo>] [--check] [--apply] [--restart] [--force] [--run-tests] [--state <file>]');
+    console.log('Default is report-only. --apply requires a signed release manifest; --restart is explicit.');
     return;
   }
 
@@ -361,7 +475,7 @@ async function main() {
     return;
   }
 
-  if (!options.check && !options.force && !isSyncDue(state, today)) {
+  if (!options.apply && !options.check && !options.force && !isSyncDue(state, today)) {
     console.log(JSON.stringify({
       ok: true,
       action: 'already-ran-today',
@@ -381,7 +495,7 @@ async function main() {
   try {
     remote = await remotePackageVersion();
   } catch (error) {
-    const service = await ensureService(localVersion, true);
+    const service = await probeService(localVersion);
     const result = { ...base, ok: false, action: 'network-error', remoteVersion: null, service, error: error.message };
     if (!options.check) writeState(options.state, result);
     console.log(JSON.stringify(result));
@@ -405,18 +519,38 @@ async function main() {
 
   if (!output.updateAvailable) {
     output.action = 'up-to-date';
-    output.service = await ensureService(localVersion, options.noRestart);
-    if (output.service.exists && output.service.healthy === false) output.ok = false;
+    output.service = await probeService(localVersion);
+    output.restartRequired = !output.service.healthy;
+    if (options.restart) {
+      output.service = await restartService(localVersion);
+      output.restartRequired = !output.service.healthy;
+      if (!output.service.healthy) {
+        output.ok = false;
+        output.action = 'service-restart-failed';
+      }
+    }
     writeState(options.state, output);
     console.log(JSON.stringify(output));
     if (!output.ok) process.exitCode = 2;
     return;
   }
 
+  if (!options.apply) {
+    output.action = 'update-available';
+    output.signatureRequired = true;
+    output.reportOnly = true;
+    output.applyCommand = `node scripts/daily-sync.mjs --dir "${repo}" --apply`;
+    output.note = '更新只在显式 --apply 且 Ed25519 签名、包哈希和提交谱系全部通过后执行；不会自动重启 7788。';
+    output.service = await probeService(localVersion);
+    writeState(options.state, output);
+    console.log(JSON.stringify(output));
+    return;
+  }
+
   if (!gitRoot) {
     output.ok = false;
     output.action = 'not-a-git-checkout';
-    output.service = await ensureService(localVersion, true);
+    output.service = await probeService(localVersion);
     writeState(options.state, output);
     console.log(JSON.stringify(output));
     process.exitCode = 2;
@@ -428,7 +562,7 @@ async function main() {
     output.ok = false;
     output.action = 'git-status-failed';
     output.error = dirty.stderr;
-    output.service = await ensureService(localVersion, true);
+    output.service = await probeService(localVersion);
     writeState(options.state, output);
     console.log(JSON.stringify(output));
     process.exitCode = 2;
@@ -438,7 +572,7 @@ async function main() {
     output.ok = false;
     output.action = 'blocked-dirty';
     output.dirty = dirty.stdout.split('\n').slice(0, 20);
-    output.service = await ensureService(localVersion, true);
+    output.service = await probeService(localVersion);
     writeState(options.state, output);
     console.log(JSON.stringify(output));
     process.exitCode = 2;
@@ -461,7 +595,7 @@ async function main() {
     output.ok = false;
     output.action = 'fetch-failed';
     output.error = fetchResult.stderr;
-    output.service = await ensureService(localVersion, true);
+    output.service = await probeService(localVersion);
     writeState(options.state, output);
     console.log(JSON.stringify(output));
     process.exitCode = 2;
@@ -481,12 +615,66 @@ async function main() {
 
   output.headBefore = before.stdout;
   output.headRemote = target.stdout;
-  const merge = runGit(['merge', '--ff-only', `origin/${UPDATE_BRANCH}`], { cwd: repo });
+
+  let verified;
+  try {
+    const candidate = await fetchReleaseManifest(remote.version);
+    verified = verifyManifestForRepo(repo, candidate, remote.version);
+  } catch (error) {
+    output.ok = false;
+    output.action = error?.code || 'signature-verification-failed';
+    output.error = String(error?.message ?? error);
+    output.service = await probeService(localVersion);
+    writeState(options.state, output);
+    console.log(JSON.stringify(output));
+    process.exitCode = 2;
+    return;
+  }
+
+  const ancestry = runGit(['merge-base', '--is-ancestor', verified.manifest.commit, `origin/${UPDATE_BRANCH}`], { cwd: repo });
+  if (!ancestry.ok) {
+    output.ok = false;
+    output.action = 'signed-commit-not-on-main';
+    output.error = `signed commit ${verified.manifest.commit} is not an ancestor of origin/${UPDATE_BRANCH}`;
+    output.service = await probeService(localVersion);
+    writeState(options.state, output);
+    console.log(JSON.stringify(output));
+    process.exitCode = 2;
+    return;
+  }
+
+  output.signature = {
+    verified: true,
+    keyId: verified.keyId,
+    keyFingerprint: verified.keyFingerprint,
+    manifestCommit: verified.manifest.commit,
+    manifestVersion: verified.manifest.version,
+    packageJsonSha256: verified.manifest.packageJsonSha256,
+  };
+  output.headSigned = verified.manifest.commit;
+  output.remoteMainAhead = target.stdout !== verified.manifest.commit;
+
+  const merge = runGit(['merge', '--ff-only', verified.manifest.commit], { cwd: repo });
   if (!merge.ok) {
     output.ok = false;
     output.action = 'blocked-diverged';
     output.error = merge.stderr;
-    output.service = await ensureService(localVersion, true);
+    output.service = await probeService(localVersion);
+    writeState(options.state, output);
+    console.log(JSON.stringify(output));
+    process.exitCode = 2;
+    return;
+  }
+
+  const afterMerge = currentHead(repo);
+  if (!afterMerge.ok || afterMerge.stdout !== verified.manifest.commit) {
+    runGit(['reset', '--hard', before.stdout], { cwd: repo });
+    output.ok = false;
+    output.action = 'signed-commit-mismatch';
+    output.error = afterMerge.ok
+      ? `HEAD is ${afterMerge.stdout}, signed commit is ${verified.manifest.commit}`
+      : afterMerge.stderr;
+    output.service = await probeService(localVersion);
     writeState(options.state, output);
     console.log(JSON.stringify(output));
     process.exitCode = 2;
@@ -499,11 +687,29 @@ async function main() {
     output.ok = false;
     output.action = 'verification-failed';
     output.error = syntax.stderr;
-    output.service = await ensureService(localVersion, true);
+    output.service = await probeService(localVersion);
     writeState(options.state, output);
     console.log(JSON.stringify(output));
     process.exitCode = 2;
     return;
+  }
+
+  if (options.runTests && !options.skipTests) {
+    const tests = NPM_CLI
+      ? run(process.execPath, [NPM_CLI, 'test'], { cwd: repo, timeout: 180_000 })
+      : run(NPM, ['test'], { cwd: repo, timeout: 180_000 });
+    if (!tests.ok) {
+      runGit(['reset', '--hard', before.stdout], { cwd: repo });
+      output.ok = false;
+      output.action = 'tests-failed';
+      output.error = (tests.stderr || tests.stdout || 'npm test failed').slice(-2000);
+      output.service = await probeService(localVersion);
+      writeState(options.state, output);
+      console.log(JSON.stringify(output));
+      process.exitCode = 2;
+      return;
+    }
+    output.tests = 'passed';
   }
 
   const updatedVersion = readPackageVersion(repo);
@@ -512,7 +718,7 @@ async function main() {
     output.ok = false;
     output.action = 'version-mismatch';
     output.localVersionAfter = updatedVersion;
-    output.service = await ensureService(localVersion, true);
+    output.service = await probeService(localVersion);
     writeState(options.state, output);
     console.log(JSON.stringify(output));
     process.exitCode = 2;
@@ -522,8 +728,16 @@ async function main() {
   output.localVersionAfter = updatedVersion;
   output.headAfter = currentHead(repo).stdout;
   output.action = 'updated';
-  output.service = await ensureService(updatedVersion, options.noRestart);
-  if (output.service.exists && output.service.healthy === false) output.ok = false;
+  output.service = await probeService(updatedVersion);
+  output.restartRequired = !output.service.healthy;
+  if (options.restart) {
+    output.service = await restartService(updatedVersion);
+    output.restartRequired = !output.service.healthy;
+    if (!output.service.healthy) {
+      output.ok = false;
+      output.action = 'updated-service-unhealthy';
+    }
+  }
   writeState(options.state, output);
   console.log(JSON.stringify(output));
   if (!output.ok) process.exitCode = 2;

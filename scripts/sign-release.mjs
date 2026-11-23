@@ -1,0 +1,153 @@
+// SPDX-License-Identifier: LicenseRef-Omni-Memory-Personal-Use-1.1
+// © 2026 wangzhen110 · https://github.com/wangzhen110/omni-memory
+// NonCommercial use only; attribution required. See LICENSE and ATTRIBUTION.md.
+
+/**
+ * Publish-side helper: sign the release manifest for one commit.
+ *
+ * Usage:
+ *   node scripts/sign-release.mjs --version 3.11.6 --commit <sha> --tag v3.11.6
+ *
+ * The private key is read from ~/.dsh/omni-update-signing-key.pem by default,
+ * or OMNI_UPDATE_SIGNING_KEY. It is never written into the repository.
+ * The resulting manifest is uploaded as a GitHub Release asset named
+ * `omni-update-manifest.json`; scripts/daily-sync.mjs refuses to apply without
+ * a manifest signed by the pinned public key.
+ */
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseVersion } from '../lib/daily-sync.mjs';
+import { signUpdateManifest, UPDATE_KEY_ID, UPDATE_MANIFEST_SCHEMA, UPDATE_PACKAGE_NAME } from '../lib/update-signature.mjs';
+
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_REPO = path.resolve(SCRIPT_DIR, '..');
+const GIT = [process.env.GIT_BIN, 'C:\\Program Files\\Git\\cmd\\git.exe', 'git']
+  .filter(Boolean)
+  .find(candidate => candidate === 'git' || existsSync(candidate)) || 'git';
+
+function argValue(argv, index, name) {
+  const value = argv[index + 1];
+  if (!value || value.startsWith('--')) throw new Error(`${name} requires a value`);
+  return value;
+}
+
+function parseArgs(argv) {
+  const options = {
+    dir: DEFAULT_REPO,
+    commit: null,
+    version: null,
+    tag: null,
+    out: 'omni-update-manifest.json',
+    key: process.env.OMNI_UPDATE_SIGNING_KEY
+      || path.join(process.env.OMNI_HOME || process.env.DSH_HOME || path.join(homedir(), '.dsh'), 'omni-update-signing-key.pem'),
+    issuedAt: new Date().toISOString(),
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--dir') {
+      options.dir = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--commit') {
+      options.commit = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--version') {
+      options.version = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--tag') {
+      options.tag = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--out') {
+      options.out = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--key') {
+      options.key = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--issued-at') {
+      options.issuedAt = argValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--help' || arg === '-h') {
+      options.help = true;
+    } else {
+      throw new Error(`unknown argument: ${arg}`);
+    }
+  }
+  return options;
+}
+
+function git(args, cwd) {
+  return execFileSync(GIT, args, { cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }).trim();
+}
+
+function packageAtCommit(repo, commit) {
+  const raw = execFileSync(GIT, ['show', `${commit}:package.json`], {
+    cwd: repo,
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  const text = raw.toString('utf8').replace(/^\uFEFF/, '');
+  const pkg = JSON.parse(text);
+  return { raw, pkg };
+}
+
+function main() {
+  let options;
+  try {
+    options = parseArgs(process.argv.slice(2));
+  } catch (error) {
+    console.log(JSON.stringify({ ok: false, error: error.message }));
+    process.exitCode = 2;
+    return;
+  }
+  if (options.help) {
+    console.log('Usage: node scripts/sign-release.mjs --version <version> [--commit <sha>] [--tag <tag>] [--key <pem>] [--out <file>]');
+    return;
+  }
+
+  const repo = path.resolve(options.dir);
+  const commit = (options.commit || git(['rev-parse', 'HEAD'], repo)).toLowerCase();
+  if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error(`invalid commit: ${commit}`);
+  const { raw, pkg } = packageAtCommit(repo, commit);
+  const version = String(options.version || pkg.version || '').trim().replace(/^[vV]/, '');
+  if (!parseVersion(version)) throw new Error(`invalid version: ${version}`);
+  if (String(pkg.version || '').trim().replace(/^[vV]/, '') !== version) {
+    throw new Error(`package.json at ${commit} is ${pkg.version}, not ${version}`);
+  }
+  if (pkg.name !== UPDATE_PACKAGE_NAME) throw new Error(`package.json name is ${pkg.name}, not ${UPDATE_PACKAGE_NAME}`);
+  const tag = String(options.tag || `v${version}`).trim();
+  if (tag !== `v${version}`) throw new Error(`tag ${tag} does not match version ${version}`);
+  if (!existsSync(options.key)) throw new Error(`signing key not found: ${options.key}`);
+
+  const manifest = {
+    schema: UPDATE_MANIFEST_SCHEMA,
+    keyId: UPDATE_KEY_ID,
+    version,
+    packageName: pkg.name,
+    packageVersion: version,
+    commit,
+    packageJsonSha256: createHash('sha256').update(raw).digest('hex'),
+    tag,
+    issuedAt: options.issuedAt,
+  };
+  const signed = signUpdateManifest(manifest, readFileSync(options.key, 'utf8'));
+  const out = path.resolve(options.out);
+  writeFileSync(out, `${JSON.stringify(signed, null, 2)}\n`, { encoding: 'utf8', mode: 0o644 });
+  console.log(JSON.stringify({
+    ok: true,
+    manifest: out,
+    version,
+    commit,
+    tag,
+    packageJsonSha256: signed.packageJsonSha256,
+    signatureBytes: Buffer.from(signed.signature, 'base64').length,
+  }, null, 2));
+}
+
+try {
+  main();
+} catch (error) {
+  console.log(JSON.stringify({ ok: false, error: String(error?.message ?? error) }));
+  process.exitCode = 2;
+}

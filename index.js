@@ -20,7 +20,7 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { appendFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { DIM, embedText, dot, toBlob, fromBlob, tokenize } from './lib/embed.mjs';
@@ -641,9 +641,76 @@ function findNoteByTextIndex(db, scope, text, extraSql = '', extraParams = []) {
   `).get(scope, hash(text), text, ...extraParams);
 }
 
+function schemaVersionOnDisk(db) {
+  try {
+    const row = db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get();
+    const version = Number(row?.value ?? 0);
+    return Number.isFinite(version) && version >= 0 ? version : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * A migration is the one startup operation that can destroy a store. Take a
+ * verified SQLite backup before the first write, then keep the newest few so a
+ * failed upgrade is recoverable without relying on the user having a copy.
+ * Fresh databases have no rows to protect and skip the copy.
+ */
+function backupBeforeMigration(db, fromVersion) {
+  if (process.env.OMNI_MIGRATION_BACKUP === '0') {
+    return { skipped: true, reason: 'OMNI_MIGRATION_BACKUP=0' };
+  }
+  const backupDir = path.join(DB_DIR, 'backups');
+  mkdirSync(backupDir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const file = path.join(backupDir, `pre-migrate-v${fromVersion}-to-v${SCHEMA_VERSION}-${stamp}.db`);
+  // VACUUM INTO writes a consistent copy without requiring the main file to be
+  // closed; it also avoids copying a live WAL file by hand.
+  try {
+    db.exec(`VACUUM INTO '${file.replaceAll("'", "''")}'`);
+  } catch (error) {
+    // Never leave a half-written file where retention would count it as a
+    // usable backup and prune older, intact copies.
+    try { unlinkSync(file); } catch { /* the failed VACUUM may not have created it */ }
+    throw error;
+  }
+  let size = 0;
+  try {
+    size = statSync(file).size;
+  } catch {
+    size = 0;
+  }
+  if (size <= 0) throw new Error(`migration backup is empty: ${file}`);
+  let check;
+  try {
+    check = new DatabaseSync(file, { readOnly: true });
+    const row = check.prepare('PRAGMA integrity_check').get();
+    const verdict = row ? Object.values(row)[0] : null;
+    if (verdict !== 'ok') throw new Error(`migration backup failed integrity_check: ${verdict}`);
+  } finally {
+    try { check?.close(); } catch { /* already closed */ }
+  }
+  const configuredKeep = Number(process.env.OMNI_MIGRATION_BACKUP_KEEP ?? 5);
+  const keep = Number.isInteger(configuredKeep) && configuredKeep > 0 ? configuredKeep : 5;
+  try {
+    const backups = readdirSync(backupDir)
+      .filter(name => /^pre-migrate-v\d+-to-v\d+-.*\.db$/.test(name))
+      .map(name => {
+        const absolute = path.join(backupDir, name);
+        return { absolute, mtime: statSync(absolute).mtimeMs };
+      })
+      .sort((a, b) => b.mtime - a.mtime);
+    for (const stale of backups.slice(keep)) unlinkSync(stale.absolute);
+  } catch { /* pruning is best effort; the new backup already exists */ }
+  return { file, bytes: size, fromVersion, toVersion: SCHEMA_VERSION };
+}
+
 function openStore() {
   if (store) return store;
   mkdirSync(DB_DIR, { recursive: true });
+  const existed = existsSync(DB_FILE);
+  const sizeBefore = existed ? statSync(DB_FILE).size : 0;
   const db = new DatabaseSync(DB_FILE);
   // Several AI hosts can hold the same file open at once. Set the busy timeout
   // before switching journal mode: concurrent first opens race on that PRAGMA
@@ -654,6 +721,11 @@ function openStore() {
   // Keep the WAL from growing without bound when many readers keep snapshots
   // alive; the limit is applied at the next checkpoint.
   db.exec('PRAGMA journal_size_limit = 16777216');
+  const priorSchemaVersion = sizeBefore > 0 ? schemaVersionOnDisk(db) : 0;
+  let migrationBackup = null;
+  if (sizeBefore > 0 && priorSchemaVersion < SCHEMA_VERSION) {
+    migrationBackup = backupBeforeMigration(db, priorSchemaVersion);
+  }
   createBaseSchema(db);
 
   const { chunksMode, notesMode, factsMode, ftsMode } = createFtsTables(db);
@@ -732,6 +804,7 @@ function openStore() {
     db,
     ftsMode,
     schemaVersion,
+    migrationBackup,
     semanticGc: semanticGcReport,
     aliasRepair,
     fts: { chunks: Boolean(chunksMode), notes: Boolean(notesMode), facts: Boolean(factsMode) },
@@ -1046,12 +1119,20 @@ const MIGRATIONS = [
 ];
 
 function migrate(db) {
+  if (MIGRATIONS.length !== SCHEMA_VERSION + 1) {
+    throw new Error(`migration table has ${MIGRATIONS.length - 1} steps, expected ${SCHEMA_VERSION}`);
+  }
   const row = prepareCached(db, "SELECT value FROM meta WHERE key = 'schema_version'").get();
   let version = row ? Number(row.value) : 0;
   if (!Number.isFinite(version) || version < 1) {
     // Unversioned database: treat as v1 and apply the remaining steps.
     version = 1;
   }
+  // DDL and the version marker commit together. A crash mid-migration leaves
+  // the previous schema intact instead of a half-applied store.
+  db.exec('BEGIN IMMEDIATE');
+  transactionDepth.set(db, 1);
+  try {
   for (let next = version + 1; next <= SCHEMA_VERSION; next += 1) {
     const step = MIGRATIONS[next];
     if (typeof step === 'function') step(db);
@@ -1146,6 +1227,13 @@ function migrate(db) {
   if (SCHEMA_VERSION >= 17) ensureNoteTextHash(db);
   prepareCached(db, "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)")
     .run(String(SCHEMA_VERSION));
+  db.exec('COMMIT');
+  } catch (error) {
+    try { db.exec('ROLLBACK'); } catch { /* the failing statement may already have closed it */ }
+    throw error;
+  } finally {
+    transactionDepth.delete(db);
+  }
   return SCHEMA_VERSION;
 }
 
@@ -1905,9 +1993,28 @@ function backfillVectors(db, options = {}) {
   return { processed, remaining: hasMore, errors, supported: true };
 }
 
-/** Run a multi-step write atomically. SQLite has no nested transaction here. */
+/** Run a multi-step write atomically. Nested calls use SQLite savepoints. */
+const transactionDepth = new WeakMap();
+let savepointCounter = 0;
 function transaction(db, fn) {
+  const depth = transactionDepth.get(db) ?? 0;
+  if (depth > 0) {
+    const savepoint = `omni_sp_${depth}_${++savepointCounter}`;
+    db.exec(`SAVEPOINT ${savepoint}`);
+    try {
+      const result = fn();
+      db.exec(`RELEASE ${savepoint}`);
+      return result;
+    } catch (error) {
+      try {
+        db.exec(`ROLLBACK TO ${savepoint}`);
+        db.exec(`RELEASE ${savepoint}`);
+      } catch { /* ignore rollback failure */ }
+      throw error;
+    }
+  }
   db.exec('BEGIN IMMEDIATE');
+  transactionDepth.set(db, 1);
   try {
     const result = fn();
     db.exec('COMMIT');
@@ -1915,6 +2022,8 @@ function transaction(db, fn) {
   } catch (error) {
     try { db.exec('ROLLBACK'); } catch { /* ignore rollback failure */ }
     throw error;
+  } finally {
+    transactionDepth.delete(db);
   }
 }
 
