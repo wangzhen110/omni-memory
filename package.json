@@ -1,6 +1,6 @@
 {
   "name": "@local/omni-memory",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "private": true,
   "type": "module",
   "description": "Omni Memory for any AI host: append-only transcripts, bi-temporal facts, self-verifying notes, hybrid retrieval, zero-config local semantic recall, project scoping and an interactive star map. Native DSH plugin, with MCP, HTTP, OpenAPI and CLI adapters.",

@@ -12,7 +12,7 @@
 ## `npm run setup` 的实际顺序
 
 1. `runDoctor` 只读预检：仓库、数据目录、Node、SQLite、端口占用。
-2. 读本地 `package.json` 版本，要求形如 `v4.1.0` 的官方 Release 存在。
+2. 读本地 `package.json` 版本，要求形如 `v4.1.1` 的官方 Release 存在。
 3. 从 `api.github.com` 读取 Release 资产 `omni-update-manifest-v2.json`。
 4. 用内置固定 Ed25519 公钥验签，要求 `tag`、`version`、`commit` 与本地一致。
 5. 通过 GitHub Contents API 读取签名 commit 上的 `package.json` 与 `scripts/launchers/omni-serve-7788.exe`，比对清单中的 SHA-256。
@@ -44,7 +44,7 @@
 
 - 镜像站应原样保留 Release 资产与 tag，不要重新打包启动器。
 - 用户下载镜像后先跑：
-  `npm run verify:release -- --tag v4.1.0 --launcher <下载的 exe>`
+  `npm run verify:release -- --tag v4.1.1 --launcher <下载的 exe>`
 - 无法访问 `api.github.com` 时，安装会失败并给出网络错误；这是 fail-closed，不降级为哈希安装。
 
 ## 源码路径

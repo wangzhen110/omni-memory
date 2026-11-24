@@ -9,13 +9,13 @@
 npm run verify:release
 
 # 验证指定 Release
-npm run verify:release -- --tag v4.1.0
+npm run verify:release -- --tag v4.1.1
 
 # 验证最新 Release
 npm run verify:release -- --latest
 
 # 验证你从任意渠道下载的启动器 exe
-npm run verify:release -- --tag v4.1.0 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.1.1 --launcher ./omni-serve-7788.exe
 ```
 
 成功时退出码为 `0`，输出签名 key、commit、`package.json` SHA-256、启动器 SHA-256；失败时退出码为 `1`，输出 JSON `{"ok":false,"error":"..."}`。加 `--json` 可获得机器可读结果。
@@ -43,7 +43,7 @@ npm run verify:release -- --tag v4.1.0 --launcher ./omni-serve-7788.exe
 
 ```powershell
 $env:GITHUB_TOKEN = "ghp_xxx"
-npm run verify:release -- --tag v4.1.0
+npm run verify:release -- --tag v4.1.1
 ```
 
 不依赖 `raw.githubusercontent.com`，因为部分网络会重置该域名；文件内容通过 GitHub Contents API 获取。

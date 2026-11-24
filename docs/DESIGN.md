@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.1.0 |
-| 插件版本 | 4.1.0 |
+| 文档版本 | 4.1.1 |
+| 插件版本 | 4.1.1 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-24 |
@@ -82,7 +82,7 @@
 | FR-42 | 跨平台项目键稳定 | Windows/macOS 同一路径不同大小写生成同一项目键；旧键首次打开时按路径迁移到 canonical key，迁移幂等且不误合并同名目录 | ✅ 已实现（schema v15，ADR-031） |
 | FR-43 | 版本可见与受控更新 | `/health`、`/omni-memory/status`、`/overview` 与面板顶栏显示当前版本；`daily-sync` 默认只报告，`--apply` 才更新；更新前必须验证 GitHub Release 的 Ed25519 清单、包哈希、启动器哈希与签名提交谱系，只快进到签名提交；启动器安装到内容寻址路径后再切换任务；`--restart` 才重启服务 | ✅ 已实现（3.11.8；`scripts/daily-sync.mjs`、`lib/update-signature.mjs`、`scripts/install-launcher.mjs`） |
 | FR-44 | 读取记忆时版本提醒 | `memory_context`（MCP/CLI）与 `/omni-memory/packet` 读取时检查云端 `main/package.json`；发现更高版本时在返回文本顶部提示“云端有新版，是否更新由用户决定”，不命令 AI 自动执行；成功结果缓存 30 分钟，失败 5 分钟，Contents API 与 raw 回退共享 2.5s 总预算，检查失败不阻塞记忆读取；缓存回读校验版本结构与 TTL，失败不保留旧远端版本；并发读取用跨进程单飞锁只发一次请求 | ✅ 已实现（3.11.6；`lib/version-check.mjs`） |
-| FR-45 | 产品化入口与诊断 | `/hub` 非等宽档案索引（记忆库/检索/关系图/项目/接入/状态，横向索引行而不是六卡网格）与 `/m` 手机端纸质底稿式只读搜索；`/star-map.html` 保留既有星图；`omni doctor` 只读诊断 Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务；`npm run setup` 先验证官方 Release 的 Ed25519 清单、签名 commit、干净工作树与启动器 SHA-256，再安装/创建计划任务；`setup:dev` 只做同提交哈希自洽；默认 dry-run，`--apply --start` 才落盘与启动 | ✅ 已实现（4.0.1 产品化入口；4.1.0 重绘 `/hub` 与 `/m`；`hosts/shared/doctor.mjs`、`scripts/install.mjs`、`scripts/verify-release.mjs`） |
+| FR-45 | 产品化入口与诊断 | `/hub` 非等宽档案索引（记忆库/检索/关系图/项目/接入/状态，横向索引行而不是六卡网格）与 `/m` 手机端纸质底稿式只读搜索；`/star-map.html` 保留既有星图；`omni doctor` 只读诊断 Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务；`npm run setup` 先验证官方 Release 的 Ed25519 清单、签名 commit、干净工作树与启动器 SHA-256，再安装/创建计划任务；`setup:dev` 只做同提交哈希自洽；默认 dry-run，`--apply --start` 才落盘与启动 | ✅ 已实现（4.0.1 产品化入口；4.1.0 重绘 `/hub` 与 `/m`；4.1.1 手机读数改为单行；`hosts/shared/doctor.mjs`、`scripts/install.mjs`、`scripts/verify-release.mjs`） |
 | FR-46 | 开源发布与公共验证 | OSI 许可证 AGPL-3.0-only + 商业例外；贡献/安全/行为准则/治理文件；`npm run demo` 隔离演示；`npm run qa` 跑黄金集与 120 例质量套件；`verify:release` 与 `setup --require-release` 共用发布验签逻辑 | ✅ 已实现（4.0.1；`LICENSE`、`LICENSING.md`、`scripts/demo.mjs`、`scripts/qa.mjs`、`docs/QUICKSTART.md`） |
 
 ### 1.2 非功能需求
