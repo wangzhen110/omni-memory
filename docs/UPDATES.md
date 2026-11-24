@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 100 次提交；更新记录自身的提交不计入列表。
+> 共 101 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -12,6 +12,10 @@
 - [3.9.3 完成报告](./COMPLETION-3.9.3-2026-11-21.md)
 - [3.9.4 完成报告](./COMPLETION-3.9.4-2026-11-21.md)
 - [3.9.5 完成报告](./COMPLETION-3.9.5-2026-11-21.md)
+
+## 2026-11-24
+
+- 09:04:55 `c69a85c5` — fix: v3.12.2 churn window and launcher task probe — [提交](https://github.com/wangzhen110/omni-memory/commit/c69a85c5f3db77ed85760d0e90f7bf46e34b6511)
 
 ## 2026-11-23
 
