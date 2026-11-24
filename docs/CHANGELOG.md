@@ -2,6 +2,21 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.1.0] — 2026-11-24
+
+### 界面
+- **`/hub` 从六卡总览改为本机记忆档案索引**：去掉等宽六卡、英文 kicker 与“中枢”式模块叙事，改成墨色底稿页面：衬线大标题、真实运行状态卡、01–06 横向索引行（记忆库 / 检索 / 关系图 / 项目 / 接入 / 状态）、最近归档与底稿宣言。数据绑定仍是 `/omni-memory/overview` 与 `/health`，没有示例数字。
+- **`/m` 从星空 hero + 统计卡改为手机端纸质底稿**：同一套墨色、琥珀和衬线字体语言；顶部本机档案头、竖排 hero、三段统计、下划线搜索、可展开的归档条目、底部三栏导航。继续只读，不新增手机写入口。
+- **`/hub` 不再复用 `dashboard.css`**：不再继承深色星空变量、topbar 与点阵背景，避免与视频里的六卡/星空界面语言继续同形；`/m` 的 `mobile.css` 同步重写。
+- **`/star-map.html` 不动**：星图在 `9d6794a` 已存在，早于本次参考视频，不算本轮照搬对象。
+
+### 文档
+- README 首屏、截图说明与版本示例同步；`docs/DESIGN.md` FR-45 改为“非等宽档案索引 + 纸质底稿式手机端”；`docs/REFERENCE.md` 同步 `/hub`、`/m` 的入口说明。
+- 重新生成 `docs/images/hub.png`、`docs/images/hub-full.png`、`docs/images/mobile.png`，全部来自本机真实 7788 数据。
+
+### 测试
+- 完整 `npm test` **438/438** 通过；`npm run check` 通过（438 tests、23 core / 25 MCP、21 routes、31 ADRs、version 4.1.0、syntax 56 files）。
+
 ## [4.0.1] — 2026-11-24
 
 ### 修复

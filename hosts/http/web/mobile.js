@@ -120,7 +120,7 @@ function render(items) {
   if (!items.length) {
     const empty = document.createElement('div');
     empty.className = 'm-empty';
-    empty.textContent = '没有找到匹配的记忆。换个词试试，或者清空搜索看最近写入。';
+    empty.textContent = '没有找到匹配的记忆。换个词试试，或者清空搜索看最近归档。';
     host.append(empty);
     return;
   }
@@ -155,7 +155,7 @@ async function loadList(query = '') {
   const seq = ++requestSeq;
   const trimmed = query.trim();
   const hint = $('mHint');
-  hint.textContent = trimmed ? `搜索「${trimmed}」 · 点开任意一条展开全文` : '最近写入 · 点开任意一条展开全文';
+  hint.textContent = trimmed ? `搜索「${trimmed}」 · 点开一条看全文` : '最近归档 · 点开一条看全文';
   try {
     const path = trimmed
       ? `/omni-memory/search?q=${encodeURIComponent(trimmed)}&limit=30&scope=all`

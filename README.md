@@ -1,14 +1,14 @@
 # 全息记忆（Omni Memory）
 
-> **让 AI 不再失忆的本地长期记忆中枢。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
+> **让 AI 不再失忆的本地长期记忆底稿。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
 
 [![tests](https://img.shields.io/badge/tests-438%2F438-brightgreen)](#测试与指标)
 [![node](https://img.shields.io/badge/node-%3E%3D22.13-8de1ff)](#本地安装开发者)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-![全息记忆 · 记忆中枢](docs/images/hub.png)
+![全息记忆 · 记忆底稿](docs/images/hub.png)
 
-[查看完整六卡截图](docs/images/hub-full.png)
+[查看完整档案索引](docs/images/hub-full.png)
 
 **它不是聊天记录导出，也不是把上下文窗口调大。** 它把「原文」「结论」「事实」「关系」分成四层：原文只增不改，笔记带来源可校验，事实有有效期，关系进星图；检索时四路召回，只把相关的那一小段送回模型。
 
@@ -32,7 +32,7 @@ npm run serve                  # 打开 http://127.0.0.1:7788/hub
 Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-git checkout v4.0.1
+git checkout v4.1.0
 npm ci
 npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
 npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
@@ -49,7 +49,7 @@ npm run serve
 
 **手机端长这样**（真实截图，竖屏只读搜索）：
 
-![全息记忆 · 手机端](docs/images/mobile.png)
+![全息记忆 · 手机底稿](docs/images/mobile.png)
 
 ## 它解决什么问题
 
@@ -121,8 +121,8 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.0.1
-npm run verify:release -- --tag v4.0.1 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.1.0
+npm run verify:release -- --tag v4.1.0 --launcher ./omni-serve-7788.exe
 ```
 
 第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
@@ -253,6 +253,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 - 3.12.2 修复：churn 库按活行数判定大库（16,000 墓碑 + 1 活行回归，单字不丢）；`setup` 明确只校验同提交 SHA-256、不冒充 Release 签名；`schtasks` 探测失败不再猜“任务不存在”；doctor 小库 `<4096` 降为 warn。
 - 3.12.3 新增：`npm run verify:release` 可从官方 Release 验签，并比对签名 commit 上的 `package.json` 与启动器 SHA-256；`--launcher` 可校验镜像/第三方渠道下载的 exe。只读，不安装、不重启。
 - 4.0.1：许可证切换为 AGPL-3.0-only；`npm run setup` 改为发布验签 + 干净检出检查；新增 `npm run demo` / `npm run qa`；测试 **438/438**，公共 QA golden 24/24、quality 120/120。
+- 4.1.0：`/hub` 与 `/m` 从等宽六卡/星空入口重绘为本机档案索引与手机底稿；真实数据绑定不变；`/star-map.html` 保留原有星图。
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
 
 ```bash

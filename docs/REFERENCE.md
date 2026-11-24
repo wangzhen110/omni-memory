@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 4.0.1 · 生成日期 2026-11-24 · 依据源码与真实 schema v17 核对
+> 版本 4.1.0 · 生成日期 2026-11-24 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -458,8 +458,8 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 静态入口挂在 `GET /`、`GET /hub`、`GET /m`，三者都只允许 loopback：
 
 - `/`：原有完整仪表盘（KPI、健康度、增长、项目、热力图、画像、活跃带、星图、动态）。
-- `/hub`：面向普通用户的六卡总览（记忆库 / 检索 / 星图 / 项目 / 工具 / 状态），数字来自 `/overview` 与 `/health`；搜索框跳转 `/panel.html?q=`。
-- `/m`：竖屏只读手机端，最近写入与 `/omni-memory/search` 搜索；不提供写入入口。
+- `/hub`：本机记忆档案索引。横向非等宽索引行（记忆库 / 检索 / 关系图 / 项目 / 接入 / 状态），数字来自 `/omni-memory/overview` 与 `/health`；搜索框跳转 `/panel.html?q=`。视觉是墨色底稿，不是六卡网格。
+- `/m`：竖屏只读手机端，纸质底稿式最近归档 + `/omni-memory/search` 搜索；不提供写入入口。
 
 `/hub` 与 `/m` 是无扩展名的 pretty-path，由 `hosts/http/server.mjs` 的 `STATIC_ALIASES` 映射到 `hub.html` / `m.html`，不是新增 REST 路由。星图默认读 `scope=all`，四旋臂三维投影（移植客户端 `MemoryGraph`），自动旋转、拖拽旋转、滚轮缩放、点选节点查详情；`/?tab=map` 可直接打开星图页签。
 

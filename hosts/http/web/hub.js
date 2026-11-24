@@ -55,7 +55,7 @@ function renderRecent(activity) {
   if (!rows.length) {
     const empty = document.createElement('div');
     empty.className = 'empty';
-    empty.textContent = '还没有最近写入。打开一次客户端的记忆写入，这里就会出现。';
+    empty.textContent = '还没有最近归档。打开一次客户端的记忆写入，这里就会出现。';
     host.append(empty);
     return;
   }
@@ -121,7 +121,7 @@ async function load() {
   setText('statusScore', `${score}/100`);
 
   setText('memoryTotal', fmt(total));
-  setText('memorySplit', `全局 ${fmt(stats.globalNotes)} · 项目 ${fmt(stats.projectNotes)}`);
+  setText('memorySplit', `笔记 ${fmt(stats.notes)} · 事实 ${fmt(stats.facts)}`);
   setText('memoryHealth', `健康 ${score}/100`);
   setText('entityCount', fmt(stats.entities));
   setText('relationCount', `${fmt(stats.relations)} 条关系`);
