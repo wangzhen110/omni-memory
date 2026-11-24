@@ -2,9 +2,9 @@
 
 > **让 AI 不再失忆的本地长期记忆中枢。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
 
-[![tests](https://img.shields.io/badge/tests-434%2F434-brightgreen)](#测试与指标)
+[![tests](https://img.shields.io/badge/tests-438%2F438-brightgreen)](#测试与指标)
 [![node](https://img.shields.io/badge/node-%3E%3D22.13-8de1ff)](#本地安装开发者)
-[![license](https://img.shields.io/badge/license-Personal%20Use%201.1-lightgrey)](LICENSE)
+[![license](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 ![全息记忆 · 记忆中枢](docs/images/hub.png)
 
@@ -14,21 +14,37 @@
 
 **完整机理与接口参考**：[`docs/REFERENCE.md`](docs/REFERENCE.md) —— schema、写入与检索机理、25 个 MCP 工具（23 个内核工具 + `memory_context` / `memory_rules` 适配工具）、21 条路由、MCP 协议面、CLI、环境变量、AI 调用剧本。执行 `npm run memory:sync` 可把整本手册拆成笔记写进记忆库，之后用 `memory_search` 就能直接检索到。
 
-## 5 分钟跑起来（Windows x64）
+## 5 分钟跑起来
+
+```bash
+git clone https://github.com/wangzhen110/omni-memory.git
+cd omni-memory
+npm ci
+npm run demo                   # 隔离临时库，写入 + 召回，不碰真实数据
+```
+
+看真实服务：
+
+```bash
+npm run serve                  # 打开 http://127.0.0.1:7788/hub
+```
+
+Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-node --version                 # 需要 >= 22.13
-npm run setup:dry              # 先看安装计划，不写文件、不碰计划任务
-npm run setup                  # 安装内容哈希自洽的启动器 + 计划任务并启动 7788（静默，无控制台黑框；Release Ed25519 签名只由 daily-sync --apply 验证）
+git checkout v4.0.0
+npm ci
+npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
+npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
 node hosts/cli.mjs doctor      # 逐项诊断 Node、数据库、语义资产、服务与任务
 ```
 
-打开 **`http://127.0.0.1:7788/hub`** 看六卡总览，**`/m`** 是手机端搜索，**`/`** 仍是原来的完整仪表盘。安装器默认 dry-run；`npm run setup` 才会落盘，`--apply --start` 的边界写在 [`scripts/install.mjs`](scripts/install.mjs)。
+`setup` 不是“同提交哈希自洽”的旧路径：它要求 HEAD 等于签名 commit、工作树干净，并验证 Release Ed25519 清单与启动器 SHA-256。开发检出用 `npm run setup:dev`。完整步骤见 [`docs/QUICKSTART.md`](docs/QUICKSTART.md)，信任边界见 [`docs/INSTALL-RELEASE.md`](docs/INSTALL-RELEASE.md)。
 
 macOS / Linux 或不想装计划任务：
 
 ```bash
-node hosts/cli.mjs serve --port 7788
+npm run serve
 ```
 
 **手机端长这样**（真实截图，竖屏只读搜索）：
@@ -80,7 +96,7 @@ node hosts/cli.mjs serve --port 7788
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 434 个用例
+npm test          # 438 个用例
 npm run check     # 语法、文档计数与模型资产完整性校验
 ```
 
@@ -105,11 +121,11 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v3.12.3
-npm run verify:release -- --tag v3.12.3 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.0.0
+npm run verify:release -- --tag v4.0.0 --launcher ./omni-serve-7788.exe
 ```
 
-第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 的安全边界仍是同提交哈希自洽，不冒充 Release 签名。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
+第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
 
 ### 7788 静默启动器（Windows）
 
@@ -229,17 +245,20 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**434 / 434 通过**
+- 自动化用例：**438 / 438 通过**
 - 检索延迟（本机复核，**3.12.1/3.12.2 数据**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **129.8ms**（固定旧边界 226.9ms；3.12.1 自适应收紧窗口/采样，3.12.2 修正为按可召回行数判定，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 3.12.0 新增：100k 短笔记 10M 字符检索 p95 **6.9ms**；10k 长笔记 10M 字符 p95 **27.4ms**；120 条确定性质量用例 **120/120**；LoCoMo session 粒度 evidence recall@10 **0.7134**（检索层，不是官方 QA）。完整方法与边界见 [基准与质量实测](docs/BENCHMARKS.md)。
 - 3.12.1 修复：1M + 5 万向量 + 100 万 bigram 自适应边界 p95 **129.4ms**（旧固定边界 226.9ms）；第二个打开者等待迁移租约到 **150s**（旧固定 5s，1M 迁移可能 73–80s）。跨进程测试覆盖 6s 持锁后释放。
 - 3.12.2 修复：churn 库按活行数判定大库（16,000 墓碑 + 1 活行回归，单字不丢）；`setup` 明确只校验同提交 SHA-256、不冒充 Release 签名；`schtasks` 探测失败不再猜“任务不存在”；doctor 小库 `<4096` 降为 warn。
 - 3.12.3 新增：`npm run verify:release` 可从官方 Release 验签，并比对签名 commit 上的 `package.json` 与启动器 SHA-256；`--launcher` 可校验镜像/第三方渠道下载的 exe。只读，不安装、不重启。
+- 4.0.0：许可证切换为 AGPL-3.0-only；`npm run setup` 改为发布验签 + 干净检出检查；新增 `npm run demo` / `npm run qa`；测试 **438/438**，公共 QA golden 24/24、quality 120/120。
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
 
 ```bash
 npm test
+npm run demo           # 隔离演示，不碰真实库
+npm run qa             # 黄金集 + 120 例质量套件
 npm run bench          # 延迟基准
 npm run bench:golden   # 黄金集
 npm run bench:quality  # 120 条确定性质量集
@@ -256,6 +275,9 @@ npm run bench:public:fetch && npm run bench:public
 ## 文档
 
 - [设计规格](docs/DESIGN.md)（需求、架构、数据模型、契约、失败模式、追溯矩阵）
+- [5 分钟上手](docs/QUICKSTART.md)（demo、源码运行、官方安装）
+- [发布验签安装](docs/INSTALL-RELEASE.md)（M2 信任边界）
+- [公开 QA](docs/PUBLIC-QA.md)（可复现的检索与质量基线）
 - [架构决策记录](docs/ADR)（31 份）
 - [威胁模型](docs/THREAT-MODEL.md)（信任边界、残余风险、新增路由检查清单）
 - [更新链签名](docs/UPDATE-SIGNING.md)（Ed25519 清单、公钥指纹、发布签名与密钥轮换）
@@ -276,7 +298,7 @@ npm run bench:public:fetch && npm run bench:public
 - [未完成项与 C 类记录](docs/OPEN-GAPS.md)
 - [Docker / 容器化](docs/DOCKER.md)
 - [Linux 部署](docs/LINUX.md)
-- [许可与商业授权](LICENSING.md)
+- [许可与商业例外](LICENSING.md)
 - [3.9.0 自动捕获与巩固完成报告](docs/COMPLETION-2026-11-21.md)
 - [3.9.1 复核问题修复报告](docs/COMPLETION-3.9.1-2026-11-21.md)
 - [3.9.2 零配置语义整改报告](docs/COMPLETION-3.9.2-2026-11-21.md)
@@ -290,30 +312,27 @@ npm run bench:public:fetch && npm run bench:public
 
 ## 许可证
 
-**全息记忆个人使用许可 1.1**（仅限个人 · 禁止任何商用）— 不是 OSI 开源许可，源码公开可读。
+**AGPL-3.0-only** — OSI 认可的开源许可证。可以自由使用、修改、分发，也可以商用；闭源分发或闭源 SaaS 需要履行 AGPL 源码义务，或另行取得商业例外。
 
-- ✅ 可以：个人使用、学习、研究、复制、修改、二次开发、借鉴设计，发布你的非商业修改版
-- 🚫 不可以：任何形式的商业使用；包括直接商用、修改后商用，以及拿本项目的**源码或架构**去复制、改写、重写、反向工程或做商业替代品、竞品、商业插件、SaaS
-- ⚠️ 必须：**署名作者**（保留作者、项目链接、协议声明；修改需注明「已修改」）
+- ✅ 可以：个人/公司使用、修改、分发、商业服务
+- 📄 义务：保留版权与许可；修改版继续使用 AGPL；通过网络提供服务时向用户提供对应源码
+- 💼 商业例外：闭源嵌入、闭源 SaaS、OEM/白标等无法满足 AGPL 的场景，见 [LICENSING.md](LICENSING.md)
 
-最低署名写法（可直接复制）：
+推荐署名：
 
 ```markdown
 基于「全息记忆 (Omni Memory)」by wangzhen110
-https://github.com/wangzhen110/omni-memory · 全息记忆个人使用许可 1.1
-已修改
+https://github.com/wangzhen110/omni-memory · AGPL-3.0-only
+已修改（如有）
 ```
 
-完整署名规则与更多模板见 [ATTRIBUTION.md](ATTRIBUTION.md)，法律文本见 [LICENSE](LICENSE)，双轨许可与商业授权说明见 [LICENSING.md](LICENSING.md)。
+完整说明见 [ATTRIBUTION.md](ATTRIBUTION.md)，法律文本见 [LICENSE](LICENSE)，商业例外见 [LICENSING.md](LICENSING.md)。
 
-### 商业授权
+### 商业例外
 
-需要商业使用（公司内部生产经营、付费服务、SaaS/托管、外包交付、销售/转售/捆绑收费等）时，
-请先取得作者书面许可。
+需要闭源分发、闭源 SaaS 或其他无法满足 AGPL 源码义务的授权时，请开 Issue（模板：商业例外申请）：
 
-**优先渠道（推荐）**：在仓库开 Issue，公开可追踪、回复更快
-https://github.com/wangzhen110/omni-memory/issues
+https://github.com/wangzhen110/omni-memory/issues/new?template=commercial-license.yml
 
-**备用渠道**：64271785@qq.com（标题请注明「商业授权 + 用途」）
+**备用渠道**：64271785@qq.com（标题请注明「商业例外 + 用途」）
 
-作者会在 3 个工作日内回复授权范围与费用。

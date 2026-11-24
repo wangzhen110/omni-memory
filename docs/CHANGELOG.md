@@ -2,6 +2,27 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.0.0] — 2026-11-24
+
+### 许可与治理
+- **许可证切换为 AGPL-3.0-only**：`LICENSE` 替换为 GNU AGPL v3 官方全文；`package.json` 的 `license` 改为 `AGPL-3.0-only`；52 个源码/文档文件的 SPDX 头从 `LicenseRef-Omni-Memory-Personal-Use-1.1` 迁移为 `AGPL-3.0-only`，删除 NonCommercial 限制行。
+- **商业例外模型**：`LICENSING.md` 重写为“AGPL 自由商用 + 闭源/闭源 SaaS 商业例外”；`ATTRIBUTION.md` 改为 AGPL 合规署名；Issue 模板改为“商业例外申请”；README 许可证段与 badge 同步。
+- **治理文件**：新增 `CONTRIBUTING.md`（DCO、测试门禁、提交规范）、`SECURITY.md`（私密报告、响应时限、范围）、`CODE_OF_CONDUCT.md`（Contributor Covenant 2.1 改编）、`GOVERNANCE.md`（维护者、ADR、发布、签名密钥、商业例外）。
+
+### 可信首次安装
+- **`npm run setup` 改为发布验签路径**：新增 `--require-release`，先调用 `scripts/verify-release.mjs` 验证官方 Release 的 Ed25519 清单、tag/version/commit，再要求当前 `HEAD` 等于签名 commit、工作树没有未提交的跟踪文件，最后才安装启动器与计划任务。任何一步不符在写文件前失败。
+- **保留开发入口**：`npm run setup:dev` 只校验同提交 `package.json` 的启动器 SHA-256；`npm run setup:dry:release` 只验证与打印计划；`install-launcher.mjs` 返回 `launcherIntegrity: "release-manifest-v2"` / `releaseSignatureVerified: true`，不再把本地哈希安装标成签名安装。
+- **文档**：新增 `docs/INSTALL-RELEASE.md`，写清两条路径、9 步校验顺序、防什么/不防什么、镜像与离线边界；`docs/QUICKSTART.md` 给出 5 分钟源码路径与官方安装路径。
+
+### 公共 QA 与上手
+- **`npm run demo`**：`scripts/demo.mjs` 在临时目录启动隔离库，写入 note + fact 并召回，不碰真实 `~/.dsh`。
+- **`npm run qa`**：`scripts/qa.mjs` 跑黄金集与 120 例质量套件，支持 `--json`；`docs/PUBLIC-QA.md` 记录 4.0.0 基线（golden recall 1.000 / MRR 0.979；quality 120/120，p50 2ms）。
+- **测试**：新增 `test/open-source.test.mjs` 四条：AGPL/版本、治理文件、setup 默认验签、安装帮助。
+
+### 测试
+- 完整 `npm test` **438/438** 通过；`npm run check` 通过（438 tests、23 core / 25 MCP、21 routes、31 ADRs、version 4.0.0、syntax 56 files）。
+- `npm run qa -- --quality-count 120 --json` 通过：golden 24/24、quality 120/120。
+
 ## [3.12.3] — 2026-11-24
 
 ### 新增

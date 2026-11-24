@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-Omni-Memory-Personal-Use-1.1
+// SPDX-License-Identifier: AGPL-3.0-only
 // © 2026 wangzhen110 · https://github.com/wangzhen110/omni-memory
 // Syntax gate for every runtime JavaScript module, not a hand-maintained list.
 // The previous `check` script omitted hosts/* and several shared modules, so a

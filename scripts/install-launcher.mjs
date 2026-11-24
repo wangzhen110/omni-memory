@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: LicenseRef-Omni-Memory-Personal-Use-1.1
+// SPDX-License-Identifier: AGPL-3.0-only
 // © 2026 wangzhen110 · https://github.com/wangzhen110/omni-memory
-// NonCommercial use only; attribution required. See LICENSE and ATTRIBUTION.md.
 
 /**
  * Install a launcher binary from a signed commit without ever overwriting a
@@ -154,6 +153,7 @@ export function installLauncherFromCommit(options = {}) {
   const repo = path.resolve(options.repo || ROOT);
   const home = path.resolve(options.home || DEFAULT_HOME);
   const taskName = options.task || DEFAULT_TASK;
+  const releaseVerified = Boolean(options.releaseVerified);
   const commit = String(options.commit || run(GIT, ['rev-parse', 'HEAD'], { cwd: repo }).stdout || '').trim().toLowerCase();
   if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error(`invalid commit: ${commit}`);
   const pkg = JSON.parse(gitShow(repo, commit, 'package.json').toString('utf8').replace(/^\uFEFF/, ''));
@@ -209,8 +209,8 @@ export function installLauncherFromCommit(options = {}) {
       taskState: taskState.state,
       taskError: taskState.error,
       taskWillBeCreated: taskMissing && createTaskIfMissing && !noTask,
-      launcherIntegrity: 'sha256-in-commit',
-      releaseSignatureVerified: false,
+      launcherIntegrity: releaseVerified ? 'release-manifest-v2' : 'sha256-in-commit',
+      releaseSignatureVerified: releaseVerified,
     };
   }
   if (process.platform !== 'win32') throw new Error('launcher installation is Windows-only');
@@ -259,8 +259,8 @@ export function installLauncherFromCommit(options = {}) {
     taskError: taskState.error,
     taskWillBeCreated: taskMissing && createTaskIfMissing && !noTask,
     restart,
-    launcherIntegrity: 'sha256-in-commit',
-    releaseSignatureVerified: false,
+    launcherIntegrity: releaseVerified ? 'release-manifest-v2' : 'sha256-in-commit',
+    releaseSignatureVerified: releaseVerified,
   };
 }
 

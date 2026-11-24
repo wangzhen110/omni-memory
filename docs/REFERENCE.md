@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 3.12.3 · 生成日期 2026-11-24 · 依据源码与真实 schema v17 核对
+> 版本 4.0.0 · 生成日期 2026-11-24 · 依据源码与真实 schema v17 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -542,7 +542,7 @@ mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 
 所有命令共用 `--dir`（项目目录）与 `OMNI_*` 环境变量。`write` / `report` / `forget` 走的是与 MCP 完全相同的工具实现，不存在第二套写入路径。
 
-一键安装不在 CLI 里，而是独立入口：`npm run setup:dry` 看计划，`npm run setup` 等价于 `node scripts/install.mjs --apply --start`；它先跑 `omni doctor` 的只读 preflight，再安装内容寻址启动器、写侧车配置，并在任务缺失时用 `--create-task` 创建 `OmniMemory7788`。
+一键安装不在 CLI 里，而是独立入口：`npm run setup:dry:release` 看计划并验签，`npm run setup` 等价于 `node scripts/install.mjs --apply --start --require-release`；它先跑 `omni doctor` 的只读 preflight，验证官方 Release 清单、签名 commit、干净工作树与启动器 SHA-256，再安装内容寻址启动器、写侧车配置，并在任务缺失时创建 `OmniMemory7788`。本地开发用 `npm run setup:dev`，只校验同提交哈希。
 
 ---
 

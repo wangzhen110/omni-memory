@@ -9,13 +9,13 @@
 npm run verify:release
 
 # 验证指定 Release
-npm run verify:release -- --tag v3.12.3
+npm run verify:release -- --tag v4.0.0
 
 # 验证最新 Release
 npm run verify:release -- --latest
 
 # 验证你从任意渠道下载的启动器 exe
-npm run verify:release -- --tag v3.12.3 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.0.0 --launcher ./omni-serve-7788.exe
 ```
 
 成功时退出码为 `0`，输出签名 key、commit、`package.json` SHA-256、启动器 SHA-256；失败时退出码为 `1`，输出 JSON `{"ok":false,"error":"..."}`。加 `--json` 可获得机器可读结果。
@@ -33,7 +33,7 @@ npm run verify:release -- --tag v3.12.3 --launcher ./omni-serve-7788.exe
 ## 它不验证什么
 
 - **不验证运行中的服务**：只验证发布物，不读取 `omni.db`，不重启 7788。
-- **不替代首次安装信任**：`npm run setup` 仍只校验同提交 `package.json` 的 SHA-256，不验 Release 签名。首次安装的受信任入口是独立签名安装器或源码构建路径。
+- **不直接安装**：`verify:release` 是只读工具；`npm run setup` 才复用同一验证逻辑并安装，且额外要求 HEAD 等于签名 commit、工作树干净。
 - **不验证构建环境**：签名证明“官方用私钥签了这个 commit 和这些哈希”，可复现构建证明“这个 commit 能重建出同样的启动器”；两者要一起看。
 - **不绕过 GitHub 账号被攻破**：私钥离线保存时，攻击者即使改了 Release 资产也签不出新清单；但如果私钥也泄露，签名本身失效。
 
@@ -43,7 +43,7 @@ npm run verify:release -- --tag v3.12.3 --launcher ./omni-serve-7788.exe
 
 ```powershell
 $env:GITHUB_TOKEN = "ghp_xxx"
-npm run verify:release -- --tag v3.12.3
+npm run verify:release -- --tag v4.0.0
 ```
 
 不依赖 `raw.githubusercontent.com`，因为部分网络会重置该域名；文件内容通过 GitHub Contents API 获取。

@@ -92,7 +92,14 @@ v1 字段与 v2 相同，但没有 `launcherPath` / `launcherSha256`，`schema` 
 
 ## 启动器安装
 
-v2 验签通过后，`daily-sync` 调用 `scripts/install-launcher.mjs`。**注意区分入口**：`npm run setup` 也调用同一个安装器，但它不走 Release 清单，因此只校验“同提交 `package.json` 声明的 SHA-256”这一层内容自洽，**不验 Ed25519 发布签名**；只有 `daily-sync --apply` 会在调用安装器前完成 v2 验签。安装器返回 `launcherIntegrity: "sha256-in-commit"`、`releaseSignatureVerified: false`，避免把两个入口混为一谈。
+v2 验签通过后，`daily-sync` 调用 `scripts/install-launcher.mjs`。**三个入口必须分清**：
+
+- `npm run setup`：先由 `scripts/verify-release.mjs` 完成 Release 清单验签、tag/version/commit 绑定、干净工作树检查，再调用安装器；安装器返回 `launcherIntegrity: "release-manifest-v2"`、`releaseSignatureVerified: true`。
+- `npm run setup:dev`：只校验“同提交 `package.json` 声明的 SHA-256”这一层内容自洽，**不验 Ed25519 发布签名**，返回 `launcherIntegrity: "sha256-in-commit"`、`releaseSignatureVerified: false`。只适合已可信的开发检出。
+- `daily-sync --apply`：在调用安装器前完成 v2 验签，属于已可信安装上的更新路径。
+
+安装器本身不读网络、不验签；它只负责按调用方给出的信任结论安装。发布签名校验由 `verify-release.mjs` 与 `daily-sync` 各自完成。
+
 
 1. 从签名提交读取 `scripts/launchers/omni-serve-7788.exe` 字节；
 2. 校验 `package.json.omni.launcher.sha256`；

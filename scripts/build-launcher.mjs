@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: LicenseRef-Omni-Memory-Personal-Use-1.1
+// SPDX-License-Identifier: AGPL-3.0-only
 // © 2026 wangzhen110 · https://github.com/wangzhen110/omni-memory
-// NonCommercial use only; attribution required. See LICENSE and ATTRIBUTION.md.
 
 /**
  * Build the Windows GUI launcher reproducibly.

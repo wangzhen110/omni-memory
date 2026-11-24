@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: LicenseRef-Omni-Memory-Personal-Use-1.1
+// SPDX-License-Identifier: AGPL-3.0-only
 // © 2026 wangzhen110 · https://github.com/wangzhen110/omni-memory
 
 /**
@@ -10,11 +10,12 @@
  * things a new user needs — a read-only preflight, a post-install doctor run,
  * and one readable summary.
  *
- * The hash checked here is the one declared in the same commit as the binary.
- * It catches corruption and accidental edits, not a tampered fork; the Ed25519
- * release signature is verified by `daily-sync --apply`, not by this offline
- * path. The output says so explicitly so "setup" cannot be mistaken for the
- * signed update chain.
+ * `--require-release` makes the install fail closed: it verifies the official
+ * Ed25519 release manifest, requires a clean checkout at the signed commit,
+ * and only then installs. Without that flag the hash is the one declared in the
+ * same commit as the binary; it catches corruption and accidental edits, not a
+ * tampered fork. The output says which path was used so "setup" cannot be
+ * mistaken for an offline hash-only install.
  *
  * Default is dry-run. `--apply` is the only mode that writes to the home
  * directory or changes the scheduled task; `--start` is the only mode that
@@ -22,8 +23,11 @@
  * existing service untouched.
  */
 import path from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { installLauncherFromCommit } from './install-launcher.mjs';
+import { verifyRelease } from './verify-release.mjs';
 import { runDoctor, formatDoctor } from '../hosts/shared/doctor.mjs';
 
 // `omni doctor` is a user-facing command; keep node:sqlite's experimental
@@ -63,8 +67,10 @@ function printHelp() {
   node scripts/install.mjs [选项]
 
 默认 dry-run，只打印计划，不写文件、不碰计划任务。
-  --apply          安装内容哈希自洽的启动器并写入侧车配置（不验 Release 签名）
+  --apply          安装启动器并写入侧车配置
   --start          安装后重启计划任务，让 7788 用新启动器运行
+  --require-release 先验证官方 Release 的 Ed25519 签名、干净检出与签名 commit；
+                   任何一步不符立即失败。npm run setup 默认启用这条路径
   --home <目录>   数据根目录，默认 $OMNI_HOME / $DSH_HOME / ~/.dsh
   --port <端口>   服务端口，默认 7788
   --task <任务名> 计划任务名，默认 OmniMemory7788
@@ -74,8 +80,9 @@ function printHelp() {
   --help           显示本页
 
 一键安装:
-  npm run setup            等价于 node scripts/install.mjs --apply --start
-  npm run setup:dry        只看计划
+  npm run setup            发布验签安装：node scripts/install.mjs --apply --start --require-release
+  npm run setup:dev        本地开发安装：跳过 Release 验签（仅适合已可信的检出）
+  npm run setup:dry        只看计划（不验签、不落盘）
   node hosts/cli.mjs doctor 安装后诊断
 `);
 }
@@ -84,13 +91,43 @@ function value(flags, key) {
   return typeof flags[key] === 'string' ? flags[key] : undefined;
 }
 
+function runGit(repo, args) {
+  const candidates = [process.env.GIT_BIN, 'C:\\Program Files\\Git\\cmd\\git.exe', 'git'].filter(Boolean);
+  const git = candidates.find(candidate => candidate === 'git' || existsSync(candidate));
+  if (!git) throw new Error('git not found; install Git or set GIT_BIN');
+  return execFileSync(git, args, { cwd: repo, encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 }).trim();
+}
+
+async function verifyOfficialRelease(repo, commit) {
+  const pkg = JSON.parse(readFileSync(path.join(repo, 'package.json'), 'utf8'));
+  const release = await verifyRelease({ tag: `v${pkg.version}` });
+  if (release.version !== pkg.version) {
+    throw new Error(`release version ${release.version} does not match local ${pkg.version}`);
+  }
+  const head = runGit(repo, ['rev-parse', 'HEAD']);
+  if (head !== release.commit) {
+    throw new Error(`HEAD ${head} is not the signed release commit ${release.commit}; checkout the release tag first`);
+  }
+  if (commit && commit !== release.commit) {
+    throw new Error(`--commit ${commit} does not match the signed release commit ${release.commit}`);
+  }
+  const dirty = runGit(repo, ['status', '--porcelain', '--untracked-files=no']);
+  if (dirty) throw new Error(`working tree has uncommitted tracked changes; refusing a release-verified install:\n${dirty}`);
+  return release;
+}
+
 function human(result) {
   const lines = [];
   lines.push(`全息记忆安装 · ${result.dryRun ? '计划（未落盘）' : '已安装'}`);
   lines.push(`仓库: ${result.repo}`);
   lines.push(`数据根目录: ${result.home}`);
   lines.push(`启动器: ${result.plan?.target || '—'}`);
-  lines.push('启动器校验: 同提交 SHA-256（本地自洽；Release Ed25519 签名只由 daily-sync --apply 验证）');
+  if (result.release) {
+    lines.push(`发布验签: ${result.release.tag} · commit ${result.release.commit} · key ${result.release.keyId}`);
+    lines.push(`启动器校验: Release manifest v2 Ed25519 + 签名 commit SHA-256`);
+  } else {
+    lines.push('启动器校验: 同提交 SHA-256（本地自洽；未验 Release 签名）');
+  }
   lines.push(`计划任务: ${result.plan?.noTask ? '不创建/不修改' : result.task}`);
   if (result.plan?.taskUnknown) lines.push(`任务探测: 未知（${result.plan.taskError}）`);
   if (result.plan) lines.push(`提交: ${result.plan.commit} · sha256 ${result.plan.sha256}`);
@@ -119,6 +156,7 @@ async function main() {
   const apply = flags.apply === true;
   const start = flags.start === true;
   const json = flags.json === true;
+  const requireRelease = flags['require-release'] === true;
 
   const base = {
     repo,
@@ -141,6 +179,8 @@ async function main() {
       throw new Error(`preflight failed: ${preflight.checks.filter(c => c.status === 'fail').map(c => c.name).join(', ')}`);
     }
 
+    const release = requireRelease ? await verifyOfficialRelease(repo, commit) : null;
+
     const plan = installLauncherFromCommit({
       repo,
       home,
@@ -151,12 +191,15 @@ async function main() {
       restart: apply && start && task !== false,
       noTask: task === false,
       createTask: task !== false,
+      releaseVerified: Boolean(release),
     });
 
     if (!apply) {
       const result = {
         ...base,
         dryRun: true,
+        requireRelease,
+        release,
         plan,
         preflight,
         doctor: await runDoctor({ repo, home, port, task, strict: false }),
@@ -178,6 +221,8 @@ async function main() {
     const result = {
       ...base,
       dryRun: false,
+      requireRelease,
+      release,
       plan,
       preflight,
       doctor,
@@ -188,6 +233,7 @@ async function main() {
     const result = {
       ...base,
       dryRun: !apply,
+      requireRelease,
       ok: false,
       error: String(error?.message ?? error),
     };

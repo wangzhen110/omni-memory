@@ -1,12 +1,12 @@
-name: 商业授权申请
-description: 申请「全息记忆 (Omni Memory)」的商业使用许可
-title: "[商业授权] "
+name: 商业例外申请
+description: 申请「全息记忆 (Omni Memory)」的闭源商业例外许可
+title: "[商业例外] "
 body:
   - type: markdown
     attributes:
       value: |
-        本仓库采用 **全息记忆个人使用许可 1.1**：禁止商业使用。如需商业授权，请填写以下信息，
-        作者会通过你留下的联系方式回复授权范围与费用（一般 3 个工作日内）。
+        本项目采用 **AGPL-3.0-only**：可以自由商用，但闭源分发或闭源 SaaS 需要满足 AGPL 源码义务。
+        如果你的场景无法满足，请填写以下信息申请商业例外；作者会通过你留下的联系方式回复授权范围与费用。
 
         > 提示：请勿在 Issue 中填写身份证号、银行卡等敏感信息。
 
@@ -44,9 +44,10 @@ body:
     attributes:
       label: 期望的授权类型
       options:
-        - 一次性商业授权
-        - 按年订阅授权
-        - OEM / 嵌入产品
+        - 闭源产品 / 插件
+        - 闭源 SaaS / 托管
+        - OEM / 嵌入硬件
+        - 企业采购合同 / 特殊条款
         - 暂不确定，希望先沟通
     validations:
       required: true
@@ -56,5 +57,5 @@ body:
     attributes:
       label: 确认
       options:
-        - label: 我理解在获得书面授权前，商业使用本项目属于违反 LICENSE 的行为
+        - label: 我理解 AGPL-3.0-only 允许商用，但闭源分发/闭源 SaaS 需要商业例外或履行源码义务
           required: true

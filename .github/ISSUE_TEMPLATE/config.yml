@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 5 分钟上手
+    url: https://github.com/wangzhen110/omni-memory/blob/main/docs/QUICKSTART.md
+    about: 安装、demo、源码运行、诊断与卸载
+  - name: 安全漏洞（私密报告）
+    url: https://github.com/wangzhen110/omni-memory/security/advisories/new
+    about: 不要开公开 Issue；按 SECURITY.md 私密报告
+  - name: 商业例外
+    url: https://github.com/wangzhen110/omni-memory/issues/new?template=commercial-license.yml
+    about: 闭源分发、闭源 SaaS、OEM/白标授权申请

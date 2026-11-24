@@ -1,91 +1,63 @@
-# 全息记忆完全开源发布计划
+# 全息记忆完全开源发布：执行结果（4.0.0）
 
-> 状态：执行中（2026-11-24）
-> 目标：从「源码公开、仅限个人非商业使用」转为 OSI 认可的开源项目，同时保留可验证发布、可信安装与公开 QA。
+> 状态：已完成并发布（2026-11-24）
+> 基线：3.12.3 → 4.0.0
 
-## 1. 目标与非目标
+## 1. 已完成
 
-**目标**
+### M1 公开可验证发布（3.12.3）
 
-1. 许可证切换为 OSI 认可的开源许可证，并处理历史提交与现有版权头。
-2. 发布物可独立验证：签名清单、可复现构建、公开校验命令。
-3. 首次安装有明确信任路径，不再把 `npm run setup` 的本地哈希自校验当成发布签名。
-4. 陌生人能在 5 分钟内跑通，并有公开、可复现的检索质量与性能结果。
-5. 建立最小开源治理：贡献指南、安全策略、行为准则、发布流程。
+- `npm run verify:release`：读取官方 Release 的签名清单，验 Ed25519，校验 tag/version/commit，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。
+- `--launcher <path>`：校验镜像或第三方渠道下载的 exe。
+- Release 附带 `omni-update-manifest-v2.json`、v1 清单与启动器 exe。
+- 文档 `docs/VERIFY-RELEASE.md`，CI 校验。
 
-**非目标**
+### M2 可信首次安装（4.0.0）
 
-- 不重写历史提交；旧提交保留当时的许可证声明。
-- 不在本阶段把项目发布到 npm 或改动包名，除非发布路径确定。
-- 不承诺 macOS/Linux 的完整安装体验；先保持 Windows x64 主路径，其他平台给源码运行方式。
+- `npm run setup` 默认 `--require-release`：先验 Release 清单，再要求 HEAD 等于签名 commit、工作树干净，最后才安装。
+- 任何一步失败都在写文件前退出，不覆盖正在运行的服务。
+- `npm run setup:dev` 保留给已可信的本地开发检出，只做同提交 SHA-256 自洽。
+- `npm run setup:dry:release` 只验证与打印计划。
+- 安装器返回 `launcherIntegrity: "release-manifest-v2"` / `releaseSignatureVerified: true`，不再混淆本地哈希与发布签名。
+- 文档 `docs/INSTALL-RELEASE.md` 写清 9 步校验、防什么/不防什么、镜像与离线边界。
 
-## 2. 现状基线
+**没有交付的部分（明确边界）**：没有做带 Authenticode 签名的独立 exe 安装器。当前“官方安装”是 **Node 可审计的发布验签路径**，不是“双击即装”。要跨过这一步需要代码签名证书与独立发布流水线；不在 4.0.0 的虚假承诺里。
 
-- 仓库已公开，但 `LICENSE` 是 **Personal Use 1.1**，不是 OSI 开源许可；源码头、README、ATTRIBUTION、LICENSING、商业授权模板均绑定该许可，约 58 个文件带许可头。
-- 已有 Ed25519 发布清单、v1/v2 manifest、签名发布脚本、`daily-sync --apply` 验签与提交谱系校验。
-- Windows 启动器可复现构建：固定 PE 时间戳与 MVID，`check-launcher` 重建比对 SHA-256。
-- `npm run setup` 只校验同提交 `package.json` 声明的启动器哈希，不验 Release 签名；从恶意 fork/镜像执行 setup 的持久化风险仍在。
-- 仓库身份是 `@local/omni-memory`、`private:true`，没有 npm 通道。
-- 缺少 `CONTRIBUTING.md`、`SECURITY.md`、`CODE_OF_CONDUCT.md`、公开发布验证文档、公开 QA harness。
-- CI 已有 Ubuntu/Windows × Node 22.13/24 测试矩阵和容器构建。
+### M3 开源许可与治理（4.0.0）
 
-## 3. 工作流
+- `LICENSE` 切换为 **AGPL-3.0-only** 官方全文；`package.json` 的 `license` 同步。
+- 52 个源码/文档文件的 SPDX 头从 `LicenseRef-Omni-Memory-Personal-Use-1.1` 迁移为 `AGPL-3.0-only`，删除 NonCommercial 行。
+- `LICENSING.md`：AGPL 自由商用 + 闭源/闭源 SaaS 商业例外。
+- `ATTRIBUTION.md`：AGPL 合规署名。
+- 新增 `CONTRIBUTING.md`（DCO）、`SECURITY.md`、`CODE_OF_CONDUCT.md`、`GOVERNANCE.md`。
+- Issue 模板改为“商业例外申请”；README badge 与许可证段同步。
 
-### A. 许可证与治理
+### M4 公共 QA 与上线（4.0.0）
 
-- 选定 OSI 许可证。推荐 **AGPL-3.0-only**（允许商用，但网络服务修改必须开源），可另售商业例外；若优先采用率则用 **Apache-2.0**，若只要最宽松则用 **MIT**。
-- 全量替换 `LICENSE`、`package.json` 的 `license`、58 个源码/文档许可头、README/ATTRIBUTION/LICENSING/Issue 模板。
-- 新增 `CONTRIBUTING.md`、`SECURITY.md`、`CODE_OF_CONDUCT.md`、`GOVERNANCE.md`。
-- 明确贡献者许可：DCO 或 CLA；默认建议 DCO，降低贡献门槛。
+- `npm run demo`：隔离临时库，写入 note + fact 并召回，不碰真实数据。
+- `npm run qa`：黄金集 + 120 例质量套件，支持 `--json`。
+- `docs/QUICKSTART.md`：5 分钟源码路径、官方安装、验证、MCP、诊断、卸载。
+- `docs/PUBLIC-QA.md`：4.0.0 基线（golden recall 1.000 / MRR 0.979；quality 120/120，p50 2ms）与提交方式。
+- 新增 `test/open-source.test.mjs`：许可证、治理文件、setup 默认验签、安装帮助。
 
-### B. 供应链与安装信任
+## 2. 关键决策
 
-- 公开发布验证命令：用户可对任意 Release 验签、校验 `package.json`、启动器哈希和提交。
-- Release 附带启动器 exe 资产，用户可本地比对。
-- 首次安装两条路径：
-  1. **源码路径**：clone → `npm ci` → `npm run setup:source`，明确说明这是从源码构建，不依赖发布签名。
-  2. **官方安装器**：独立签名安装器，内置固定公钥，先验 Release manifest 再安装；安装器自身用 Authenticode 或发布哈希/签名校验。
-- `npm run setup` 退回开发者便利入口，不再对外宣称安全安装。
-- 私钥离线保存；准备 `keyId` 轮换、吊销和 overlap 窗口。
+- **许可证选 AGPL-3.0-only**：允许商用，但网络服务修改必须开源；闭源场景另售商业例外。Apache-2.0 / MIT 未采用。
+- **首次安装选发布验签，不选独立 exe**：在无代码签名证书的前提下，可审计的 Node 路径比一个未签名的“安装器 exe”更诚实。
+- **源码路径不承诺官方构建**：`npm run serve` 运行的就是用户检出的代码；发布验签只覆盖 Release 清单与启动器。
 
-### C. 可复现构建
+## 3. 残余风险
 
-- 启动器已可复现；补充源码归档（固定 mtime/uid/gid）与 SHA-256。
-- 发布清单增加源码归档哈希；CI 重建启动器并上传 artifact。
-- 文档写清“如何从源码重建并比对哈希”。
+- 单把 Ed25519 私钥仍是单点；必须离线保管并准备 `keyId` 轮换。见 `docs/UPDATE-SIGNING.md`。
+- 用户若从非官方渠道拿整个仓库并执行 `setup:dev`，发布验签不保护。
+- 公开 QA 的 20 条语料与 120 个合成用例不是开放域基准，也不是安全审计。
+- 旧提交仍保留当时的 Personal Use 1.1 声明；4.0.0 起的新提交按 AGPL。README 已写时间边界。
+- 没有 Authenticode 独立安装器；这是已知缺口，不是“已完成”。
 
-### D. 上手与公开 QA
+## 4. 验收
 
-- 5 分钟测试包：`npm run demo`、preflight、QUICKSTART。
-- 公开 QA harness：固定问题集、score report、失败样本可提交。
-- 公开 LoCoMo/长记忆检索跑分，区分“检索层 evidence recall”与“端到端 QA”，不混报。
-- 招募 10–20 个种子测试者，收集 diagnostics。
-
-### E. 发布与运营
-
-- 版本节奏：架构/许可变化走 minor，纯修复走 patch。
-- 每个 Release 附：变更说明、签名清单、校验命令、可复现构建结论。
-- 发布后 48 小时观察 issue、CI、安装失败率。
-
-## 4. 里程碑
-
-| 里程碑 | 内容 | 验收 | 状态 |
-|---|---|---|---|
-| M1 公开可验证发布 | `verify:release` 命令、验证文档、Release 启动器资产、CI 校验 | 任意人可对 Release 验签并比对 exe；失败有明确错误码 | 已完成（3.12.3） |
-| M2 可信首次安装 | 源码安装路径 + 独立签名安装器；setup 降级为开发入口 | 从恶意 fork 执行 setup 不再被描述为安全安装；官方安装器验签失败即拒绝 | 待开始 |
-| M3 开源许可与治理 | OSI 许可证、贡献/安全/行为准则、版权头迁移 | GitHub 识别 OSI license；`npm run check` 通过 | 待许可证决策 |
-| M4 公共 QA 与上线 | demo、QA harness、公开跑分、种子测试者 | 陌生人 5 分钟跑通；公开跑分可复现 | 待开始 |
-
-## 5. 需要作者决定的两件事
-
-1. **许可证**：AGPL-3.0-only（推荐，保护网络服务开源）/ Apache-2.0（最大采用）/ MIT（最宽松）。
-2. **官方安装器形态**：Windows Authenticode 签名 exe（需要代码签名证书）/ 自托管 Ed25519 签名安装包（无证书成本，用户需校验发布哈希）。
-
-未决定前，先执行不依赖许可证的 M1 供应链工作。
-
-## 6. 风险
-
-- 许可证切换不可逆地影响新增代码；旧提交仍受旧许可约束，需在 README 说明时间边界。
-- 单把 Ed25519 私钥是单点；开源后必须离线保管并准备轮换。
-- 独立安装器仍需要“第一次信任”：没有 Authenticode 时，用户必须从官方 Release 校验安装器哈希/签名。
-- 公开 QA 若只报有利指标会被质疑；必须同时公开失败样本、环境与原始日志。
+- `npm test` 438/438。
+- `npm run check` 通过：438 tests、23 core / 25 MCP、21 routes、31 ADRs、version 4.0.0、syntax 56 files。
+- `npm run qa -- --quality-count 120 --json` 通过：golden 24/24、quality 120/120。
+- `npm run verify:release -- --tag v4.0.0` 通过。
+- GitHub Release `v4.0.0` 含 v2/v1 清单与启动器 exe；生产 7788 升级到 4.0.0 并 `doctor` 0 错误。
