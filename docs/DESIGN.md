@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.12.2 |
-| 插件版本 | 3.12.2 |
+| 文档版本 | 3.12.3 |
+| 插件版本 | 3.12.3 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-23 |
@@ -97,7 +97,7 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 430/430（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 434/434（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
 | NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 423 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
@@ -574,6 +574,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | 版本可见 | 面板顶栏 `vX.Y.Z`、`GET /health.version`、`GET /omni-memory/status.version`、`GET /omni-memory/overview.version` 四处一致，均来自 `package.json` |
 | 读取时版本提醒 | `memory_context`、CLI `context`、`/omni-memory/packet` 读取时检查云端 `main/package.json`；远端更高时返回文本顶部插入“云端有新版，是否更新由用户决定”的提示，JSON `update` 同步给出两版版本号；提醒不命令 AI 自动执行，检查失败不阻塞读取 |
 | 发布渠道 | GitHub Releases 按 `vX.Y.Z` 发布并写变更说明；同一 Release 上传 `omni-update-manifest-v2.json` 主签名资产，需要兼容旧客户端时同时上传 `omni-update-manifest.json` v1 资产；包为 `private:true`，没有 npm 通道；用户通过面板版本、Releases 和 `scripts/daily-sync.mjs` 感知更新 |
+| 公开发布验证 | `npm run verify:release` 只读校验 Release 的 Ed25519 清单、签名 commit 上的 `package.json` 与启动器 SHA-256；`--launcher <path>` 可校验镜像/第三方渠道下载的 exe；不移动 HEAD、不安装、不重启。完整说明见 `docs/VERIFY-RELEASE.md` |
 | 更新执行 | 读取记忆时 `lib/version-check.mjs` 先查云端版本（成功缓存 30 分钟、失败 5 分钟、总网络预算 2.5s）；提醒只报告，用户确认后显式运行 `node scripts/daily-sync.mjs --apply`；`--apply` 必须验签 Ed25519 清单、包 SHA-256、启动器 SHA-256 与签名提交谱系，只快进到签名提交；通过后安装内容寻址启动器并切换任务；`--restart` 才重启服务；本地日期 gate 写 `~/.dsh/omni-daily-sync.json`，同日重试必须 `--force` |
 | 发布 | `plugin_manager remove_bundle` → `install_bundle` → 刷新页面 → 跑 `npm test` |
 | 回滚 | 保留上一版目录/归档；数据库迁移前写 `memory/backups/pre-migrate-*.db`；更新校验失败自动 `git reset --hard` 回到更新前提交（reset 前二次检查 tracked 改动）；启动器保留旧内容寻址副本，回滚时把任务 action 指回旧路径 |

@@ -2,7 +2,21 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
-## [3.12.2] — 2026-11-24
+## [3.12.3] — 2026-11-24
+
+### 新增
+- **公开发布验证（开源发布第一步）**：新增 `npm run verify:release` / `scripts/verify-release.mjs`。它从官方 GitHub Release 下载 `omni-update-manifest-v2.json`（旧版本回退 v1），用内置固定 Ed25519 公钥验签，校验 tag/version/commit，再通过 GitHub Contents API 读取签名 commit 上的 `package.json` 与启动器并比对 SHA-256。`--launcher <path>` 可校验从镜像或第三方渠道下载的启动器 exe。只读，不移动 HEAD、不安装、不重启。历史 Release 不受 180 天更新时效限制；`daily-sync --apply` 仍执行完整时效窗口检查。
+- 新增 `test/verify-release.test.mjs`：覆盖正常验签与哈希绑定、清单篡改、启动器哈希不符、本地启动器比对失败四条路径。
+- 新增 `docs/VERIFY-RELEASE.md` 与 `docs/OPEN-SOURCE-LAUNCH-PLAN.md`；README 增加“验证发布物”入口。
+
+### 说明
+- 这一步不改变 `npm run setup` 的信任边界：setup 仍只校验同提交 `package.json` 声明的启动器 SHA-256，不验 Release 签名；首次安装的受信任入口仍是独立签名安装器或源码构建路径。
+- GitHub Contents API 替代 `raw.githubusercontent.com`，避免部分网络重置 raw 域名；匿名 API 限额 60 次/小时，可用 `GITHUB_TOKEN` 提升。
+
+### 测试
+- 完整 `npm test` **434/434** 通过；`npm run check` 通过（434 tests、23 core / 25 MCP、21 routes、31 ADRs、version 3.12.3、syntax 54 files）。
+- `verify:release` 对 v3.12.2 真实 Release 复验通过，签名 key 指纹、`package.json` 哈希、启动器哈希与本地已安装 exe 一致。
+
 
 ### 修复
 - **churn 库静默丢召回（复审 P2）**：3.12.1 用 `MAX(id)` 判断大库；软删墓碑会抬高 id 高水位，导致只有少量活行的库误入 5,000 窗口，墓碑间隙以下的活行检索不到。3.12.2 先看高水位，再用可召回行数确认（notes 排除 `deleted_at`/`superseded_by`，facts 排除 `deleted_at`/`valid_to`，chunks 排除 `deleted_at`）；行数缓存 60 秒（`OMNI_ACTIVE_COUNT_TTL_MS`），只有可召回行数也超过阈值才收紧窗口/向量采样。新增 `test/churn-window.test.mjs`：16,000 条墓碑 + 1 条活行，单字仍命中。

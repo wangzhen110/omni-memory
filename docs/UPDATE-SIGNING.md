@@ -66,8 +66,9 @@ v1 字段与 v2 相同，但没有 `launcherPath` / `launcherSha256`，`schema` 
    node scripts/sign-release.mjs --version 3.11.8 --commit <sha> --tag v3.11.8 --schema v1 --out omni-update-manifest.json
    ```
 
-5. 创建 `v3.11.8` tag 和 GitHub Release，把 v2 清单作为主资产上传；需要兼容旧客户端时同时上传 v1 清单。清单不放进 git 仓库：它包含 commit，如果又提交进仓库，会形成“清单包含 commit、commit 又包含清单”的循环哈希。
-6. 在旧版本 checkout 上先跑 `node scripts/daily-sync.mjs --check`，确认返回 `update-available`；再跑 `--apply` 验证真实更新。`--check` 只比较版本，不读取也不验证签名；签名校验只在 `--apply` 发生。成功后才考虑 `--restart`。
+5. 创建 `v3.11.8` tag 和 GitHub Release，把 v2 清单作为主资产上传；需要兼容旧客户端时同时上传 v1 清单。建议同时上传 `omni-serve-7788.exe` 资产，方便用户用 `--launcher` 本地比对。清单不放进 git 仓库：它包含 commit，如果又提交进仓库，会形成“清单包含 commit、commit 又包含清单”的循环哈希。
+6. 发布后先跑 `npm run verify:release -- --tag v3.11.8`，确认清单签名、`package.json` 哈希与启动器哈希一致；再对下载的 exe 跑 `--launcher <path>`。它只读，不移动 HEAD、不安装、不重启。
+7. 在旧版本 checkout 上先跑 `node scripts/daily-sync.mjs --check`，确认返回 `update-available`；再跑 `--apply` 验证真实更新。`--check` 只比较版本，不读取也不验证签名；签名校验只在 `--apply` 发生。成功后才考虑 `--restart`。
 
 ## `--apply` 的拒绝条件
 

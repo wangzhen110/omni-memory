@@ -2,7 +2,7 @@
 
 > **让 AI 不再失忆的本地长期记忆中枢。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
 
-[![tests](https://img.shields.io/badge/tests-430%2F430-brightgreen)](#测试与指标)
+[![tests](https://img.shields.io/badge/tests-434%2F434-brightgreen)](#测试与指标)
 [![node](https://img.shields.io/badge/node-%3E%3D22.13-8de1ff)](#本地安装开发者)
 [![license](https://img.shields.io/badge/license-Personal%20Use%201.1-lightgrey)](LICENSE)
 
@@ -80,7 +80,7 @@ node hosts/cli.mjs serve --port 7788
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 430 个用例
+npm test          # 434 个用例
 npm run check     # 语法、文档计数与模型资产完整性校验
 ```
 
@@ -101,6 +101,15 @@ node scripts/daily-sync.mjs --apply
 不带参数时只报告 `update-available` / `up-to-date`，**不合并、不重启**。`--apply` 才执行更新：它优先从 GitHub Release 下载 `omni-update-manifest-v2.json`，用内置的 Ed25519 公钥验签，校验签名清单里的版本、`package.json` SHA-256、启动器 SHA-256 和提交谱系；只快进到签名提交，不把任意 `origin/main` 合并进来。v1 清单继续兼容 3.11.8 之前的客户端。工作树有 tracked 修改时拒绝执行；校验失败回滚到更新前提交。`--restart` 才会重启 `OmniMemory7788`，`--run-tests` 可在快进后额外跑 `npm test`。同一天重复调用直接返回 `already-ran-today`；当天已同步过但仍想重试，必须显式加 `--force`。`--check` 只检查。脚本默认只操作自身所在的 checkout，并校验包名与 `origin` 必须是 `wangzhen110/omni-memory`。
 
 3.11.5 及更早的更新链没有签名校验；3.11.6 是第一个带签名清单的 Release。3.11.8 起 v2 清单把启动器二进制也纳入签名范围，安装时先落内容寻址副本再切换计划任务，运行中的 exe 不被覆盖。公钥指纹与私钥保管方式见 [`docs/UPDATE-SIGNING.md`](docs/UPDATE-SIGNING.md)。
+
+### 验证发布物
+
+```bash
+npm run verify:release -- --tag v3.12.3
+npm run verify:release -- --tag v3.12.3 --launcher ./omni-serve-7788.exe
+```
+
+第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 的安全边界仍是同提交哈希自洽，不冒充 Release 签名。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
 
 ### 7788 静默启动器（Windows）
 
@@ -220,12 +229,13 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**430 / 430 通过**
+- 自动化用例：**434 / 434 通过**
 - 检索延迟（本机复核，**3.12.1/3.12.2 数据**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **129.8ms**（固定旧边界 226.9ms；3.12.1 自适应收紧窗口/采样，3.12.2 修正为按可召回行数判定，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 3.12.0 新增：100k 短笔记 10M 字符检索 p95 **6.9ms**；10k 长笔记 10M 字符 p95 **27.4ms**；120 条确定性质量用例 **120/120**；LoCoMo session 粒度 evidence recall@10 **0.7134**（检索层，不是官方 QA）。完整方法与边界见 [基准与质量实测](docs/BENCHMARKS.md)。
 - 3.12.1 修复：1M + 5 万向量 + 100 万 bigram 自适应边界 p95 **129.4ms**（旧固定边界 226.9ms）；第二个打开者等待迁移租约到 **150s**（旧固定 5s，1M 迁移可能 73–80s）。跨进程测试覆盖 6s 持锁后释放。
 - 3.12.2 修复：churn 库按活行数判定大库（16,000 墓碑 + 1 活行回归，单字不丢）；`setup` 明确只校验同提交 SHA-256、不冒充 Release 签名；`schtasks` 探测失败不再猜“任务不存在”；doctor 小库 `<4096` 降为 warn。
+- 3.12.3 新增：`npm run verify:release` 可从官方 Release 验签，并比对签名 commit 上的 `package.json` 与启动器 SHA-256；`--launcher` 可校验镜像/第三方渠道下载的 exe。只读，不安装、不重启。
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
 
 ```bash
