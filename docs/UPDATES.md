@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 105 次提交；更新记录自身的提交不计入列表。
+> 共 106 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-24
 
+- 12:22:31 `fd35985b` — fix: v4.1.1 flatten mobile readout row — [提交](https://github.com/wangzhen110/omni-memory/commit/fd35985b22031566d4b3a6ba4cca5fcb576aba00)
 - 12:12:00 `886e38e3` — feat: v4.1.0 redraw hub and mobile as memory ledger — [提交](https://github.com/wangzhen110/omni-memory/commit/886e38e3f7964e2773db1888841143db649441d3)
 - 10:15:28 `3c3cb154` — fix: v4.0.1 launcher stops stale node after node path change — [提交](https://github.com/wangzhen110/omni-memory/commit/3c3cb1548c1810c3021da2f576a3df30d4d2bfa1)
 - 10:08:47 `7ff9082b` — feat: v4.0.0 open-source launch — [提交](https://github.com/wangzhen110/omni-memory/commit/7ff9082ba8fed7be5bdc345fba1c58c2bf983436)
