@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 3.12.1 |
-| 插件版本 | 3.12.1 |
+| 文档版本 | 3.12.2 |
+| 插件版本 | 3.12.2 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-23 |
@@ -82,13 +82,13 @@
 | FR-42 | 跨平台项目键稳定 | Windows/macOS 同一路径不同大小写生成同一项目键；旧键首次打开时按路径迁移到 canonical key，迁移幂等且不误合并同名目录 | ✅ 已实现（schema v15，ADR-031） |
 | FR-43 | 版本可见与受控更新 | `/health`、`/omni-memory/status`、`/overview` 与面板顶栏显示当前版本；`daily-sync` 默认只报告，`--apply` 才更新；更新前必须验证 GitHub Release 的 Ed25519 清单、包哈希、启动器哈希与签名提交谱系，只快进到签名提交；启动器安装到内容寻址路径后再切换任务；`--restart` 才重启服务 | ✅ 已实现（3.11.8；`scripts/daily-sync.mjs`、`lib/update-signature.mjs`、`scripts/install-launcher.mjs`） |
 | FR-44 | 读取记忆时版本提醒 | `memory_context`（MCP/CLI）与 `/omni-memory/packet` 读取时检查云端 `main/package.json`；发现更高版本时在返回文本顶部提示“云端有新版，是否更新由用户决定”，不命令 AI 自动执行；成功结果缓存 30 分钟，失败 5 分钟，Contents API 与 raw 回退共享 2.5s 总预算，检查失败不阻塞记忆读取；缓存回读校验版本结构与 TTL，失败不保留旧远端版本；并发读取用跨进程单飞锁只发一次请求 | ✅ 已实现（3.11.6；`lib/version-check.mjs`） |
-| FR-45 | 产品化入口与诊断 | `/hub` 六卡总览（记忆库/检索/星图/项目/工具/状态）与 `/m` 手机端只读搜索；`omni doctor` 只读诊断 Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务；`npm run setup` 校验签名启动器并安装/创建计划任务，默认 dry-run，`--apply --start` 才落盘与启动 | ✅ 已实现（3.11.9；`hosts/shared/doctor.mjs`、`scripts/install.mjs`） |
+| FR-45 | 产品化入口与诊断 | `/hub` 六卡总览（记忆库/检索/星图/项目/工具/状态）与 `/m` 手机端只读搜索；`omni doctor` 只读诊断 Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务；`npm run setup` 校验启动器与同提交 `package.json` 的 SHA-256 自洽（**不验 Release Ed25519 签名**；签名更新只走 `daily-sync --apply`）并安装/创建计划任务，默认 dry-run，`--apply --start` 才落盘与启动 | ✅ 已实现（3.11.9；3.12.2 修正表述；`hosts/shared/doctor.mjs`、`scripts/install.mjs`） |
 
 ### 1.2 非功能需求
 
 | 编号 | 需求 | 指标 | 当前实测 |
 |---|---|---|---|
-| NFR-01 | 单次检索延迟 | p95 < 300ms（1 万行以内） | **本机复核（Node 22.23.2）：p95 = 2.4ms @ 10,000 行；2.4ms @ 100,000 行；6.0ms @ 1,000,000 行；1M + 5 万向量 + 100 万 bigram 固定边界 226.9ms，3.12.1 自适应边界 129.4ms（无并发、命中 400/400）**（`bench/bench.mjs`，标准 bench 使用 global scope 并断言 `hitTotal > 0`；两段式有界检索见 ADR-020）。3.11.x 发布基准（`bench/release.mjs`）：100k 检索 2.8–3.2ms、写入 4.4–4.6ms；1M 检索 2.8–2.9ms、写入 4.6ms；1M `/list` 966–976ms（高负载 2276ms）、`/overview` 2026–2136ms（高负载 4456ms）；稳态 open 100k 10.6ms / 1M 46.5ms。面板全库统计超出 300ms 交互预算但检索/写入不受影响（[基准](BENCH-3.11.0-2026-11-22.md)） |
+| NFR-01 | 单次检索延迟 | p95 < 300ms（1 万行以内） | **本机复核（Node 22.23.2）：p95 = 2.4ms @ 10,000 行；2.4ms @ 100,000 行；6.0ms @ 1,000,000 行；1M + 5 万向量 + 100 万 bigram 固定边界 226.9ms，3.12.1/3.12.2 自适应边界 129.8ms（无并发、命中 400/400）**（`bench/bench.mjs`，标准 bench 使用 global scope 并断言 `hitTotal > 0`；两段式有界检索见 ADR-020）。3.11.x 发布基准（`bench/release.mjs`）：100k 检索 2.8–3.2ms、写入 4.4–4.6ms；1M 检索 2.8–2.9ms、写入 4.6ms；1M `/list` 966–976ms（高负载 2276ms）、`/overview` 2026–2136ms（高负载 4456ms）；稳态 open 100k 10.6ms / 1M 46.5ms。面板全库统计超出 300ms 交互预算但检索/写入不受影响（[基准](BENCH-3.11.0-2026-11-22.md)） |
 | NFR-02 | 注入开销 | 每次装配 ≤ 1 次 SQLite 读；缓存命中时 0 次 | 满足（30s 缓存） |
 | NFR-03 | 写入不阻塞回合 | 捕获写入耗时 p99 < 5ms | 满足（单条 insert + 索引） |
 | NFR-04 | 崩溃一致性 | 进程被强杀后数据库可打开、已提交行可读 | 满足（WAL + synchronous=NORMAL） |
@@ -97,7 +97,7 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 426/426（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 430/430（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
 | NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 423 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
@@ -368,11 +368,12 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - 降级：模型缺失、损坏、WASM 加载失败或内存不足时返回空，词面/hashed/图路线继续工作；`lastError` 留痕。
 - 实测：冷加载 208ms，RSS 216MB，512 维；20 次查询 191ms（约 9.5ms/query）；黄金集 recall 1.000、MRR 0.979。
 
-### 6.5.2 大规模库的自适应有界（v3.12.1）
+### 6.5.2 大规模库的自适应有界（v3.12.1 引入，v3.12.2 修正判定）
 
 - 背景：固定 `OMNI_SEARCH_WINDOW=20000` 与 `OMNI_VECTOR_SAMPLE=5000` 在 1M 行 + 5 万向量 + 100 万 bigram 下，低配机器 p95 曾到 418.6ms，超出 300ms 预算（A-06）。
-- 规则：当索引表最大 id 超过 `OMNI_LARGE_STORE_ROWS`（默认 250,000）时，最近窗口降到 **5,000**，向量采样降到 **1,000**；以下仍保持 20,000 / 5,000。判定看最大 id，不做全表 `COUNT(*)`。
-- 覆盖：显式设置 `OMNI_SEARCH_WINDOW` 或 `OMNI_VECTOR_SAMPLE` 时，以环境变量为准，不再自适应；便于小库强制缩小窗口与回归复现。
+- 规则：先看索引表 `MAX(id)`；只有高水位超过 `OMNI_LARGE_STORE_ROWS`（默认 250,000）时，才进一步用可召回行数判定（notes 排除 `deleted_at`/`superseded_by`，facts 排除 `deleted_at`/`valid_to`，chunks 排除 `deleted_at`）。可召回行数也超过阈值才把最近窗口降到 **5,000**、向量采样降到 **1,000**；否则保持 20,000 / 5,000。行数按连接缓存 60 秒（`OMNI_ACTIVE_COUNT_TTL_MS`），避免每次检索都全表 COUNT。
+- 为什么不用单一 `MAX(id)`：软删除永不复用 id，写→忘→再写会抬高 id 高水位；churn 库可能只有少量活行却触发 5,000 窗口，导致墓碑间隙以下的活行静默丢召回（3.12.2 回归：`test/churn-window.test.mjs`）。
+- 配置：`OMNI_LARGE_STORE_ROWS` 低于 10,000 时保留 10,000 安全下限并打一行 warning，不再静默回退到 250,000；显式 `OMNI_SEARCH_WINDOW` / `OMNI_VECTOR_SAMPLE` 仍固定覆盖。
 - 取舍：大库放弃一部分"窗口外纯语义"的覆盖，FTS/词面候选仍负责精确旧记忆；这是有界延迟优先于全库语义召回的产品决策，不是宣称全库语义检索。
 - 验收：`bench/bench.mjs 1000000 50` + `BENCH_VECTORS=50000` + `BENCH_BIGRAM=条目` 的 p95 必须低于 300ms，且 `hitTotal > 0`；黄金集 small-store MRR 不得下降。
 

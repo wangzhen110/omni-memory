@@ -3244,10 +3244,22 @@ const SEARCH_WINDOW_DEFAULT = 20_000;
 const SEARCH_WINDOW_LARGE = 5_000;
 const VECTOR_SAMPLE_DEFAULT = 5_000;
 const VECTOR_SAMPLE_LARGE = 1_000;
+const MIN_LARGE_STORE_ROWS = 10_000;
 const LARGE_STORE_ROWS = (() => {
   const raw = Number(process.env.OMNI_LARGE_STORE_ROWS ?? 250_000);
-  if (!Number.isFinite(raw) || raw < 10_000) return 250_000;
+  if (!Number.isFinite(raw) || raw <= 0) return 250_000;
+  if (raw < MIN_LARGE_STORE_ROWS) {
+    // A silent clamp used to make `OMNI_LARGE_STORE_ROWS=5000` look applied
+    // while the effective threshold stayed 250,000. Keep the safe floor, but
+    // say so once so a benchmark run cannot be misread.
+    console.warn(`[omni] OMNI_LARGE_STORE_ROWS=${raw} is below ${MIN_LARGE_STORE_ROWS}; using ${MIN_LARGE_STORE_ROWS}`);
+    return MIN_LARGE_STORE_ROWS;
+  }
   return Math.floor(raw);
+})();
+const ACTIVE_COUNT_TTL_MS = (() => {
+  const raw = Number(process.env.OMNI_ACTIVE_COUNT_TTL_MS ?? 60_000);
+  return Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 60_000;
 })();
 const SEARCH_WINDOW_OVERRIDE = process.env.OMNI_SEARCH_WINDOW === undefined
   ? null
@@ -3267,14 +3279,57 @@ function maxRowId(db, table) {
   }
 }
 
+/**
+ * Count only rows that can still be recalled. `MAX(id)` is an id high-water
+ * mark, not a row count: soft deletes never reuse ids, so a churn-heavy store
+ * can have a huge max id and almost no live memories. Using the max id as the
+ * large-store signal shrank the lexical window to 5,000 and silently lost rows
+ * that sat below the tombstone gap. The count is cached per connection because
+ * an exact COUNT(*) on a 1M-row store is still measurable; the TTL bounds
+ * staleness after writes.
+ */
+const activeCountCache = new WeakMap();
+function activeRowCount(db, table, extra = '') {
+  const now = Date.now();
+  let cache = activeCountCache.get(db);
+  if (!cache) {
+    cache = new Map();
+    activeCountCache.set(db, cache);
+  }
+  const key = `${table}\u0000${extra}`;
+  const hit = cache.get(key);
+  if (hit && now - hit.at < ACTIVE_COUNT_TTL_MS) return hit.count;
+  let count = 0;
+  try {
+    count = Number(prepareCached(db, `SELECT COUNT(*) AS n FROM ${table} WHERE deleted_at IS NULL ${extra}`).get()?.n ?? 0);
+  } catch {
+    count = 0;
+  }
+  cache.set(key, { count, at: now });
+  return count;
+}
+
+function isLargeStore(db, table, max = maxRowId(db, table)) {
+  // Below the threshold no count is needed. Above it, the live row count
+  // decides: tombstones and superseded revisions are storage, not recall
+  // complexity. Facts use valid_to as their retired state.
+  if (max <= LARGE_STORE_ROWS) return false;
+  const activeFilter = table === 'notes'
+    ? 'AND superseded_by IS NULL'
+    : table === 'facts'
+      ? 'AND valid_to IS NULL'
+      : '';
+  return activeRowCount(db, table, activeFilter) > LARGE_STORE_ROWS;
+}
+
 function effectiveSearchWindow(db, table, max = maxRowId(db, table)) {
   if (SEARCH_WINDOW_OVERRIDE !== null) return SEARCH_WINDOW_OVERRIDE;
-  return max > LARGE_STORE_ROWS ? SEARCH_WINDOW_LARGE : SEARCH_WINDOW_DEFAULT;
+  return isLargeStore(db, table, max) ? SEARCH_WINDOW_LARGE : SEARCH_WINDOW_DEFAULT;
 }
 
 function effectiveVectorSample(db) {
   if (VECTOR_SAMPLE_OVERRIDE !== null) return VECTOR_SAMPLE_OVERRIDE;
-  return maxRowId(db, 'notes') > LARGE_STORE_ROWS ? VECTOR_SAMPLE_LARGE : VECTOR_SAMPLE_DEFAULT;
+  return isLargeStore(db, 'notes') ? VECTOR_SAMPLE_LARGE : VECTOR_SAMPLE_DEFAULT;
 }
 
 /** Recent-window substring scan: bounded by window size, recency biased. */

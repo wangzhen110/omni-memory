@@ -49,6 +49,8 @@ test('install-launcher stages a content-addressed binary and a sidecar config', 
     const applied = installLauncherFromCommit({ repo, commit, home, task: 'NoSuchTask', noTask: true, apply: true });
     assert.equal(applied.ok, true, applied.error);
     assert.equal(applied.dryRun, false);
+    assert.equal(applied.launcherIntegrity, 'sha256-in-commit');
+    assert.equal(applied.releaseSignatureVerified, false);
     assert.equal(readFileSync(applied.target).equals(launcher), true);
     const sidecar = JSON.parse(readFileSync(applied.configFile, 'utf8'));
     assert.equal(sidecar.repo, repo);

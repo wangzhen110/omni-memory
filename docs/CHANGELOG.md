@@ -2,6 +2,20 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [3.12.2] — 2026-11-24
+
+### 修复
+- **churn 库静默丢召回（复审 P2）**：3.12.1 用 `MAX(id)` 判断大库；软删墓碑会抬高 id 高水位，导致只有少量活行的库误入 5,000 窗口，墓碑间隙以下的活行检索不到。3.12.2 先看高水位，再用可召回行数确认（notes 排除 `deleted_at`/`superseded_by`，facts 排除 `deleted_at`/`valid_to`，chunks 排除 `deleted_at`）；行数缓存 60 秒（`OMNI_ACTIVE_COUNT_TTL_MS`），只有可召回行数也超过阈值才收紧窗口/向量采样。新增 `test/churn-window.test.mjs`：16,000 条墓碑 + 1 条活行，单字仍命中。
+- **`OMNI_LARGE_STORE_ROWS` 静默回退**：低于 10,000 时保留 10,000 安全下限，并打一行 warning；不再静默改成 250,000 让用户误以为配置生效。
+- **`npm run setup` 的安全承诺与实现不一致（复审 P2）**：FR-45、README、安装帮助与输出统一改为“校验同提交 `package.json` 声明的启动器 SHA-256（本地自洽）”；Release Ed25519 签名只在 `daily-sync --apply` 验证。安装结果显式返回 `launcherIntegrity: "sha256-in-commit"`、`releaseSignatureVerified: false`，不再使用“签名启动器”这个会被误解的说法。
+- **计划任务探测失败被当成“不存在”（复审 P3）**：`schtasks /Query` 现在区分 `present` / `missing` / `unknown`；权限或安全策略导致查询失败时返回 `unknown`，apply 阶段拒绝创建/修改任务并提示 `--no-task`，不再猜测后新建。`noTask` 时完全跳过 `schtasks /Query`，测试不再触发系统黑名单告警。
+- **`doctor` 小库误报 fail（复审 P3）**：主库文件 `< 4096` 字节从 `fail` 降为 `warn`；WAL 刚创建、数据尚在 `-wal` 时不再阻断 preflight，真正的损坏交给 `PRAGMA integrity_check` 与必备表检查。
+
+### 测试
+- 新增 `test/churn-window.test.mjs`；`test/productization.test.mjs` 增加任务探测 `unknown` 拒绝、`noTask` 不调用探针、小库文件 `warn` 三条回归。
+- 完整 `npm test` **430/430** 通过；`npm run check` 通过（430 tests、23 core / 25 MCP、21 routes、31 ADRs、version 3.12.2、syntax 53 files）。
+- 1M + 5 万向量 + 100 万 bigram 复跑：p50 126.0ms / p95 **129.8ms** / max 221.1ms，400/400 命中，pass；首次查询含一次 COUNT，后续 60s 缓存。
+
 ## [3.12.1] — 2026-11-23
 
 ### 修复
@@ -40,8 +54,8 @@
 - **README 首屏**：一句话定位、真实 `/hub` 与 `/m` 截图、5 分钟安装路径前置；许可证提醒移到文末许可证章节，不再压住价值主张。
 
 ### 安装与诊断
-- **`npm run setup`**：包装现有签名启动器安装器，先做只读 preflight，再安装内容寻址启动器、写侧车配置、创建或修改计划任务；默认 dry-run，`--apply --start` 才落盘和启动。计划任务缺失时新增 `--create-task` 显式创建，避免“安装成功但服务没起来”。
-- **`omni doctor`**：新增只读诊断命令，检查 Node 版本、数据目录可写、SQLite `integrity_check` 与必备表、语义资产、7788 `/health`、计划任务是否指向当前签名启动器、DSH 插件元数据；支持 `--json`、`--strict`、`--skip-http`、`--skip-task`。
+- **`npm run setup`**：包装现有内容寻址启动器安装器，先做只读 preflight，再安装启动器、写侧车配置、创建或修改计划任务；默认 dry-run，`--apply --start` 才落盘和启动。计划任务缺失时新增 `--create-task` 显式创建，避免“安装成功但服务没起来”。3.12.2 起明确：这里只校验同提交 SHA-256 自洽，不验 Release Ed25519 签名。
+- **`omni doctor`**：新增只读诊断命令，检查 Node 版本、数据目录可写、SQLite `integrity_check` 与必备表、语义资产、7788 `/health`、计划任务是否指向当前内容寻址启动器、DSH 插件元数据；支持 `--json`、`--strict`、`--skip-http`、`--skip-task`。
 - **可观测口径**：doctor 不创建数据库、不写配置、不改任务；数据库以 `readOnly` 打开，HTTP 只发 loopback GET。
 
 ### 测试
@@ -54,7 +68,7 @@
 - **启动器纳入签名清单**：新增 `omni-update-manifest-v2` schema，固定字段 `launcherPath` 与 `launcherSha256`；`sign-release.mjs` 从签名提交读取 `scripts/launchers/omni-serve-7788.exe` 的实际字节计算哈希。v1 清单继续保留，兼容旧客户端。
 - **可复现构建**：新增 `scripts/build-launcher.mjs`，用 `csc /target:winexe` 编译后归一化 PE 时间戳和 .NET Module MVID，连续构建两次比对哈希；`--check` 只重建并与仓库二进制比对。`scripts/check-launcher.mjs` 已接入 `npm run check`。
 - **配置驱动启动器**：`omni-serve-7788-launcher.cs` 不再硬编码仓库、Node 与日志路径；从 `omni-serve-7788.json` 侧车配置读取，支持 `OMNI_REPO` / `OMNI_NODE` / `OMNI_HTTP_PORT` 等环境变量回退。旧监听判定要求 Node 可执行路径、`hosts\cli.mjs`、`serve` 和精确 `--port` 同时匹配。
-- **安装与卸载**：新增 `scripts/install-launcher.mjs`，校验签名提交里的 `package.json` 元数据与启动器 SHA-256，写内容寻址副本 `omni-serve-7788-<sha8>.exe` 和侧车配置，再改计划任务 action；默认不覆盖运行中的 exe。新增 `scripts/uninstall-launcher.mjs`，删除任务与侧车配置，默认保留日志、数据库和二进制，显式 `--remove-binaries --remove-logs` 才清理。
+- **安装与卸载**：新增 `scripts/install-launcher.mjs`，校验提交内 `package.json` 元数据与启动器 SHA-256（本地自洽，不验 Release 签名），写内容寻址副本 `omni-serve-7788-<sha8>.exe` 和侧车配置，再改计划任务 action；默认不覆盖运行中的 exe。新增 `scripts/uninstall-launcher.mjs`，删除任务与侧车配置，默认保留日志、数据库和二进制，显式 `--remove-binaries --remove-logs` 才清理。
 - **daily-sync 自动安装**：v2 清单验签、merge、syntax、测试和版本校验通过后，自动安装并切换启动器，不停止当前进程；安装失败返回 `launcher-install-failed` 并退出 2。
 
 ### 修复 · 终验 P1：备份、锁与 CLI 主链

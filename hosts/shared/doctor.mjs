@@ -7,7 +7,8 @@
  * It answers the questions a new user actually has: is Node new enough, where
  * will the database live, can this process write there, does the existing DB
  * pass SQLite integrity, are the local semantic assets present, is the 7788
- * service up, and does the scheduled task point at the signed launcher?
+ * service up, and does the scheduled task point at the content-addressed
+ * launcher whose SHA-256 is declared by the same commit?
  *
  * Nothing here mutates the store: the database is opened read-only and all
  * service checks are GETs to loopback.
@@ -119,9 +120,13 @@ function inspectDatabase(dbFile) {
     };
   }
   const size = statSync(dbFile).size;
-  if (size < 4096) {
-    return { status: 'fail', detail: `database is too small to be valid: ${humanBytes(size)}` };
-  }
+  // A WAL-mode database that was just created can have a tiny main file while
+  // the committed rows still live in `-wal`. Size alone is not a corruption
+  // signal; `PRAGMA integrity_check` and the required-table probe below are.
+  // Treat it as a warning so a first-run preflight does not abort installation.
+  const sizeWarning = size < 4096
+    ? `main database file is only ${humanBytes(size)}; WAL may still hold the data`
+    : null;
   let db;
   try {
     db = new DatabaseSync(dbFile, { readOnly: true });
@@ -148,10 +153,12 @@ function inspectDatabase(dbFile) {
       facts: Number(db.prepare('SELECT count(*) AS n FROM facts').get()?.n || 0),
     };
     return {
-      status: 'ok',
-      detail: `${humanBytes(size)} · integrity ok · schema ${schema || '?'} · ${counts.notes} notes / ${counts.facts} facts`,
+      status: sizeWarning ? 'warn' : 'ok',
+      detail: `${humanBytes(size)} · integrity ok · schema ${schema || '?'} · ${counts.notes} notes / ${counts.facts} facts${sizeWarning ? ` · ${sizeWarning}` : ''}`,
       schema,
       counts,
+      size,
+      sizeWarning,
     };
   } catch (error) {
     return { status: 'fail', detail: `cannot read database read-only: ${error?.message ?? error}` };
@@ -227,7 +234,7 @@ export async function runDoctor(options = {}) {
     add('node', 'fail', `${process.versions.node}; need >= ${MIN_NODE}`);
   }
 
-  // 2. Repository identity and signed launcher metadata
+  // 2. Repository identity and content-addressed launcher metadata
   if (packageError) {
     add('repo', 'fail', `cannot read package.json in ${repo}: ${packageError.message}`);
   } else {
@@ -235,7 +242,7 @@ export async function runDoctor(options = {}) {
     const launcherPath = pkg.omni?.launcher?.path;
     const launcherOk = /^[0-9a-f]{64}$/.test(launcherSha) && launcherPath === 'scripts/launchers/omni-serve-7788.exe';
     add('repo', launcherOk ? 'ok' : 'warn', launcherOk
-      ? `${pkg.name} ${pkg.version} · signed launcher ${launcherSha.slice(0, 8)}`
+      ? `${pkg.name} ${pkg.version} · launcher sha256 ${launcherSha.slice(0, 8)}`
       : `${pkg.name || '?'} ${pkg.version || '?'} · launcher metadata is incomplete`);
   }
 

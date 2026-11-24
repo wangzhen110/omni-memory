@@ -5,10 +5,16 @@
 /**
  * One-command local install.
  *
- * This is deliberately a wrapper, not a second installer: the signed, content-
- * addressed launcher already exists in scripts/install-launcher.mjs. `setup`
- * adds three things a new user needs — a read-only preflight, a post-install
- * doctor run, and one readable summary.
+ * This is deliberately a wrapper, not a second installer: the content-addressed
+ * launcher already exists in scripts/install-launcher.mjs. `setup` adds three
+ * things a new user needs — a read-only preflight, a post-install doctor run,
+ * and one readable summary.
+ *
+ * The hash checked here is the one declared in the same commit as the binary.
+ * It catches corruption and accidental edits, not a tampered fork; the Ed25519
+ * release signature is verified by `daily-sync --apply`, not by this offline
+ * path. The output says so explicitly so "setup" cannot be mistaken for the
+ * signed update chain.
  *
  * Default is dry-run. `--apply` is the only mode that writes to the home
  * directory or changes the scheduled task; `--start` is the only mode that
@@ -57,7 +63,7 @@ function printHelp() {
   node scripts/install.mjs [选项]
 
 默认 dry-run，只打印计划，不写文件、不碰计划任务。
-  --apply          安装签名启动器并写入侧车配置
+  --apply          安装内容哈希自洽的启动器并写入侧车配置（不验 Release 签名）
   --start          安装后重启计划任务，让 7788 用新启动器运行
   --home <目录>   数据根目录，默认 $OMNI_HOME / $DSH_HOME / ~/.dsh
   --port <端口>   服务端口，默认 7788
@@ -84,7 +90,9 @@ function human(result) {
   lines.push(`仓库: ${result.repo}`);
   lines.push(`数据根目录: ${result.home}`);
   lines.push(`启动器: ${result.plan?.target || '—'}`);
+  lines.push('启动器校验: 同提交 SHA-256（本地自洽；Release Ed25519 签名只由 daily-sync --apply 验证）');
   lines.push(`计划任务: ${result.plan?.noTask ? '不创建/不修改' : result.task}`);
+  if (result.plan?.taskUnknown) lines.push(`任务探测: 未知（${result.plan.taskError}）`);
   if (result.plan) lines.push(`提交: ${result.plan.commit} · sha256 ${result.plan.sha256}`);
   lines.push('');
   lines.push(formatDoctor(result.doctor));

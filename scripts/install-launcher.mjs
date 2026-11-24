@@ -35,6 +35,37 @@ function run(command, args, options = {}) {
   }
 }
 
+/**
+ * `schtasks` writes its diagnostics in the Windows OEM code page. Decoding the
+ * bytes as UTF-8 turns a localized "task not found" into mojibake and makes the
+ * caller guess. Decode as GBK when available, with UTF-8 as the fallback.
+ */
+function decodeWindowsOutput(buffer) {
+  if (buffer === undefined || buffer === null) return '';
+  if (typeof buffer === 'string') return buffer.trim();
+  try {
+    return new TextDecoder('gbk').decode(buffer).trim();
+  } catch {
+    return Buffer.from(buffer).toString('utf8').trim();
+  }
+}
+
+function runBuffer(command, args, options = {}) {
+  try {
+    return {
+      ok: true,
+      stdout: decodeWindowsOutput(execFileSync(command, args, { encoding: 'buffer', maxBuffer: 16 * 1024 * 1024, windowsHide: true, ...options })),
+      stderr: '',
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      stdout: decodeWindowsOutput(error?.stdout),
+      stderr: decodeWindowsOutput(error?.stderr) || String(error?.message ?? error).trim(),
+    };
+  }
+}
+
 function gitShow(repo, commit, file) {
   return execFileSync(GIT, ['show', `${commit}:${file}`], { cwd: repo, maxBuffer: 64 * 1024 * 1024 });
 }
@@ -57,16 +88,30 @@ function writeConfig(home, config) {
   return file;
 }
 
-function taskXml(taskName) {
-  const result = run(SCHTASKS, ['/Query', '/TN', taskName, '/XML']);
-  return result.ok ? result.stdout : null;
-}
-
-function taskCommand(taskName) {
-  const xml = taskXml(taskName);
-  if (!xml) return null;
-  const match = xml.match(/<Command>(.*?)<\/Command>/is);
-  return match ? match[1].replaceAll('&quot;', '"').trim() : null;
+function taskQuery(taskName) {
+  const result = runBuffer(SCHTASKS, ['/Query', '/TN', taskName, '/XML']);
+  if (result.ok) {
+    const xml = result.stdout;
+    const match = xml.match(/<Command>(.*?)<\/Command>/is);
+    return {
+      state: 'present',
+      command: match ? match[1].replaceAll('&quot;', '"').trim() : null,
+      error: null,
+    };
+  }
+  const message = [result.stderr, result.stdout].filter(Boolean).join(' ').trim();
+  const lower = message.toLowerCase();
+  // `schtasks` uses different localized strings, but a missing task is still a
+  // definitive answer. A permissions/security-policy failure is not: treating
+  // it as "missing" used to create a second task in restricted environments.
+  if (/cannot find|not exist|not found|no such|找不到|不存在|没有找到/.test(lower)) {
+    return { state: 'missing', command: null, error: null };
+  }
+  return {
+    state: 'unknown',
+    command: null,
+    error: message || 'schtasks /Query failed without a diagnostic',
+  };
 }
 
 function stopTask(taskName) {
@@ -133,9 +178,20 @@ export function installLauncherFromCommit(options = {}) {
   };
   const apply = Boolean(options.apply);
   const restart = Boolean(options.restart);
-  const taskMissing = taskCommand(taskName) === null;
+  const requestedNoTask = Boolean(options.noTask);
+  const taskState = requestedNoTask
+    ? { state: 'skipped', command: null, error: null }
+    : (options.taskQuery || taskQuery)(taskName);
+  const taskMissing = taskState.state === 'missing';
+  const taskUnknown = taskState.state === 'unknown';
   const createTaskIfMissing = Boolean(options.createTask);
-  const noTask = Boolean(options.noTask) || (taskMissing && !createTaskIfMissing);
+  const noTask = requestedNoTask || (taskMissing && !createTaskIfMissing);
+  if (taskUnknown && apply && !requestedNoTask) {
+    throw new Error(
+      `cannot determine whether scheduled task ${taskName} exists: ${taskState.error}; `
+      + 'refusing to create or change it. Fix schtasks access, or rerun with --no-task.',
+    );
+  }
   const installed = existsSync(target) && sha256(readFileSync(target)) === actual;
   if (!apply) {
     return {
@@ -149,7 +205,12 @@ export function installLauncherFromCommit(options = {}) {
       task: taskName,
       noTask,
       taskMissing,
+      taskUnknown,
+      taskState: taskState.state,
+      taskError: taskState.error,
       taskWillBeCreated: taskMissing && createTaskIfMissing && !noTask,
+      launcherIntegrity: 'sha256-in-commit',
+      releaseSignatureVerified: false,
     };
   }
   if (process.platform !== 'win32') throw new Error('launcher installation is Windows-only');
@@ -193,8 +254,13 @@ export function installLauncherFromCommit(options = {}) {
     task: taskName,
     noTask,
     taskMissing,
+    taskUnknown,
+    taskState: taskState.state,
+    taskError: taskState.error,
     taskWillBeCreated: taskMissing && createTaskIfMissing && !noTask,
     restart,
+    launcherIntegrity: 'sha256-in-commit',
+    releaseSignatureVerified: false,
   };
 }
 
