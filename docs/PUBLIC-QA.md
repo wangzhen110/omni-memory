@@ -27,7 +27,7 @@ npm run bench:golden
 npm run bench:quality -- 120
 ```
 
-## 4.0.0 基线
+## 4.0.1 基线
 
 Windows x64、Node 22.13+、本机 SQLite，2026-11-24：
 

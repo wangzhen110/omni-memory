@@ -51,12 +51,12 @@ $env:OMNI_HOME = "D:\omni-home"; npm run serve
 ## 3. 官方安装（Windows，发布验签）
 
 ```bash
-git checkout v4.0.0
+git checkout v4.0.1
 npm ci
 npm run setup
 ```
 
-`setup` 会先验证 `v4.0.0` 的 Ed25519 发布清单，要求当前 HEAD 就是签名 commit、工作树没有未提交的跟踪文件，然后才安装启动器并创建计划任务。任何一步不符都会失败，不会覆盖正在运行的服务。
+`setup` 会先验证 `v4.0.1` 的 Ed25519 发布清单，要求当前 HEAD 就是签名 commit、工作树没有未提交的跟踪文件，然后才安装启动器并创建计划任务。任何一步不符都会失败，不会覆盖正在运行的服务。
 
 只想看计划、不落盘：
 
@@ -77,13 +77,13 @@ npm run setup:dev
 ## 4. 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.0.0
+npm run verify:release -- --tag v4.0.1
 ```
 
 校验 Release 清单签名、tag/version/commit，以及签名 commit 上的 `package.json` 和启动器哈希。镜像下载的 exe 可以单独比对：
 
 ```bash
-npm run verify:release -- --tag v4.0.0 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.0.1 --launcher ./omni-serve-7788.exe
 ```
 
 ## 5. 接入 AI 宿主
@@ -113,7 +113,7 @@ npm run uninstall:launcher
 
 **端口被占用**：`OMNI_HTTP_PORT=7799 npm run serve`。
 
-**`npm run setup` 报 release not found**：你不在发布 tag 上，或该版本还没发布。用 `git checkout v4.0.0`；开发用 `npm run setup:dev`。
+**`npm run setup` 报 release not found**：你不在发布 tag 上，或该版本还没发布。用 `git checkout v4.0.1`；开发用 `npm run setup:dev`。
 
 **Windows 计划任务查询失败**：安装器会区分“任务不存在”和“查询未知”。未知时拒绝改动，先修 `schtasks` 权限，或加 `--no-task` 只写配置。
 

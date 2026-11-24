@@ -2,6 +2,16 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.0.1] — 2026-11-24
+
+### 修复
+- **Node 路径变化后启动器拒绝停旧监听**：Windows 启动器原先要求旧监听进程的 node.exe 绝对路径与当前侧车配置完全一致；升级 Node 后旧进程仍在跑，`npm run setup` 会报 “port 7788 is held by a non-omni process”，服务停留在旧版本。`IsOmniNode` 现在接受任意 `node.exe` / `node`，只要命令行同时匹配 `hosts\cli.mjs serve --port <当前端口>`；不再依赖 Node 安装路径。
+- 重新可复现构建启动器，SHA-256 从 `fd7dfa64…` 更新为 `d7ba3e76…`；`package.json.omni.launcher.sha256` 同步。`check-launcher` 重建一致。
+
+### 测试
+- 完整 `npm test` **438/438** 通过；`npm run check` 通过（438 tests、23 core / 25 MCP、21 routes、31 ADRs、version 4.0.1、syntax 56 files）。
+- v4.0.1 Release 清单与启动器 SHA-256 复验一致。
+
 ## [4.0.0] — 2026-11-24
 
 ### 许可与治理

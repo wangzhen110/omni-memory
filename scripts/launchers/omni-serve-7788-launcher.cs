@@ -252,13 +252,23 @@ class OmniServeLauncher
         if (String.IsNullOrEmpty(commandLine)) return false;
         var executable = ExecutablePathOf(pid);
         if (String.IsNullOrEmpty(executable)) return false;
-        try
+        // Node upgrades change the absolute path while an older listener may
+        // still be serving the port. Recognize any node executable as long as
+        // the entrypoint and port match exactly; refusing to stop the old
+        // listener leaves setup unable to switch to the new sidecar config.
+        var executableName = Path.GetFileName(executable);
+        var isNode = String.Equals(executableName, "node.exe", StringComparison.OrdinalIgnoreCase)
+            || String.Equals(executableName, "node", StringComparison.OrdinalIgnoreCase);
+        if (!isNode)
         {
-            if (!String.Equals(Path.GetFullPath(executable), Path.GetFullPath(Node), StringComparison.OrdinalIgnoreCase)) return false;
-        }
-        catch
-        {
-            return false;
+            try
+            {
+                if (!String.Equals(Path.GetFullPath(executable), Path.GetFullPath(Node), StringComparison.OrdinalIgnoreCase)) return false;
+            }
+            catch
+            {
+                return false;
+            }
         }
         // Require the exact repo entrypoint and exact port flag. A broad
         // "cli.mjs.*serve.*7788" regex can kill an unrelated Node listener.

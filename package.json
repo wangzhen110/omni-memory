@@ -1,6 +1,6 @@
 {
   "name": "@local/omni-memory",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "private": true,
   "type": "module",
   "description": "Omni Memory for any AI host: append-only transcripts, bi-temporal facts, self-verifying notes, hybrid retrieval, zero-config local semantic recall, project scoping and an interactive star map. Native DSH plugin, with MCP, HTTP, OpenAPI and CLI adapters.",
@@ -104,7 +104,7 @@
   "omni": {
     "launcher": {
       "path": "scripts/launchers/omni-serve-7788.exe",
-      "sha256": "fd7dfa64b8b7554877adf9642fa4a7b35bd10dac1f18bfda14fc15b2f234a276"
+      "sha256": "d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4"
     }
   },
   "devDependencies": {

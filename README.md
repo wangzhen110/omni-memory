@@ -32,7 +32,7 @@ npm run serve                  # 打开 http://127.0.0.1:7788/hub
 Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-git checkout v4.0.0
+git checkout v4.0.1
 npm ci
 npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
 npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
@@ -121,8 +121,8 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.0.0
-npm run verify:release -- --tag v4.0.0 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.0.1
+npm run verify:release -- --tag v4.0.1 --launcher ./omni-serve-7788.exe
 ```
 
 第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
@@ -252,7 +252,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 - 3.12.1 修复：1M + 5 万向量 + 100 万 bigram 自适应边界 p95 **129.4ms**（旧固定边界 226.9ms）；第二个打开者等待迁移租约到 **150s**（旧固定 5s，1M 迁移可能 73–80s）。跨进程测试覆盖 6s 持锁后释放。
 - 3.12.2 修复：churn 库按活行数判定大库（16,000 墓碑 + 1 活行回归，单字不丢）；`setup` 明确只校验同提交 SHA-256、不冒充 Release 签名；`schtasks` 探测失败不再猜“任务不存在”；doctor 小库 `<4096` 降为 warn。
 - 3.12.3 新增：`npm run verify:release` 可从官方 Release 验签，并比对签名 commit 上的 `package.json` 与启动器 SHA-256；`--launcher` 可校验镜像/第三方渠道下载的 exe。只读，不安装、不重启。
-- 4.0.0：许可证切换为 AGPL-3.0-only；`npm run setup` 改为发布验签 + 干净检出检查；新增 `npm run demo` / `npm run qa`；测试 **438/438**，公共 QA golden 24/24、quality 120/120。
+- 4.0.1：许可证切换为 AGPL-3.0-only；`npm run setup` 改为发布验签 + 干净检出检查；新增 `npm run demo` / `npm run qa`；测试 **438/438**，公共 QA golden 24/24、quality 120/120。
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
 
 ```bash
