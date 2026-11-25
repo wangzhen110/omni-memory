@@ -1,29 +1,8 @@
 // Mobile read-only memory browser. Uses the same local HTTP API as the desktop panel.
-const $ = id => document.getElementById(id);
-const nf = new Intl.NumberFormat('zh-CN');
-const fmt = value => nf.format(Number(value) || 0);
+const { $, fmt, setText, ago, getJson } = window.OmniWeb;
 
 let requestSeq = 0;
 let searchTimer = null;
-
-function setText(id, value) {
-  const el = $(id);
-  if (el) el.textContent = String(value);
-}
-
-function ago(ts) {
-  const value = Number(ts);
-  if (!Number.isFinite(value)) return '';
-  const ms = Date.now() - value;
-  if (ms < 60000) return '刚刚';
-  const minutes = Math.floor(ms / 60000);
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(value).toLocaleDateString('zh-CN');
-}
 
 function scopeLabel(scope) {
   return String(scope || 'global')
@@ -33,21 +12,13 @@ function scopeLabel(scope) {
 }
 
 function showError(message) {
-  const el = $('mError');
-  el.textContent = message;
-  el.classList.add('show');
+  window.OmniWeb.showError(message, 'mError', 'class');
 }
 
 function clearError() {
   const el = $('mError');
   el.textContent = '';
   el.classList.remove('show');
-}
-
-async function getJson(path) {
-  const response = await fetch(path, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`${path} → HTTP ${response.status}`);
-  return response.json();
 }
 
 function flattenList(payload) {

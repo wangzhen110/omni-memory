@@ -2,6 +2,19 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.3.2] — 2026-11-25
+
+### 变更
+- **bigram 索引改为 `WITHOUT ROWID`**：主键改为 `(gram, layer, owner_id)`，正好匹配两字中文查询的访问顺序；删除路径保留 `bigrams_owner(layer, owner_id, gram)` 覆盖索引。旧表原先同时存 hidden rowid、复合主键索引和 `(gram,layer,owner_id)` 索引，同一份 gram 实际存三遍。迁移后生产备份 `VACUUM` 实测 31.3 MiB → 26.1 MiB，两字查询召回不变。
+- **star-map 内联脚本外置**：1,166 行主脚本从 `star-map.html` 移到 `hosts/http/web/star-map.js`，`npm run check` 的 `node --check` 门禁从 56 个文件扩到 57 个，语法错误不再只能靠浏览器发现。
+- **前端公共函数收敛**：新增 `hosts/http/web/base.js`，统一 `$`、`fmt`、`setText`、`ago`、`showError`、`getJson`；`hub.js` / `mobile.js` 删除重复实现，`hub.html` / `m.html` 先加载 `base.js`。
+
+### 测试
+- 新增 v18 bigram schema 与两字召回回归；迁移备份文件名断言改为跟随 `SCHEMA_VERSION`；完整 `npm test` **451/451** 通过。
+
+### 范围
+- 本补丁不包含 P2-3 `index.js` 拆分、P2-5 双向量收敛；P3-9 `notes_fts` external-content 试做时发现手写 DELETE 会破坏外部内容索引，已回退，留待带 trigger 的独立改造。
+
 ## [4.3.1] — 2026-11-25
 
 ### 修复

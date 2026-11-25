@@ -36,6 +36,22 @@ test('D-08 fresh databases already carry the scope columns', async () => {
   db.close();
 });
 
+test('v18 bigram index is WITHOUT ROWID and keeps two-character recall', async () => {
+  const app = await boot();
+  await app.call('memory_write', { kind: 'note', text: '全息记忆的本地检索测试' });
+  const db = openDb(app.home);
+  const sql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='bigrams'").get()?.sql ?? '';
+  assert.match(sql, /WITHOUT ROWID/i);
+  assert.deepEqual(
+    db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='bigrams_owner'").all().map(row => row.name),
+    ['bigrams_owner'],
+  );
+  assert.ok(Number(db.prepare('SELECT COUNT(*) AS n FROM bigrams').get().n) > 0);
+  db.close();
+  const hit = await app.call('memory_search', { query: '记忆' });
+  assert.ok(hit.value.hits.some(row => String(row.text).includes('全息记忆')));
+});
+
 test('D-08 an unversioned legacy database is migrated in place', async () => {
   const home = mkdtempSync(path.join(tmpdir(), 'omni-legacy-'));
   mkdirSync(path.join(home, 'memory'), { recursive: true });
@@ -162,7 +178,8 @@ test('a real schema upgrade writes a verified pre-migration backup first', async
   await app.call('memory_profile');
 
   const backupDir = path.join(home, 'memory', 'backups');
-  const names = readdirSync(backupDir).filter(name => /^pre-migrate-v1-to-v17-.*\.db$/.test(name));
+  const names = readdirSync(backupDir).filter(name =>
+    new RegExp(`^pre-migrate-v1-to-v${SCHEMA_VERSION}-.*\\.db$`).test(name));
   assert.equal(names.length, 1, 'one backup should be written before the upgrade');
   const backup = new DatabaseSync(path.join(backupDir, names[0]), { readOnly: true });
   const check = backup.prepare('PRAGMA integrity_check').get();
@@ -229,7 +246,8 @@ test('P0 concurrent first opens share one migration owner and keep a verified ba
   db.close();
 
   const backupDir = path.join(home, 'memory', 'backups');
-  const names = readdirSync(backupDir).filter(name => /^pre-migrate-v16-to-v17-.*\.db$/.test(name));
+  const names = readdirSync(backupDir).filter(name =>
+    new RegExp(`^pre-migrate-v16-to-v${SCHEMA_VERSION}-.*\\.db$`).test(name));
   assert.ok(names.length >= 1, 'at least one complete pre-migration backup must survive');
   for (const name of names) {
     const file = path.join(backupDir, name);
@@ -316,8 +334,8 @@ test('P1 shared backup pruning only removes backups of the current database', ()
   legacy.close();
 
   const tag = createHash('sha256').update(path.resolve(path.join(home, 'memory', 'omni.db'))).digest('hex').slice(0, 8);
-  const oldCurrent = path.join(shared, `pre-migrate-v1-to-v17-${tag}-old.db`);
-  const otherDatabase = path.join(shared, 'pre-migrate-v1-to-v17-deadbeef-other.db');
+  const oldCurrent = path.join(shared, `pre-migrate-v1-to-v${SCHEMA_VERSION}-${tag}-old.db`);
+  const otherDatabase = path.join(shared, `pre-migrate-v1-to-v${SCHEMA_VERSION}-deadbeef-other.db`);
   writeFileSync(oldCurrent, 'old current database backup');
   writeFileSync(otherDatabase, 'another database backup');
 
@@ -341,7 +359,7 @@ test('P1 shared backup pruning only removes backups of the current database', ()
   const names = readdirSync(shared);
   assert.equal(existsSync(otherDatabase), true, 'another database backup must not be pruned');
   assert.equal(existsSync(oldCurrent), false, 'old backup of the current database is pruned by KEEP=1');
-  assert.equal(names.filter(name => name.startsWith(`pre-migrate-v1-to-v17-${tag}-`) && name.endsWith('.db')).length, 1);
+  assert.equal(names.filter(name => name.startsWith(`pre-migrate-v1-to-v${SCHEMA_VERSION}-${tag}-`) && name.endsWith('.db')).length, 1);
 });
 
 test('v17 backfills in batches, indexes the empty probe and keeps collisions distinct', async () => {
@@ -364,7 +382,7 @@ test('v17 backfills in batches, indexes the empty probe and keeps collisions dis
   const second = await boot({ home });
   await second.call('memory_profile');
   const db = openDb(home);
-  assert.equal(String(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), '17');
+  assert.equal(String(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), String(SCHEMA_VERSION));
   assert.ok(db.prepare('PRAGMA table_info(notes)').all().some(row => row.name === 'text_hash'));
   assert.equal(Number(db.prepare('SELECT COUNT(*) AS n FROM notes WHERE text_hash IS NULL').get().n), 0);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='notes_scope_text_hash'").get());
@@ -391,7 +409,7 @@ test('v17 backfills in batches, indexes the empty probe and keeps collisions dis
   const third = await boot({ home });
   await third.call('memory_profile');
   const stable = openDb(home);
-  assert.equal(String(stable.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), '17');
+  assert.equal(String(stable.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value), String(SCHEMA_VERSION));
   assert.equal(Number(stable.prepare('SELECT COUNT(*) AS n FROM notes WHERE text_hash IS NULL').get().n), 0);
   stable.close();
 });

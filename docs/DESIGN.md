@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.3.1 |
-| 插件版本 | 4.3.1 |
+| 文档版本 | 4.3.2 |
+| 插件版本 | 4.3.2 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-25 |
@@ -98,7 +98,7 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 450/450（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 451/451（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
 | NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 423 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
@@ -223,7 +223,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 ### 4.3 迁移策略
 
 `meta.schema_version` 记录整数版本；启动时按序执行 `MIGRATIONS[n]`。
-**当前版本 17**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。v17 为 notes 增加 `text_hash` 与 `(scope, text_hash)` 索引，写入去重、导入与 restore 先走哈希候选、再比对原文；旧库启动时按 1000 行/批回填 NULL，并用 `notes_text_hash_missing(id) WHERE text_hash IS NULL` 部分索引让稳态缺失探针保持 O(1)。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。
+**当前版本 18**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。v17 为 notes 增加 `text_hash` 与 `(scope, text_hash)` 索引，写入去重、导入与 restore 先走哈希候选、再比对原文；旧库启动时按 1000 行/批回填 NULL，并用 `notes_text_hash_missing(id) WHERE text_hash IS NULL` 部分索引让稳态缺失探针保持 O(1)。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。v18 把 `bigrams` 改为 `WITHOUT ROWID`，主键 `(gram, layer, owner_id)` 直接服务两字中文查询，另保留 `bigrams_owner(layer, owner_id, gram)` 供删除路径；旧表原先把同一份 gram 存在 hidden rowid、复合主键索引和二级索引三处。
 
 | 版本 | 变更 | 迁移动作 |
 |---|---|---|

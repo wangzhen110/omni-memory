@@ -1019,7 +1019,7 @@ function openStore() {
   return store;
 }
 
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 let hostCtx = null;
 
 function columnExists(db, table, column) {
@@ -1098,6 +1098,54 @@ function ensureNoteTextHash(db) {
     migrated += missing.length;
   }
   return migrated;
+}
+
+/**
+ * v18: rewrite the CJK bigram index as a WITHOUT ROWID table. The old table
+ * stored a hidden rowid, a composite primary-key btree, and a second
+ * (gram, layer, owner_id) index, so each gram was effectively stored three
+ * times. The primary key now starts with gram, which is exactly the lookup
+ * order searchBigrams uses; one covering owner index remains for deletes.
+ *
+ * The table is derived data, so rebuilding it is safe. VACUUM cannot run inside
+ * the migration transaction; SQLite reuses the freed pages, and an operator can
+ * reclaim the file with a separate VACUUM after the migration commits.
+ */
+function createCompactBigrams(db, name = 'bigrams') {
+  db.exec(`
+    CREATE TABLE ${name} (
+      layer TEXT NOT NULL,
+      owner_id INTEGER NOT NULL,
+      gram TEXT NOT NULL,
+      PRIMARY KEY (gram, layer, owner_id)
+    ) WITHOUT ROWID;
+    CREATE INDEX ${name}_owner ON ${name}(layer, owner_id, gram);
+  `);
+}
+
+function ensureCompactBigrams(db) {
+  if (!tableExists(db, 'bigrams')) {
+    createCompactBigrams(db);
+    return false;
+  }
+  const sql = prepareCached(db, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'bigrams'").get()?.sql ?? '';
+  if (/without\s+rowid/i.test(sql) && /primary\s+key\s*\(\s*gram/i.test(sql)) {
+    db.exec('CREATE INDEX IF NOT EXISTS bigrams_owner ON bigrams(layer, owner_id, gram)');
+    return false;
+  }
+  db.exec('DROP TABLE IF EXISTS bigrams_v18');
+  createCompactBigrams(db, 'bigrams_v18');
+  db.exec(`
+    INSERT INTO bigrams_v18(layer, owner_id, gram)
+    SELECT layer, owner_id, gram FROM bigrams;
+    DROP TABLE bigrams;
+    ALTER TABLE bigrams_v18 RENAME TO bigrams;
+  `);
+  db.exec(`
+    DROP INDEX IF EXISTS bigrams_v18_owner;
+    CREATE INDEX IF NOT EXISTS bigrams_owner ON bigrams(layer, owner_id, gram);
+  `);
+  return true;
 }
 
 /**
@@ -1311,6 +1359,8 @@ const MIGRATIONS = [
   // original text after the indexed candidate lookup, so a hash collision can
   // never merge two different notes.
   db => ensureNoteTextHash(db),
+  // v18: compact the CJK bigram index. See createCompactBigrams().
+  db => ensureCompactBigrams(db),
 ];
 
 function migrate(db) {

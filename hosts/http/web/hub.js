@@ -1,27 +1,5 @@
 // Hub landing page — reads the same local overview/health payloads as the dashboard.
-const $ = id => document.getElementById(id);
-
-const nf = new Intl.NumberFormat('zh-CN');
-const fmt = value => nf.format(Number(value) || 0);
-
-function setText(id, value) {
-  const el = $(id);
-  if (el) el.textContent = String(value);
-}
-
-function ago(ts) {
-  const parsed = typeof ts === 'number' ? ts : Date.parse(String(ts ?? ''));
-  if (!Number.isFinite(parsed)) return null;
-  const ms = Date.now() - parsed;
-  if (ms < 60000) return '刚刚';
-  const minutes = Math.floor(ms / 60000);
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(parsed).toLocaleDateString('zh-CN');
-}
+const { $, fmt, setText, ago, showError, getJson } = window.OmniWeb;
 
 function asOfLabel(value) {
   const relative = ago(value);
@@ -34,18 +12,6 @@ function projectLabel(project) {
     .replace(/^proj:/, '')
     .split('#')[0]
     .trim() || '本地库';
-}
-
-function showError(message) {
-  const banner = $('errorBanner');
-  banner.textContent = message;
-  banner.dataset.show = '1';
-}
-
-async function getJson(path) {
-  const response = await fetch(path, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`${path} → HTTP ${response.status}`);
-  return response.json();
 }
 
 function renderRecent(activity) {
