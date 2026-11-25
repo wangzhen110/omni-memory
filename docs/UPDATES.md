@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 113 次提交；更新记录自身的提交不计入列表。
+> 共 115 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,8 @@
 
 ## 2026-11-25
 
+- 11:32:21 `4a9bd6cc` — feat: v4.4.0 semantic-first fusion with hashed fallback — [提交](https://github.com/wangzhen110/omni-memory/commit/4a9bd6cc551ba93ba824cfc74a6c552dfd4a0c3b)
+- 11:25:57 `3c54ac5b` — docs: update log for v4.3.3 — [提交](https://github.com/wangzhen110/omni-memory/commit/3c54ac5b14425708debf9d64fec3a269665f3e68)
 - 11:25:47 `f1b2e01d` — fix: v4.3.3 external-content notes FTS with triggers — [提交](https://github.com/wangzhen110/omni-memory/commit/f1b2e01dcffa873b39b568e6da4edd56fda5031a)
 - 10:58:47 `e1b55d77` — fix: compact bigram index, gate star-map script, share web helpers — [提交](https://github.com/wangzhen110/omni-memory/commit/e1b55d77d470cbf52d2b1bd2631704097673916a)
 - 10:38:00 `b919633a` — fix: v4.3.1 kind whitelist, cached version probe, CLI flags and HTTP scope — [提交](https://github.com/wangzhen110/omni-memory/commit/b919633a38155532f7f5b5752407d18ee34206e4)
