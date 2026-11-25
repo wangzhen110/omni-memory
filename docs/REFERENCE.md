@@ -167,6 +167,8 @@ evidence: npm test → 242/242 passed
 4. **图**：从 `facts` 生成的 `entities` + `edges`，做 2 跳关联召回。
 四路排名用 RRF 融合（词面 1 / hashed 或远程 1 / 本地语义 2 / 图 0.5）；命中项分别带 `lexicalScore`、`vectorScore`、`semanticScore`、`rrf`。
 
+CLI 是短生命周期进程，`context` / `search` 默认只走词法 + hashed 向量，避免每次调用冷加载 37.5 MiB 本地模型；需要语义召回时加 `--semantic`，或设 `OMNI_CLI_SEMANTIC=1`。MCP / HTTP 常驻进程默认启用本地语义。
+
 融合用 RRF（Reciprocal Rank Fusion，`K=60`），再叠加重要性、problemKey 精确命中、状态修正。候选池按 `limit × 4` 取，避免小样本抖动。
 
 检索结果默认过滤掉：已删除、被替代、已失效、contested（画像与自动召回尤其严格），以及 `failed` / `expired` 的经验。
@@ -538,8 +540,9 @@ context  [--dir <项目>] [--query <文本> | --stdin] [--scope <层级>] [--lim
          --stdin 读钩子传入的 JSON，取其中的 prompt / user_prompt / text
          输出纯文本上下文，供 SessionStart / UserPromptSubmit 钩子拼接
 search   <关键词> | --problem-key <指纹>  [--dir <项目>] [--scope] [--status] [--kind]
-         [--limit] [--offset] [--json]
+         [--limit] [--offset] [--json] [--semantic]
          输出 matched N / showing M、分数、why、snippet；--json 返回 total/returned/offset/truncated
+         默认词法 + hashed 向量；--semantic 才加载本地语义模型
 write    --kind note|fact|episode (--text <文本> | --stdin | --file <路径>)
          [--dir <项目>] [--scope] [--importance] [--source]
          [--problem-key] [--status] [--evidence]
@@ -594,6 +597,7 @@ mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 | `OMNI_JUDGE_PROVIDER` / `OMNI_JUDGE_MODEL` | 自动 | 复核用模型 |
 | `OMNI_PERSONA_MODEL` | `off` | persona 提炼是否允许调模型 |
 | `OMNI_DISABLE_SEMANTIC` | 未设置 | `1` 关闭包内本地语义 |
+| `OMNI_CLI_SEMANTIC` | 未设置 | `1` 让 CLI `context`/`search` 默认加载本地语义模型；等价于每次传 `--semantic` |
 | `OMNI_SEMANTIC_MODEL_DIR` / `OMNI_SEMANTIC_BATCH` | 包内模型 / `8` | 本地语义模型目录与批大小 |
 | `OMNI_EMBED_URL` / `OMNI_EMBED_MODEL` / `OMNI_EMBED_KEY` | 未设置 | 可选：远程语义嵌入（OpenAI 兼容），覆盖 hashed 这一路 |
 | `OMNI_EMBED_PROVIDER` | 未设置 | 预设：openai/dashscope/zhipu/siliconflow |
@@ -605,6 +609,7 @@ mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 | `OMNI_ACTIVE_COUNT_TTL_MS` | `60000` | 可召回行数缓存时间；0 表示每次判定都重新 COUNT，主要用于测试 |
 | `OMNI_OPEN_LEASE_WAIT_MS` | `150000` | 打开时等待迁移租约的上限（毫秒，上限 300000）；0 表示立即失败 |
 | `OMNI_DISABLE_VECTOR` / `OMNI_DISABLE_GRAPH` / `OMNI_DISABLE_SEMANTIC` | 未设置 | 诊断：关闭对应路线；`DISABLE_VECTOR` 同时关本地语义 |
+| `OMNI_CLI_SEMANTIC` | 未设置 | `1` 让 CLI `context`/`search` 默认启用本地语义；默认 CLI 只走词法 + hashed |
 
 ---
 

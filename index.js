@@ -4405,6 +4405,19 @@ async function vectorSearch(s, queryText, limit, scope, candidates = []) {
   return out.slice(0, limit);
 }
 
+/** One constructor for every transport's search envelope. */
+function buildSearchResult({ total = 0, returned = 0, offset = 0, truncated = false, scope = 'all', problemKey, hits = [] } = {}) {
+  return {
+    total: Number(total),
+    returned: Number(returned),
+    offset: Number(offset),
+    truncated: Boolean(truncated),
+    scope: scope ?? 'all',
+    ...(problemKey ? { problemKey } : {}),
+    hits: Array.isArray(hits) ? hits : [],
+  };
+}
+
 /** Drop duplicate sentences across layers, keeping the best-scoring copy. */
 function finalizeHits(ranked, limit) {
   // A transcript chunk is evidence, not the conclusion. When an accepted note
@@ -4721,7 +4734,8 @@ async function runSearch(s, query, limit, scope, options = {}) {
   const useVector = process.env.OMNI_DISABLE_VECTOR !== '1';
   if (useVector) await flushPendingVectors(s);
   const vector = useVector ? (await timed('vector', () => vectorSearch(s, query, limit, scope, lexical))).filter(hitAllowed) : [];
-  const semantic = useVector ? (await timed('semantic', () => semanticSearch(s, query, limit, scope, [...lexical, ...vector]))).filter(hitAllowed) : [];
+  const useSemantic = useVector && options.semantic !== false;
+  const semantic = useSemantic ? (await timed('semantic', () => semanticSearch(s, query, limit, scope, [...lexical, ...vector]))).filter(hitAllowed) : [];
   const graph = (await timed('graph', () => graphExpand(s, [...lexical, ...vector, ...semantic], Math.min(limit, 10), scope))).filter(hitAllowed);
   if (profile) {
     profile.hits = lexical.length + vector.length + semantic.length + graph.length;
@@ -6002,6 +6016,10 @@ function defineWriteReadTools(ctx, registerLocalTool) {
         },
         limit: { type: 'number', description: 'Maximum hits, default 8, max 30.' },
         offset: { type: 'number', description: 'Skip this many ranked candidates before returning hits, 0..100 (default 0).' },
+        semantic: {
+          type: 'boolean',
+          description: 'Set false to skip the bundled semantic model and use lexical + hashed-vector recall (CLI default for short-lived processes); MCP/HTTP default true.',
+        },
         rerank: { type: 'boolean', description: 'Set false to skip the optional cross-encoder reranker (OMNI_RERANK_*); defaults to the configured provider.' },
         scope: {
           type: 'string',
@@ -6072,14 +6090,14 @@ function defineWriteReadTools(ctx, registerLocalTool) {
       const project = args.cwd ? resolveProjectKey(s.db, String(args.cwd)) : currentProject(toolContext);
       const scope = requested === 'all' ? null : (requested || project || SCOPE_GLOBAL);
       if (!queryTerms(query).length && !problemKey) {
-        return { total: 0, returned: 0, offset, truncated: false, scope: scope ?? 'all', hits: [] };
+        return buildSearchResult({ offset, scope: scope ?? 'all', hits: [] });
       }
       const poolLimit = Math.min(60, Math.max(limit + offset, limit * 3, 24));
       const exact = problemKey && (requestedKind === 'all' || requestedKind === 'note')
         ? searchProblemKey(s, problemKey, poolLimit, scope, { status: requestedStatus })
         : [];
       const result = queryTerms(query).length
-        ? await runSearch(s, query, poolLimit, scope, { status: requestedStatus, kind: requestedKind, rerank: args.rerank })
+        ? await runSearch(s, query, poolLimit, scope, { status: requestedStatus, kind: requestedKind, rerank: args.rerank, semantic: args.semantic !== false })
         : { total: 0, returned: 0, truncated: false, hits: [] };
       const merged = [];
       const seen = new Set();
@@ -6091,15 +6109,15 @@ function defineWriteReadTools(ctx, registerLocalTool) {
       }
       const total = merged.length;
       const window = merged.slice(offset, offset + limit);
-      return {
+      return buildSearchResult({
         total,
         returned: window.length,
         offset,
         truncated: offset + window.length < total,
         scope: scope ?? 'all',
-        ...(problemKey ? { problemKey } : {}),
+        problemKey,
         hits: window,
-      };
+      });
     },
   }));
 
@@ -7953,7 +7971,7 @@ function registerAdminRoutes(add) {
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const query = url.searchParams.get('q') ?? '';
-      if (!queryTerms(query).length) return json(res, 200, { ok: true, total: 0, returned: 0, offset: 0, truncated: false, hits: [] });
+      if (!queryTerms(query).length) return json(res, 200, { ok: true, ...buildSearchResult() });
       const limit = Math.min(60, Math.max(1, Number(url.searchParams.get('limit') ?? 30)));
       const requestedScope = url.searchParams.get('scope');
       const { requested, scope } = httpScope(requestedScope);
@@ -7961,12 +7979,14 @@ function registerAdminRoutes(add) {
       const result = await runSearch(s, query, limit, scope, { rerank });
       return json(res, 200, {
         ok: true,
-        scope: requested || SCOPE_GLOBAL,
-        total: result.total,
-        returned: result.returned,
-        offset: 0,
-        truncated: result.truncated,
-        hits: result.hits,
+        ...buildSearchResult({
+          total: result.total,
+          returned: result.returned,
+          offset: 0,
+          truncated: result.truncated,
+          scope: requested || SCOPE_GLOBAL,
+          hits: result.hits,
+        }),
       });
     },
   });

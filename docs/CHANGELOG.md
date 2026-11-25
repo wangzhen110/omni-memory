@@ -2,6 +2,18 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.3.0] — 2026-11-25
+
+### 性能
+- **CLI 默认不再冷加载语义模型**：`context` / `search` 默认走词法 + hashed 向量；`--semantic` 或 `OMNI_CLI_SEMANTIC=1` 才加载 37.5 MiB 的本地 bge-small-zh。实测同一查询：`search` 默认 **139ms**、`--semantic` **478ms**；`context` 默认 **144ms**、`--semantic` **467ms**。MCP / HTTP 常驻进程保持默认启用本地语义。
+- **搜索返回结构单一构造点**：`buildSearchResult()` 统一 `total` / `returned` / `offset` / `truncated` / `scope` / `hits`，MCP 空结果、MCP 正常结果与 HTTP 路由不再各写一份。
+
+### 修复
+- **CLI 参数错误不再抛 stacktrace**：`omni search --limit 99` 现在输出一行 `limit must be a number between 1 and 30`，退出码 2；`0` 仍是“无命中”，`1` 仍是内部失败。
+
+### 测试
+- 新增 CLI 参数错误退出码/单行输出回归；完整 `npm test` **447/447** 通过。
+
 ## [4.2.1] — 2026-11-25
 
 ### 修复

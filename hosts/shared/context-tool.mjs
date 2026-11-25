@@ -48,6 +48,10 @@ export function makeContextTool(host) {
           description: "Optional layer: a project scope, 'global', or 'all'. Omit to use the working directory's project layer plus global rules.",
         },
         limit: { type: 'number', description: 'Maximum recalled memories, default 5, max 10.' },
+        semantic: {
+          type: 'boolean',
+          description: 'Set false to skip the bundled semantic model for this call; CLI uses false by default unless --semantic is passed.',
+        },
       },
     },
 
@@ -73,6 +77,7 @@ export function makeContextTool(host) {
       const query = String(args.query ?? '').trim();
       const searchArgs = { query, limit, kind: 'all' };
       if (args.scope) searchArgs.scope = args.scope;
+      if (args.semantic !== undefined) searchArgs.semantic = args.semantic;
       const search = query ? await run('memory_search', searchArgs, toolContext) : null;
       const version = await versionPromise;
       const notice = formatUpdateNotice(version);

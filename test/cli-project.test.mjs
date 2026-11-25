@@ -22,6 +22,17 @@ function run(args, env = {}, cwd = repo) {
   return result.stdout;
 }
 
+function runRaw(args, env = {}, cwd = repo) {
+  const base = { ...process.env };
+  delete base.OMNI_PROJECT_DIR;
+  return spawnSync(process.execPath, [cli, ...args], {
+    cwd,
+    encoding: 'utf8',
+    env: { ...base, ...env, OMNI_VERSION_CHECK_DISABLED: '1' },
+    timeout: 30_000,
+  });
+}
+
 test('CLI defaults to the checkout project when cwd has no identity file', () => {
   const home = mkdtempSync(path.join(tmpdir(), 'omni-cli-home-'));
   const outside = mkdtempSync(path.join(tmpdir(), 'omni-cli-outside-'));
@@ -30,6 +41,15 @@ test('CLI defaults to the checkout project when cwd has no identity file', () =>
   const shown = JSON.parse(run(['project', 'show'], env, outside));
   assert.equal(shown.key, KEY, 'default CLI cwd must not become proj:<chat-folder>');
   assert.equal(shown.identity.source, 'file');
+});
+
+test('CLI search reports bad arguments as one line and exits 2', () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-cli-home-'));
+  const env = { OMNI_HOME: home, DSH_HOME: home };
+  const result = runRaw(['search', 'CLI 参数错误', '--limit', '99'], env);
+  assert.equal(result.status, 2, result.stderr || result.stdout);
+  assert.match(result.stderr, /limit must be a number between 1 and 30/);
+  assert.doesNotMatch(result.stderr, /\n\s+at /, 'a stack trace is not an actionable CLI error');
 });
 
 test('CLI project show reads .omni-project and write --dir binds to that layer', () => {

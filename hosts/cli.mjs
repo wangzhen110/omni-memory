@@ -31,10 +31,11 @@ const USAGE = `全息记忆 · omni
   omni rules   [--file <路径>]... [--write] [--create]
                默认只预览；--write 落盘（区块幂等，可重复执行）
                不给 --file 时，自动查找 CLAUDE.md / AGENTS.md / .cursorrules
-  omni context [--query <文本>] [--scope <层级>] [--limit <n>] [--dir <目录>]
-               输出画像与相关记忆，适合给 hooks 拼接上下文
-  omni search  <关键词> [--scope <层级>] [--limit <n>] [--offset <n>] [--json] [--rerank] [--dir <目录>]
+  omni context [--query <文本>] [--scope <层级>] [--limit <n>] [--semantic] [--dir <目录>]
+               输出画像与相关记忆，适合给 hooks 拼接上下文；默认词法+哈希向量
+  omni search  <关键词> [--scope <层级>] [--limit <n>] [--offset <n>] [--json] [--rerank] [--semantic] [--dir <目录>]
                文本模式显示分数、命中理由与候选总数；--json 输出完整命中对象
+               默认不加载 37.5MiB 语义模型；--semantic 或 OMNI_CLI_SEMANTIC=1 开启
   omni ingest  (--text <文本> | --stdin | --file <路径>) [--role user|assistant|system|tool]
                [--session <id>] [--source <来源>] [--cwd <目录>] [--dir <目录>] [--scope <层级>]
                [--no-extract]   把一轮对话写入转录层；默认生成待确认候选 note
@@ -74,6 +75,7 @@ const USAGE = `全息记忆 · omni
 环境变量:
   OMNI_HOME         数据根目录，默认 $DSH_HOME 再退回 ~/.dsh
   OMNI_PROJECT_DIR  项目层绑定的目录；默认向上查找 .omni-project，再退回 CLI 所在仓库根
+  OMNI_CLI_SEMANTIC 设为 1 时，context/search 默认加载语义模型；等价于逐次传 --semantic
   OMNI_HTTP_PORT    7788 服务端口，默认 7788
 
 通用选项:
@@ -148,6 +150,14 @@ const workdir = path.resolve(
 );
 
 const log = message => console.error(`[omni] ${message}`);
+
+function semanticRequested() {
+  if (process.env.OMNI_CLI_SEMANTIC === '1') return true;
+  const value = flags.semantic;
+  if (value === undefined) return false;
+  if (value === true) return true;
+  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+}
 
 if (flags.help === true || process.argv.includes('-h')) {
   process.stdout.write(USAGE);
@@ -247,6 +257,7 @@ async function commandContext() {
     }
     const args = { query, limit: Number(flags.limit ?? 5) };
     if (flags.scope) args.scope = String(flags.scope);
+    args.semantic = semanticRequested();
     const value = await callTool(booted, 'memory_context', args);
     process.stdout.write(value.text + '\n');
   } finally {
@@ -474,7 +485,17 @@ async function commandSearch() {
     if (flags.status) args.status = String(flags.status);
     if (flags.kind) args.kind = String(flags.kind);
     if (flags.rerank) args.rerank = true;
-    const value = await callTool(booted, 'memory_search', args);
+    args.semantic = semanticRequested();
+    let value;
+    try {
+      value = await callTool(booted, 'memory_search', args);
+    } catch (error) {
+      // Short-lived CLI: one actionable line beats a stack trace. The exit code
+      // is distinct from "no hits" (0) and internal failure (1).
+      log(String(error?.message ?? error));
+      process.exitCode = 2;
+      return;
+    }
     if (flags.json === true) {
       process.stdout.write(JSON.stringify(value, null, 2) + '\n');
       return;
