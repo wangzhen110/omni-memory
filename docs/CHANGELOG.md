@@ -2,6 +2,15 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.2.1] — 2026-11-25
+
+### 修复
+- **CLI 默认项目解析不再落回 chat cwd**：未给 `--dir`、未设置 `OMNI_PROJECT_DIR` 时，先向上查找 `.omni-project` / `.omni/project.json`；找不到则回落到 CLI 所在仓库根。从聊天目录执行 `omni search` 现在落到 `proj:全息记忆#30534c`，不再落到 `proj:new-chat#5af3cd`。
+- **HTTP 搜索返回分页元数据**：`/omni-memory/search` 补充 `total`、`returned`、`offset`、`truncated`，与 MCP / CLI 的成功搜索返回口径一致；空查询也返回完整零值。
+
+### 测试
+- 新增 CLI 外部 cwd 默认解析回归、HTTP 搜索元数据回归；完整 `npm test` **446/446** 通过。
+
 ## [4.2.0] — 2026-11-25
 
 ### 修复

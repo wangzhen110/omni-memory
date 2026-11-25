@@ -9,16 +9,28 @@ const repo = path.resolve(import.meta.dirname, '..');
 const cli = path.join(repo, 'hosts', 'cli.mjs');
 const KEY = 'proj:全息记忆#30534c';
 
-function run(args, env = {}) {
+function run(args, env = {}, cwd = repo) {
+  const base = { ...process.env };
+  delete base.OMNI_PROJECT_DIR;
   const result = spawnSync(process.execPath, [cli, ...args], {
-    cwd: repo,
+    cwd,
     encoding: 'utf8',
-    env: { ...process.env, ...env, OMNI_VERSION_CHECK_DISABLED: '1' },
+    env: { ...base, ...env, OMNI_VERSION_CHECK_DISABLED: '1' },
     timeout: 30_000,
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout;
 }
+
+test('CLI defaults to the checkout project when cwd has no identity file', () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-cli-home-'));
+  const outside = mkdtempSync(path.join(tmpdir(), 'omni-cli-outside-'));
+  const env = { OMNI_HOME: home, DSH_HOME: home };
+
+  const shown = JSON.parse(run(['project', 'show'], env, outside));
+  assert.equal(shown.key, KEY, 'default CLI cwd must not become proj:<chat-folder>');
+  assert.equal(shown.identity.source, 'file');
+});
 
 test('CLI project show reads .omni-project and write --dir binds to that layer', () => {
   const home = mkdtempSync(path.join(tmpdir(), 'omni-cli-home-'));

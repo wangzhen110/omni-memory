@@ -46,6 +46,7 @@
 ### 项目身份文件
 
 - 仓库根 `.omni-project` 是项目身份的稳定来源，例如 `{"key":"proj:全息记忆#30534c","name":"全息记忆"}`。不要把它改写成路径哈希；路径哈希只用于没有文件的旧仓库。
+- CLI 未给 `--dir` 时先向上查找 `.omni-project` / `.omni/project.json`，找不到再回落到 CLI 所在仓库根；不要假设默认落点一定是调用时的 cwd。
 - 新仓库可运行 `node hosts\cli.mjs project init --dir <项目> --name <名称>` 生成；已有两个历史键时用 `project link --from <旧键> --to <新键> --apply` 合并。
 - 判断当前落点用 `node hosts\cli.mjs project show --dir <项目>`，不要靠猜路径。
 

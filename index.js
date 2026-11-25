@@ -7953,13 +7953,21 @@ function registerAdminRoutes(add) {
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const query = url.searchParams.get('q') ?? '';
-      if (!queryTerms(query).length) return json(res, 200, { ok: true, hits: [] });
+      if (!queryTerms(query).length) return json(res, 200, { ok: true, total: 0, returned: 0, offset: 0, truncated: false, hits: [] });
       const limit = Math.min(60, Math.max(1, Number(url.searchParams.get('limit') ?? 30)));
       const requestedScope = url.searchParams.get('scope');
       const { requested, scope } = httpScope(requestedScope);
       const rerank = url.searchParams.get('rerank') === '0' ? false : undefined;
       const result = await runSearch(s, query, limit, scope, { rerank });
-      return json(res, 200, { ok: true, scope: requested || SCOPE_GLOBAL, hits: result.hits });
+      return json(res, 200, {
+        ok: true,
+        scope: requested || SCOPE_GLOBAL,
+        total: result.total,
+        returned: result.returned,
+        offset: 0,
+        truncated: result.truncated,
+        hits: result.hits,
+      });
     },
   });
 

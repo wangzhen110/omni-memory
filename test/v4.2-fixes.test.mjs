@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { boot } from './helpers.mjs';
+import { readLocalVersion } from '../lib/version-check.mjs';
 
 const TARGET = 'proj:专业知识#967a81';
+const CURRENT_VERSION = readLocalVersion();
 
 function dbOf(app) {
   const db = new DatabaseSync(path.join(app.home, 'memory', 'omni.db'));
@@ -55,13 +57,29 @@ test('search flags a stale product version and keeps the current one unflagged',
     kind: 'note', scope: 'global', text: '全息记忆 3.11.8 的旧结论：这里只记录旧版本。', importance: 0.9,
   });
   await app.call('memory_write', {
-    kind: 'note', scope: 'global', text: '全息记忆 4.2.0 的当前结论：这里记录当前版本。', importance: 0.5,
+    kind: 'note', scope: 'global', text: `全息记忆 ${CURRENT_VERSION} 的当前结论：这里记录当前版本。`, importance: 0.5,
   });
   const result = await app.call('memory_search', { query: '全息记忆 版本 结论', scope: 'global', limit: 3 });
   const stale = result.value.hits.find(hit => hit.text.includes('3.11.8'));
-  const current = result.value.hits.find(hit => hit.text.includes('4.2.0'));
+  const current = result.value.hits.find(hit => hit.text.includes(CURRENT_VERSION));
   assert.equal(stale?.staleVersion, '3.11.8');
   assert.equal(current?.staleVersion, undefined);
+});
+
+test('HTTP search returns total and paging metadata', async () => {
+  const app = await boot();
+  await app.call('memory_write', { kind: 'note', scope: 'global', text: 'HttpSearch One', importance: 0.8 });
+  await app.call('memory_write', { kind: 'note', scope: 'global', text: 'HttpSearch Two', importance: 0.7 });
+  const { fakeReq, fakeRes } = await import('./helpers.mjs');
+  const { res, state, json } = fakeRes();
+  await app.route('/omni-memory/search').handler(fakeReq('/omni-memory/search?q=HttpSearch&scope=global&limit=1'), res);
+  assert.equal(state.statusCode, 200);
+  const body = json();
+  assert.equal(body.total, 2);
+  assert.equal(body.returned, 1);
+  assert.equal(body.offset, 0);
+  assert.equal(body.truncated, true);
+  assert.equal(body.hits.length, 1);
 });
 
 test('overview exposes one pending total and the coverage fields', async () => {

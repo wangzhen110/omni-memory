@@ -114,7 +114,7 @@ omni scope-alias --list
 
 3.10.2 起，`--apply` 和启动自愈都按**字面旧键**迁移（`migrateScopeAlias(..., { literal: true })`），不会先把旧键解析成 canonical 后误判为 `source === target`。所有入口（转录 scope、候选、agent/session、`/packet`、自动召回）统一走 `resolveProjectKey()`，旧键写操作不会再制造新的分裂行。升级后第一次 `openStore()` 会运行 `repairScopeAliases()`：alias 已记录但行仍在旧键时自动迁移；成功写 `scope_alias_repair_version='1'`，失败留 `scope_alias_repair_last_error` / `scope_alias_repair_failed_at` 并下次重试。
 
-同名目录靠哈希区分，所以两个不同路径的同名项目不会串层。宿主通过"工作目录"推导，DSH 用 `session.header.cwd`，MCP/CLI/HTTP 用 `OMNI_PROJECT_DIR`，落库时同时写入 `meta.agent_project:<sessionId>` 与 `meta.project_path:<scope>`，重启后仍能恢复。
+同名目录靠哈希区分，所以两个不同路径的同名项目不会串层。宿主通过"工作目录"推导，DSH 用 `session.header.cwd`，MCP/HTTP 用 `OMNI_PROJECT_DIR`；CLI 未显式 `--dir` 时先向上查找 `.omni-project`，再回落到 CLI 所在仓库根。落库时同时写入 `meta.agent_project:<sessionId>` 与 `meta.project_path:<scope>`，重启后仍能恢复。
 
 ### 2.4 事实的冲突与时效
 
@@ -564,7 +564,7 @@ doctor   [--home <目录>] [--port <端口>] [--task <任务名>] [--json] [--st
 mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 ```
 
-所有命令共用 `--dir`（项目目录）与 `OMNI_*` 环境变量。`--dir` 会读取仓库根 `.omni-project` 的稳定键，并硬绑定写入层；不想要项目绑定就显式写 `--scope global`。`write` / `report` / `forget` 走的是与 MCP 完全相同的工具实现，不存在第二套写入路径。
+所有命令共用 `--dir`（项目目录）与 `OMNI_*` 环境变量。`--dir` 会读取仓库根 `.omni-project` 的稳定键，并硬绑定写入层；未给 `--dir` 时先向上查找项目身份文件，找不到再用 CLI 所在仓库根，最后才用当前目录。不想要项目绑定就显式写 `--scope global`。`write` / `report` / `forget` 走的是与 MCP 完全相同的工具实现，不存在第二套写入路径。
 
 一键安装不在 CLI 里，而是独立入口：`npm run setup:dry:release` 看计划并验签，`npm run setup` 等价于 `node scripts/install.mjs --apply --start --require-release`；它先跑 `omni doctor` 的只读 preflight，验证官方 Release 清单、签名 commit、干净工作树与启动器 SHA-256，再安装内容寻址启动器、写侧车配置，并在任务缺失时创建 `OmniMemory7788`。本地开发用 `npm run setup:dev`，只校验同提交哈希。
 

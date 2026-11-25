@@ -38,11 +38,11 @@ const USAGE = `全息记忆 · omni
   omni ingest  (--text <文本> | --stdin | --file <路径>) [--role user|assistant|system|tool]
                [--session <id>] [--source <来源>] [--cwd <目录>] [--dir <目录>] [--scope <层级>]
                [--no-extract]   把一轮对话写入转录层；默认生成待确认候选 note
-  omni candidates [--status pending|accepted|rejected|all] [--scope <层级>] [--cwd <目录>]
+  omni candidates [--status pending|accepted|rejected|all] [--scope <层级>] [--cwd <目录>] [--dir <目录>]
                查看候选 note 队列
-  omni candidate --id <候选id> --action accept|reject [--reason <原因>] [--scope <层级>]
+  omni candidate --id <候选id> --action accept|reject [--reason <原因>] [--scope <层级>] [--dir <目录>]
                接受或拒绝一条候选 note
-  omni consolidate --problem-key <指纹> [--scope <层级>] [--min-notes <n>] [--apply]
+  omni consolidate --problem-key <指纹> [--scope <层级>] [--min-notes <n>] [--apply] [--dir <目录>]
                把同问题指纹的活跃笔记浓缩成来源链摘要；默认 dry-run
   omni write   --kind note|fact|episode (--text <文本> | --stdin | --file <路径>)
                [--scope <层级>] [--importance <0..1>] [--source <来源>]
@@ -73,12 +73,13 @@ const USAGE = `全息记忆 · omni
 
 环境变量:
   OMNI_HOME         数据根目录，默认 $DSH_HOME 再退回 ~/.dsh
-  OMNI_PROJECT_DIR  项目层绑定的目录，默认当前目录
+  OMNI_PROJECT_DIR  项目层绑定的目录；默认向上查找 .omni-project，再退回 CLI 所在仓库根
   OMNI_HTTP_PORT    7788 服务端口，默认 7788
 
 通用选项:
   --dir <目录>      把本次命令的项目层绑定到该目录；context/search/write/ingest 都适用
-                    写入时若未显式 --scope，--dir 会强制落到项目层；全局规则请显式 --scope global
+                    不传时自动使用最近的项目身份文件；写入时若未显式 --scope 则强制项目层
+                    全局规则请显式 --scope global
   --scope global    显式写全局层；--scope project 表示当前项目；--scope all 只读
 `;
 
@@ -116,7 +117,35 @@ function listFlag(flags, key) {
 
 const { flags, positional } = parseArgs(process.argv.slice(2));
 const command = (positional.shift() ?? 'help').toLowerCase();
-const workdir = path.resolve(String(flags.dir ?? process.env.OMNI_PROJECT_DIR ?? process.cwd()));
+
+// The CLI is often run from a chat/agent working directory that is not the
+// project it belongs to. Prefer an explicit --dir, then OMNI_PROJECT_DIR,
+// then the nearest .omni-project going upward, then the checkout that owns
+// this CLI. Only fall back to the raw cwd when none of those identify a
+// project, so `omni search` does not silently land in `proj:new-chat`.
+function hasProjectIdentity(dir) {
+  return existsSync(path.join(dir, '.omni-project'))
+    || existsSync(path.join(dir, '.omni', 'project.json'));
+}
+function nearestProjectRoot(start) {
+  let dir = path.resolve(String(start ?? '').trim() || '.');
+  for (let depth = 0; depth < 12; depth += 1) {
+    if (hasProjectIdentity(dir)) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+const cliRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const explicitDir = flags.dir === undefined || flags.dir === true ? '' : String(flags.dir).trim();
+const envProjectDir = String(process.env.OMNI_PROJECT_DIR ?? '').trim();
+const workdir = path.resolve(
+  explicitDir
+  || envProjectDir
+  || nearestProjectRoot(process.cwd())
+  || (hasProjectIdentity(cliRoot) ? cliRoot : process.cwd()),
+);
 
 const log = message => console.error(`[omni] ${message}`);
 
