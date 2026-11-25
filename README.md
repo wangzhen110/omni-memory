@@ -32,7 +32,7 @@ npm run serve                  # 打开 http://127.0.0.1:7788/hub
 Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-git checkout v4.3.2
+git checkout v4.3.3
 npm ci
 npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
 npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
@@ -121,8 +121,8 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.3.2
-npm run verify:release -- --tag v4.3.2 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.3.3
+npm run verify:release -- --tag v4.3.3 --launcher ./omni-serve-7788.exe
 ```
 
 第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。

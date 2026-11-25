@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 4.3.2 · 生成日期 2026-11-25 · 依据源码与真实 schema v18 核对
+> 版本 4.3.3 · 生成日期 2026-11-25 · 依据源码与真实 schema v19 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -196,7 +196,7 @@ DSH 外（MCP 等）：没有注入点，改为 `memory_context` 显式调用，
 
 ---
 
-## 3. 数据模型（schema v18，实测）
+## 3. 数据模型（schema v19，实测）
 
 共 13 张业务表（不含 FTS 影子表）。字段按真实 `PRAGMA table_info` 导出。
 
@@ -243,7 +243,7 @@ DSH 外（MCP 等）：没有注入点，改为 `memory_context` 显式调用，
 `layer`(pk), `owner_id`(pk), `gram`(pk)，索引 `bigrams_gram(gram, layer, owner_id)`。
 
 ### 3.12 FTS 影子表
-`notes_fts`、`facts_fts`、`chunks_fts` 及 SQLite 内部表。由触发器/回填维护，不要手写。
+`notes_fts`、`facts_fts`、`chunks_fts` 及 SQLite 内部表。`notes_fts` 自 v19 起为 external-content（`content='notes'`），正文直接读 `notes`，由 trigger 同步；其他 FTS 由回填维护。都不要手写。
 
 ### 3.13 scope_aliases（项目键别名）
 `alias`(pk), `canonical`, `created_at`，索引 `scope_aliases_canonical(canonical)`。记录旧的项目 scope 键到 canonical 键的映射；只用于跨平台路径大小写归一与显式运维迁移，不改变笔记的可见性规则。`canonical` 本身仍遵循 `proj:<basename>#<hash>` 格式。

@@ -2,6 +2,16 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.3.3] — 2026-11-25
+
+### 变更
+- **`notes_fts` 改为 external-content 索引**：schema 升到 19，`notes_fts` 使用 `content='notes'`、`content_rowid='id'`，不再另存 `notes_fts_content` 正文副本。迁移只索引 `deleted_at IS NULL AND superseded_by IS NULL` 的笔记，保留 trigram 分词器；生产库 `VACUUM` 实测 29,462,528 → 27,475,968 bytes（约 −1.9 MiB）。
+- **6 个 trigger 接管 note FTS 同步**：插入写索引；正文更新删旧写新；supersede / tombstone 删旧索引；恢复 active 时重新写入；物理删除按旧正文执行 external-content `'delete'`。通用 `reindexRow()` / `dropDerivedRows()` 跳过 note FTS，禁止再手写 `DELETE WHERE rowid`。
+- **启动回填跳过 external notes**：`backfillFts()` 在 external 模式下不再写 `notes_fts`，避免与 trigger 重复插入。
+
+### 测试
+- external-content 的 `SELECT COUNT(*) WHERE rowid` 会通过 content 表返回源行，不能证明索引已删；回归测试改为验证旧文本不再命中旧 id，并让 100k 性能 seed 在 external 模式下只插 `notes`。完整 `npm test` **451/451** 通过，黄金集 recall **1.0** / MRR **0.979**。
+
 ## [4.3.2] — 2026-11-25
 
 ### 变更

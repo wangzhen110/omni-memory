@@ -41,12 +41,16 @@ function seed(app, rows) {
   const db = new DatabaseSync(path.join(app.home, 'memory', 'omni.db'));
   try {
     const insertNote = db.prepare('INSERT INTO notes(ts, scope, text, importance, source) VALUES (?, ?, ?, ?, ?)');
-    const insertFts = db.prepare('INSERT INTO notes_fts(rowid, text) VALUES (?, ?)');
+    const notesFtsSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='notes_fts'").get()?.sql ?? '';
+    const externalNotesFts = /content\s*=\s*'notes'/i.test(notesFtsSql);
+    const insertFts = externalNotesFts ? null : db.prepare('INSERT INTO notes_fts(rowid, text) VALUES (?, ?)');
     db.exec('BEGIN');
     for (let i = 0; i < rows; i += 1) {
       const text = noteText(i);
       const info = insertNote.run(Date.now() - i * 1000, 'global', text, (i % 100) / 100, 'perf-budget');
-      try { insertFts.run(Number(info.lastInsertRowid), text); } catch { /* ignore duplicate rowid */ }
+      if (insertFts) {
+        try { insertFts.run(Number(info.lastInsertRowid), text); } catch { /* ignore duplicate rowid */ }
+      }
     }
     db.exec('COMMIT');
   } catch (err) {

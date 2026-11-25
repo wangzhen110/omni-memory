@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.3.2 |
-| 插件版本 | 4.3.2 |
+| 文档版本 | 4.3.3 |
+| 插件版本 | 4.3.3 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-25 |
@@ -206,6 +206,7 @@ vectors(id PK, kind, owner_id, dim, vec)
 bigrams(id PK, layer, owner_id, gram)
 meta(key PK, value)
 chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
+  notes_fts 为 external-content（content='notes'），正文不存副本，trigger 同步
 ```
 
 索引：`chunks_hash_active(hash, IFNULL(scope,'global')) WHERE deleted_at IS NULL` 是**部分唯一索引**，墓碑后的同文可以重新写入；`bigrams_gram(gram)` 支撑 2 字 CJK 查询。
@@ -223,7 +224,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 ### 4.3 迁移策略
 
 `meta.schema_version` 记录整数版本；启动时按序执行 `MIGRATIONS[n]`。
-**当前版本 18**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。v17 为 notes 增加 `text_hash` 与 `(scope, text_hash)` 索引，写入去重、导入与 restore 先走哈希候选、再比对原文；旧库启动时按 1000 行/批回填 NULL，并用 `notes_text_hash_missing(id) WHERE text_hash IS NULL` 部分索引让稳态缺失探针保持 O(1)。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。v18 把 `bigrams` 改为 `WITHOUT ROWID`，主键 `(gram, layer, owner_id)` 直接服务两字中文查询，另保留 `bigrams_owner(layer, owner_id, gram)` 供删除路径；旧表原先把同一份 gram 存在 hidden rowid、复合主键索引和二级索引三处。
+**当前版本 19**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。v17 为 notes 增加 `text_hash` 与 `(scope, text_hash)` 索引，写入去重、导入与 restore 先走哈希候选、再比对原文；旧库启动时按 1000 行/批回填 NULL，并用 `notes_text_hash_missing(id) WHERE text_hash IS NULL` 部分索引让稳态缺失探针保持 O(1)。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。v18 把 `bigrams` 改为 `WITHOUT ROWID`，主键 `(gram, layer, owner_id)` 直接服务两字中文查询，另保留 `bigrams_owner(layer, owner_id, gram)` 供删除路径；旧表原先把同一份 gram 存在 hidden rowid、复合主键索引和二级索引三处。v19 把 `notes_fts` 改为 external-content 索引（`content='notes'`、`content_rowid='id'`），不再另存 `notes_fts_content` 正文副本；索引由 6 个 trigger 在插入、修改、supersede、tombstone、恢复、物理删除时同步，重建时只写入 active 行。
 
 | 版本 | 变更 | 迁移动作 |
 |---|---|---|
@@ -363,7 +364,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - 存储：`semantic_vectors(kind, owner_id, model, dim, vec)`，`model` 为签名 `local:bge-small-zh-v1.5:int8:512`；不覆盖旧 `vectors`，hashed 512 维与本地 512 维不会混算。
 - 召回：对最近 5000 条语义向量 + 词面候选做余弦，阈值 **0.25**；命中暴露 `semanticScore`，`via:'semantic'`。
 - 索引：新写入进入内存队列，待处理项带版本号；后台 worker 每批 8 条，推理期间同一 key 被改写时旧快照不会写入或吞掉新条目；检索前先冲刷一批待处理项，保证同轮写入后立即可召回；旧库后台回填（每轮扫描上限 64 条），`semantic-backfill` 租约 TTL 120 秒并按批续租；已索引库不会在启动时加载模型。
-- 生命周期：遗忘 / compact / amend / dream replace / consolidate / rollback 在事务内清理 FTS / bigram / hashed/remote `vectors` / `semantic_vectors`；派生表只在确实存在时删除，存在表上的删除失败会让事务回滚而不是静默吞掉。启动按 `semantic_gc_version` 在单个事务内清扫一次孤儿向量；失败写入 `semantic_gc_last_error` / `semantic_gc_failed_at` 并暴露到状态。队列满记 `dropped` 不静默；失败按 1s→30s 指数退避，冷却期早退也会为未完成回填续排。
+- 生命周期：遗忘 / compact / amend / dream replace / consolidate / rollback 在事务内清理 bigram / hashed/remote `vectors` / `semantic_vectors`，并清理 notes 之外的 FTS；`notes_fts` 自 v19 起是 external-content，由 trigger 同步，通用删除路径不再手写 `DELETE WHERE rowid`，否则会因缺少旧正文破坏索引。派生表只在确实存在时删除，存在表上的删除失败会让事务回滚而不是静默吞掉。启动按 `semantic_gc_version` 在单个事务内清扫一次孤儿向量；失败写入 `semantic_gc_last_error` / `semantic_gc_failed_at` 并暴露到状态。队列满记 `dropped` 不静默；失败按 1s→30s 指数退避，冷却期早退也会为未完成回填续排。
 - 状态：`memory_status` / `/omni-memory/status` 的 `semantic` 暴露 `enabled/model/dim/pending/indexed/dropped/failureCount/retryAt/running/backfillDone/lastError/gcError/gcFailedAt`；`embedding` 暴露 `pending` / `dropped` / `lastDropAt`。`memory_reindex({semantic:true})` 回填缺行，`semanticForce:true` 清当前签名后按源文本重建。
 - 开关：`OMNI_DISABLE_SEMANTIC=1` 单独关闭；`OMNI_DISABLE_VECTOR=1` 同时关闭；`OMNI_SEMANTIC_MODEL_DIR` 可替换同结构模型；`OMNI_SEMANTIC_BATCH` 默认 8（1–64）。
 - 降级：模型缺失、损坏、WASM 加载失败或内存不足时返回空，词面/hashed/图路线继续工作；`lastError` 留痕。

@@ -922,6 +922,7 @@ function openStore() {
   let notesMode;
   let factsMode;
   let ftsMode;
+  let externalNotes = false;
   try {
     // Re-read under the lease. A competing process may have completed the
     // migration while this one waited; in that case there is nothing to back
@@ -949,6 +950,7 @@ function openStore() {
     // (for example the v4 vector reset) after the first process already set the
     // backfill marker, silently breaking vector recall.
     schemaVersion = migrate(db);
+    externalNotes = notesFtsIsExternal(db);
     try {
       aliasRepair = repairScopeAliases(db);
     } catch (error) {
@@ -977,7 +979,7 @@ function openStore() {
     if (ftsMarker !== String(SCHEMA_VERSION)) {
       let ftsOk = true;
       if (chunksMode) ftsOk = backfillFts(db, 'chunks_fts', 'chunks') && ftsOk;
-      if (notesMode) ftsOk = backfillFts(db, 'notes_fts', 'notes') && ftsOk;
+      if (notesMode) ftsOk = (externalNotes || backfillFts(db, 'notes_fts', 'notes')) && ftsOk;
       if (factsMode) ftsOk = backfillFts(db, 'facts_fts', 'facts') && ftsOk;
       if (ftsOk) metaSet(db, 'fts_backfill_version', SCHEMA_VERSION);
     }
@@ -1002,7 +1004,7 @@ function openStore() {
     migrationBackup,
     semanticGc: semanticGcReport,
     aliasRepair,
-    fts: { chunks: Boolean(chunksMode), notes: Boolean(notesMode), facts: Boolean(factsMode) },
+    fts: { chunks: Boolean(chunksMode), notes: Boolean(notesMode), facts: Boolean(factsMode), externalNotes },
   };
   // A host launched from this directory should never silently split its layer
   // from a legacy cased key. The same check also runs in attachSession for
@@ -1019,7 +1021,7 @@ function openStore() {
   return store;
 }
 
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 let hostCtx = null;
 
 function columnExists(db, table, column) {
@@ -1040,6 +1042,17 @@ function addColumn(db, table, column, type) {
 function tableExists(db, table) {
   try {
     return Boolean(prepareCached(db, "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
+  } catch {
+    return false;
+  }
+}
+
+/** Whether notes_fts is an external-content index (schema v19+). */
+function notesFtsIsExternal(db) {
+  if (!tableExists(db, 'notes_fts')) return false;
+  try {
+    const sql = prepareCached(db, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'notes_fts'").get()?.sql ?? '';
+    return /content\s*=\s*'notes'/i.test(sql);
   } catch {
     return false;
   }
@@ -1145,6 +1158,88 @@ function ensureCompactBigrams(db) {
     DROP INDEX IF EXISTS bigrams_v18_owner;
     CREATE INDEX IF NOT EXISTS bigrams_owner ON bigrams(layer, owner_id, gram);
   `);
+  return true;
+}
+
+/**
+ * v19: convert notes_fts to an external-content index and let triggers keep it
+ * in sync. A normal FTS5 table stores a second copy of every note body; with
+ * content='notes' the index reads notes.text directly. Manual row writes would
+ * be unsafe here (an external-content delete needs the old text), so all note
+ * FTS maintenance moves to triggers and the generic row helpers skip this one
+ * table. The migration rebuilds the index from notes before installing triggers,
+ * so a crash cannot leave rows pointing at a half-populated index.
+ */
+function notesFtsTriggers(db) {
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS notes_fts_ai
+    AFTER INSERT ON notes
+    BEGIN
+      INSERT INTO notes_fts(rowid, text) VALUES (new.id, new.text);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS notes_fts_ad
+    AFTER DELETE ON notes
+    WHEN old.superseded_by IS NULL AND old.deleted_at IS NULL
+    BEGIN
+      INSERT INTO notes_fts(notes_fts, rowid, text) VALUES ('delete', old.id, old.text);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS notes_fts_au
+    AFTER UPDATE OF text ON notes
+    WHEN old.superseded_by IS NULL AND old.deleted_at IS NULL AND old.text IS NOT new.text
+    BEGIN
+      INSERT INTO notes_fts(notes_fts, rowid, text) VALUES ('delete', old.id, old.text);
+      INSERT INTO notes_fts(rowid, text)
+        SELECT new.id, new.text
+        WHERE new.superseded_by IS NULL AND new.deleted_at IS NULL;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS notes_fts_a_supersede
+    AFTER UPDATE OF superseded_by ON notes
+    WHEN old.superseded_by IS NULL AND old.deleted_at IS NULL AND new.superseded_by IS NOT NULL
+    BEGIN
+      INSERT INTO notes_fts(notes_fts, rowid, text) VALUES ('delete', old.id, old.text);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS notes_fts_a_forget
+    AFTER UPDATE OF deleted_at ON notes
+    WHEN old.deleted_at IS NULL AND old.superseded_by IS NULL AND new.deleted_at IS NOT NULL
+    BEGIN
+      INSERT INTO notes_fts(notes_fts, rowid, text) VALUES ('delete', old.id, old.text);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS notes_fts_a_restore
+    AFTER UPDATE OF superseded_by, deleted_at ON notes
+    WHEN (old.superseded_by IS NOT NULL OR old.deleted_at IS NOT NULL)
+      AND new.superseded_by IS NULL AND new.deleted_at IS NULL
+    BEGIN
+      INSERT INTO notes_fts(rowid, text) VALUES (new.id, new.text);
+    END;
+  `);
+}
+
+function ensureExternalNotesFts(db) {
+  if (!tableExists(db, 'notes_fts') || !tableExists(db, 'notes')) return false;
+  if (notesFtsIsExternal(db)) {
+    notesFtsTriggers(db);
+    return false;
+  }
+  const sql = prepareCached(db, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'notes_fts'").get()?.sql ?? '';
+  const trigram = /tokenize\s*=\s*'trigram'/i.test(sql);
+  db.exec('DROP TABLE IF EXISTS notes_fts_v19');
+  db.exec(`
+    CREATE VIRTUAL TABLE notes_fts_v19 USING fts5(
+      text,
+      content='notes',
+      content_rowid='id'${trigram ? ", tokenize='trigram'" : ''}
+    );
+    INSERT INTO notes_fts_v19(rowid, text)
+      SELECT id, text FROM notes WHERE deleted_at IS NULL AND superseded_by IS NULL;
+    DROP TABLE notes_fts;
+    ALTER TABLE notes_fts_v19 RENAME TO notes_fts;
+  `);
+  notesFtsTriggers(db);
   return true;
 }
 
@@ -1361,6 +1456,8 @@ const MIGRATIONS = [
   db => ensureNoteTextHash(db),
   // v18: compact the CJK bigram index. See createCompactBigrams().
   db => ensureCompactBigrams(db),
+  // v19: external-content notes FTS kept in sync by triggers. See ensureExternalNotesFts().
+  db => ensureExternalNotesFts(db),
 ];
 
 function migrate(db) {
@@ -1854,7 +1951,11 @@ function dropDerivedRows(db, kind, id) {
       .run(kind, Number(id));
   }
   if (tableExists(db, `${table}_fts`)) {
-    prepareCached(db, `DELETE FROM ${table}_fts WHERE rowid = ?`).run(Number(id));
+    // External-content notes_fts is maintained by triggers. A manual DELETE with
+    // rowid alone would corrupt it because the old text is required.
+    if (!(table === 'notes' && notesFtsIsExternal(db))) {
+      prepareCached(db, `DELETE FROM ${table}_fts WHERE rowid = ?`).run(Number(id));
+    }
   }
   if (tableExists(db, 'bigrams')) {
     prepareCached(db, 'DELETE FROM bigrams WHERE layer = ? AND owner_id = ?').run(kind, Number(id));
@@ -1874,7 +1975,7 @@ function dropDerivedIndexes(s, kind, id) {
 function reindexRow(s, kind, id, text) {
   const fts = { note: ['notes_fts', s.fts?.notes], fact: ['facts_fts', s.fts?.facts], chunk: ['chunks_fts', s.fts?.chunks] }[String(kind)];
   if (!fts) throw new Error(`unknown row kind: ${kind}`);
-  if (fts[1]) {
+  if (fts[1] && !(String(kind) === 'note' && s.fts?.externalNotes)) {
     try {
       // Delete first: amend/dream can change the text of an existing rowid, and
       // INSERT alone would silently keep the stale FTS document.
