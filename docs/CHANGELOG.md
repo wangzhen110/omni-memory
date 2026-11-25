@@ -2,6 +2,18 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.3.1] — 2026-11-25
+
+### 修复
+- **`memory_write` 校验 `kind` 白名单**：只接受 `note` / `fact` / `episode`；未知值直接报错，不再静默降级为 note。CLI `write` 同样输出一行错误并退出 2。
+- **`memory_context` 读路径不再等待版本探针**：只读取 `omni-version-check.json` 的缓存结果；缓存缺失或过期时不发网络请求。CLI `context` 在 `OMNI_VERSION_CHECK_TTL_MS=1` 下仍为 **142ms**，旧路径为 0.5–2.5s。HTTP `/packet` 仍保留实际刷新。
+- **CLI 布尔 flag 不再吞掉后面的关键词**：`--semantic`、`--json`、`--rerank`、`--apply` 等已知布尔 flag 不消费下一个 token；`--semantic 记忆` 现在等价于 `--semantic -- 记忆`。
+- **HTTP 空查询回填请求 scope**：`q=&scope=global` 返回 `scope:"global"`，不再固定为 `all`。
+- **CLI 工具参数错误统一一行提示 + 退出 2**：覆盖 `search`、`write`、`forget`、`feedback`、`report`、`candidates`、`candidate`、`consolidate`、`ingest`、`context`。
+
+### 测试
+- `npm test` 加 `--test-timeout=60000`，把并行跑测试时的挂起变成明确失败；完整套件 **450/450** 通过。
+
 ## [4.3.0] — 2026-11-25
 
 ### 性能

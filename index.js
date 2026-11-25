@@ -5734,7 +5734,10 @@ function defineWriteReadTools(ctx, registerLocalTool) {
     },
     async execute(args, toolContext = {}) {
       const s = openStore();
-      const kind = String(args.kind ?? 'note');
+      const kind = String(args.kind ?? 'note').trim().toLowerCase();
+      if (!['note', 'fact', 'episode'].includes(kind)) {
+        throw new Error('kind must be note, fact, or episode');
+      }
       const text = String(args.text ?? '').trim();
       let importance = 0.35;
       if (args.importance != null) {
@@ -7971,10 +7974,12 @@ function registerAdminRoutes(add) {
       const s = openStore();
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const query = url.searchParams.get('q') ?? '';
-      if (!queryTerms(query).length) return json(res, 200, { ok: true, ...buildSearchResult() });
       const limit = Math.min(60, Math.max(1, Number(url.searchParams.get('limit') ?? 30)));
       const requestedScope = url.searchParams.get('scope');
       const { requested, scope } = httpScope(requestedScope);
+      if (!queryTerms(query).length) {
+        return json(res, 200, { ok: true, ...buildSearchResult({ scope: requested || SCOPE_GLOBAL }) });
+      }
       const rerank = url.searchParams.get('rerank') === '0' ? false : undefined;
       const result = await runSearch(s, query, limit, scope, { rerank });
       return json(res, 200, {

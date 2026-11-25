@@ -16,7 +16,7 @@
  * so a newer cloud checkout is reported to the model before it starts work.
  */
 
-import { checkForUpdate, formatUpdateNotice } from '../../lib/version-check.mjs';
+import { formatUpdateNotice, readCachedUpdate } from '../../lib/version-check.mjs';
 
 const CONTEXT_BUDGET = 1800;
 
@@ -68,7 +68,6 @@ export function makeContextTool(host) {
     },
 
     async execute(args = {}, toolContext = {}) {
-      const versionPromise = checkForUpdate().catch(() => null);
       const limit = Math.min(10, Math.max(1, Number.isFinite(args.limit) ? Number(args.limit) : 5));
       const profileArgs = args.scope ? { scope: args.scope } : {};
       const persona = await run('memory_persona', { action: 'get' }, toolContext);
@@ -79,7 +78,7 @@ export function makeContextTool(host) {
       if (args.scope) searchArgs.scope = args.scope;
       if (args.semantic !== undefined) searchArgs.semantic = args.semantic;
       const search = query ? await run('memory_search', searchArgs, toolContext) : null;
-      const version = await versionPromise;
+      const version = readCachedUpdate();
       const notice = formatUpdateNotice(version);
 
       const sections = [];

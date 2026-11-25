@@ -40,8 +40,10 @@ test('NFR-07 the store survives repeated writes and reads in one session', async
   assert.equal(profile.value.stats.notes, 30);
 });
 
-test('NFR-07 an unknown tool argument kind falls back to a note', async () => {
+test('NFR-07 an unknown tool argument kind is rejected, not silently downgraded', async () => {
   const app = await boot();
-  const written = await app.call('memory_write', { kind: 'unknown-kind', text: '兜底为笔记' });
-  assert.equal(written.value.kind, 'note');
+  await assert.rejects(
+    app.call('memory_write', { kind: 'unknown-kind', text: '兜底为笔记' }),
+    /kind must be note, fact, or episode/,
+  );
 });

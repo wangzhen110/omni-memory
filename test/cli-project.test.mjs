@@ -52,6 +52,24 @@ test('CLI search reports bad arguments as one line and exits 2', () => {
   assert.doesNotMatch(result.stderr, /\n\s+at /, 'a stack trace is not an actionable CLI error');
 });
 
+test('CLI write rejects an unknown kind with one line and exit 2', () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-cli-home-'));
+  const env = { OMNI_HOME: home, DSH_HOME: home };
+  const result = runRaw(['write', '--kind', 'bogus', '--text', '非法 kind'], env);
+  assert.equal(result.status, 2, result.stderr || result.stdout);
+  assert.match(result.stderr, /kind must be note, fact, or episode/);
+  assert.doesNotMatch(result.stderr, /\n\s+at /);
+});
+
+test('CLI candidates reports an invalid status with one line and exit 2', () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'omni-cli-home-'));
+  const env = { OMNI_HOME: home, DSH_HOME: home };
+  const result = runRaw(['candidates', '--status', 'nope'], env);
+  assert.equal(result.status, 2, result.stderr || result.stdout);
+  assert.match(result.stderr, /status/i);
+  assert.doesNotMatch(result.stderr, /\n\s+at /);
+});
+
 test('CLI project show reads .omni-project and write --dir binds to that layer', () => {
   const home = mkdtempSync(path.join(tmpdir(), 'omni-cli-home-'));
   const project = mkdtempSync(path.join(tmpdir(), 'omni-cli-project-'));
@@ -74,6 +92,9 @@ test('CLI project show reads .omni-project and write --dir binds to that layer',
   assert.equal(searched.scope, KEY);
   assert.equal(searched.total, 1);
   assert.equal(searched.hits[0].scope, KEY);
+
+  const flagFirst = JSON.parse(run(['search', '--json', 'CLI 作用域测试', '--dir', project], env));
+  assert.equal(flagFirst.total, 1, 'a boolean flag before the query must not swallow it');
 
   const feedback = JSON.parse(run([
     'feedback', '--kind', 'note', '--id', String(written.id), '--rating', 'useful', '--dir', project,

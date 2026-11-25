@@ -85,6 +85,11 @@ const USAGE = `全息记忆 · omni
   --scope global    显式写全局层；--scope project 表示当前项目；--scope all 只读
 `;
 
+const BOOLEAN_FLAGS = new Set([
+  'apply', 'check', 'create', 'force', 'help', 'json', 'list', 'no-extract',
+  'rerank', 'semantic', 'skip-http', 'skip-task', 'stdin', 'strict', 'write',
+]);
+
 function parseArgs(argv) {
   const flags = {};
   const positional = [];
@@ -95,6 +100,10 @@ function parseArgs(argv) {
       const key = rawKey.trim();
       if (inline !== undefined) {
         flags[key] = inline;
+        continue;
+      }
+      if (BOOLEAN_FLAGS.has(key)) {
+        flags[key] = true;
         continue;
       }
       const next = argv[index + 1];
@@ -184,6 +193,20 @@ async function callTool(booted, name, args) {
   return def.execute(args, booted.toolContext);
 }
 
+class CliUsageStop extends Error {}
+
+async function callToolSafe(booted, name, args) {
+  try {
+    return await callTool(booted, name, args);
+  } catch (error) {
+    // Tool argument errors are user-facing. Command functions have try/finally,
+    // so throwing this sentinel still disposes the host.
+    log(String(error?.message ?? error));
+    process.exitCode = 2;
+    throw new CliUsageStop();
+  }
+}
+
 async function commandRules() {
   const { RULES_TEXT, applyManagedBlock } = await import('./shared/rules.mjs');
   const write = flags.write === true;
@@ -258,7 +281,7 @@ async function commandContext() {
     const args = { query, limit: Number(flags.limit ?? 5) };
     if (flags.scope) args.scope = String(flags.scope);
     args.semantic = semanticRequested();
-    const value = await callTool(booted, 'memory_context', args);
+    const value = await callToolSafe(booted, 'memory_context', args);
     process.stdout.write(value.text + '\n');
   } finally {
     booted.host.dispose();
@@ -309,7 +332,7 @@ async function commandIngest() {
   if (flags['no-extract'] === true) args.extract = false;
   const booted = await boot();
   try {
-    const value = await callTool(booted, 'memory_ingest', args);
+    const value = await callToolSafe(booted, 'memory_ingest', args);
     process.stdout.write(JSON.stringify(value) + '\n');
   } finally {
     booted.host.dispose();
@@ -325,7 +348,7 @@ async function commandCandidates() {
   if (flags.limit) args.limit = Number(flags.limit);
   const booted = await boot();
   try {
-    const value = await callTool(booted, 'memory_candidate', args);
+    const value = await callToolSafe(booted, 'memory_candidate', args);
     process.stdout.write(JSON.stringify(value) + '\n');
   } finally {
     booted.host.dispose();
@@ -347,7 +370,7 @@ async function commandCandidate() {
   if (flags.reason) args.reason = String(flags.reason);
   const booted = await boot();
   try {
-    const value = await callTool(booted, 'memory_candidate', args);
+    const value = await callToolSafe(booted, 'memory_candidate', args);
     process.stdout.write(JSON.stringify(value) + '\n');
   } finally {
     booted.host.dispose();
@@ -368,7 +391,7 @@ async function commandConsolidate() {
   if (flags.apply === true) args.apply = true;
   const booted = await boot();
   try {
-    const value = await callTool(booted, 'memory_consolidate', args);
+    const value = await callToolSafe(booted, 'memory_consolidate', args);
     process.stdout.write(JSON.stringify(value) + '\n');
   } finally {
     booted.host.dispose();
@@ -404,7 +427,7 @@ async function commandWrite() {
 
   const booted = await boot();
   try {
-    const value = await callTool(booted, 'memory_write', args);
+    const value = await callToolSafe(booted, 'memory_write', args);
     process.stdout.write(JSON.stringify(value) + '\n');
   } finally {
     booted.host.dispose();
@@ -423,7 +446,7 @@ async function commandReport() {
   try {
     const args = { id, outcome };
     if (flags.evidence) args.evidence = String(flags.evidence);
-    const value = await callTool(booted, 'memory_solution_report', args);
+    const value = await callToolSafe(booted, 'memory_solution_report', args);
     process.stdout.write(JSON.stringify(value) + '\n');
   } finally {
     booted.host.dispose();
@@ -443,7 +466,7 @@ async function commandFeedback() {
   try {
     const args = { kind, id, rating };
     if (flags.scope) args.scope = String(flags.scope);
-    const value = await callTool(booted, 'memory_feedback', args);
+    const value = await callToolSafe(booted, 'memory_feedback', args);
     process.stdout.write(JSON.stringify(value) + '\n');
   } finally {
     booted.host.dispose();
@@ -460,7 +483,7 @@ async function commandForget() {
   }
   const booted = await boot();
   try {
-    const value = await callTool(booted, 'memory_forget', { kind, id });
+    const value = await callToolSafe(booted, 'memory_forget', { kind, id });
     process.stdout.write(JSON.stringify(value) + '\n');
   } finally {
     booted.host.dispose();
@@ -486,16 +509,7 @@ async function commandSearch() {
     if (flags.kind) args.kind = String(flags.kind);
     if (flags.rerank) args.rerank = true;
     args.semantic = semanticRequested();
-    let value;
-    try {
-      value = await callTool(booted, 'memory_search', args);
-    } catch (error) {
-      // Short-lived CLI: one actionable line beats a stack trace. The exit code
-      // is distinct from "no hits" (0) and internal failure (1).
-      log(String(error?.message ?? error));
-      process.exitCode = 2;
-      return;
-    }
+    const value = await callToolSafe(booted, 'memory_search', args);
     if (flags.json === true) {
       process.stdout.write(JSON.stringify(value, null, 2) + '\n');
       return;
@@ -670,7 +684,8 @@ async function commandDoctor() {
   if (!result.ok) process.exitCode = 1;
 }
 
-switch (command) {
+try {
+  switch (command) {
   case 'rules':
     await commandRules();
     break;
@@ -730,4 +745,10 @@ switch (command) {
   default:
     process.stdout.write(USAGE);
     process.exitCode = 2;
+  }
+} catch (error) {
+  if (!(error instanceof CliUsageStop)) {
+    log(String(error?.stack ?? error));
+    process.exitCode = 1;
+  }
 }

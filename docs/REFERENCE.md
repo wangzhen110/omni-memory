@@ -483,7 +483,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 
 当前版本在四处可见：面板顶栏 `vX.Y.Z`、`GET /health.version`、`GET /omni-memory/status.version`、`GET /omni-memory/overview.version`。`/health` 便于脚本探测，`/status` 与 `/overview` 便于面板和 AI 读取；历史版本看 GitHub Releases。
 
-`memory_context`、CLI `context` 和 `/omni-memory/packet` 在读取时会调用 `lib/version-check.mjs`：读取 GitHub contents API 的 `main/package.json`，失败回退 raw CDN；发现远端更高时，在返回文本顶部插入 `## 版本提醒（需用户确认）`，并把 `update` 字段放进 JSON。成功检查缓存 30 分钟，失败缓存 5 分钟，两段网络共享 2.5 秒总预算；缓存回读会校验版本结构与 TTL，失败不保留旧远端版本；并发读取用进程间单飞锁只发一次请求。`OMNI_VERSION_CHECK_DISABLED=1` 可关闭该检查。它只提醒，不自动更新；是否执行由用户决定。
+`memory_context` 与 CLI `context` 在读取时只读取 `lib/version-check.mjs` 的缓存结果，不发起网络请求；缓存缺失或过期时只返回记忆，不阻塞提示路径。`/omni-memory/packet` 仍会执行实际探针：读取 GitHub contents API 的 `main/package.json`，失败回退 raw CDN；发现远端更高时，在返回文本顶部插入 `## 版本提醒（需用户确认）`，并把 `update` 字段放进 JSON。成功检查缓存 30 分钟，失败缓存 5 分钟，两段网络共享 2.5 秒总预算；缓存回读会校验版本结构与 TTL，失败不保留旧远端版本；并发读取用进程间单飞锁只发一次请求。`OMNI_VERSION_CHECK_DISABLED=1` 可关闭该检查。它只提醒，不自动更新；是否执行由用户决定。
 
 每日同步不是常驻服务，而是按需脚本：
 

@@ -180,7 +180,7 @@ test('an injected cache cannot reach the prompt and a failed probe clears stale 
   }
 });
 
-test('memory_context tells the model when a newer cloud version exists', async () => {
+test('memory_context reads a cached newer version without a network probe', async () => {
   const home = mkdtempSync(path.join(tmpdir(), 'omni-context-version-'));
   const originalFetch = globalThis.fetch;
   const originalHome = process.env.OMNI_HOME;
@@ -188,9 +188,19 @@ test('memory_context tells the model when a newer cloud version exists', async (
   process.env.OMNI_HOME = home;
   process.env.OMNI_VERSION_CHECK_DISABLED = '0';
   process.env.OMNI_VERSION_CHECK_TTL_MS = '60000';
-  globalThis.fetch = async () => jsonResponse({
-    content: Buffer.from(JSON.stringify({ version: '9.9.9' })).toString('base64'),
-  });
+  const localVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  writeFileSync(path.join(home, 'omni-version-check.json'), JSON.stringify({
+    ok: true,
+    localVersion,
+    remoteVersion: '9.9.9',
+    checkedAtMs: Date.now(),
+    source: 'contents-api',
+  }));
+  let fetched = 0;
+  globalThis.fetch = async () => {
+    fetched += 1;
+    throw new Error('memory_context must not probe the network');
+  };
   try {
     const tools = {
       memory_persona: async () => ({ persona: {} }),
@@ -201,12 +211,12 @@ test('memory_context tells the model when a newer cloud version exists', async (
       tools: { get: name => (tools[name] ? { execute: tools[name] } : undefined) },
     });
     const result = await tool.execute({ query: '读取记忆' });
-    const localVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
     assert.match(result.text, /版本提醒/);
     assert.match(result.text, /9\.9\.9/);
     assert.match(result.text, new RegExp(localVersion.replace(/\./g, '\\.')));
     assert.equal(result.update.remoteVersion, '9.9.9');
     assert.equal(result.update.localVersion, localVersion);
+    assert.equal(fetched, 0, 'the prompt path must only read the cache');
   } finally {
     globalThis.fetch = originalFetch;
     if (originalHome === undefined) delete process.env.OMNI_HOME; else process.env.OMNI_HOME = originalHome;

@@ -14,6 +14,16 @@ function dbOf(app) {
   return db;
 }
 
+test('memory_write rejects an unknown kind instead of silently writing a note', async () => {
+  const app = await boot();
+  await assert.rejects(
+    app.call('memory_write', { kind: 'bogus', text: '非法 kind 不能静默变成 note' }),
+    /kind must be note, fact, or episode/,
+  );
+  const result = await app.call('memory_search', { query: '非法 kind', scope: 'global' });
+  assert.equal(result.value.total, 0);
+});
+
 test('profile excludes imported knowledge but keeps ordinary active notes', async () => {
   const app = await boot();
   await app.call('memory_write', {
@@ -80,6 +90,13 @@ test('HTTP search returns total and paging metadata', async () => {
   assert.equal(body.offset, 0);
   assert.equal(body.truncated, true);
   assert.equal(body.hits.length, 1);
+
+  const empty = fakeRes();
+  await app.route('/omni-memory/search').handler(fakeReq('/omni-memory/search?q=&scope=global'), empty.res);
+  assert.equal(empty.state.statusCode, 200);
+  const emptyBody = empty.json();
+  assert.equal(emptyBody.total, 0);
+  assert.equal(emptyBody.scope, 'global', 'empty query must echo the requested scope');
 });
 
 test('overview exposes one pending total and the coverage fields', async () => {
