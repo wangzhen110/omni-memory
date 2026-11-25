@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 107 次提交；更新记录自身的提交不计入列表。
+> 共 108 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-25
 
+- 09:43:23 `7d8aab6d` — fix: v4.2.1 default CLI project resolution and HTTP search metadata — [提交](https://github.com/wangzhen110/omni-memory/commit/7d8aab6d1e92be4a57feb1c73e9fda1fd1b2a24d)
 - 09:20:19 `6a6aba6e` — feat: v4.2.0 project identity, scope binding, profile split and search output — [提交](https://github.com/wangzhen110/omni-memory/commit/6a6aba6e80946da08c93e73f387b27c9abacda6c)
 
 ## 2026-11-24
