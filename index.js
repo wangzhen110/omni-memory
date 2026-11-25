@@ -4881,12 +4881,23 @@ async function runSearch(s, query, limit, scope, options = {}) {
   const lexicalStarted = process.hrtime.bigint();
   const lexical = terms.length ? rank([...notesHits, ...factsHits, ...chunksHits].filter(hitAllowed)) : [];
   if (profile) profile.lexical = Number(process.hrtime.bigint() - lexicalStarted) / 1e6;
-  // Diagnostic switch: OMNI_DISABLE_VECTOR=1 measures the lexical route alone.
-  const useVector = process.env.OMNI_DISABLE_VECTOR !== '1';
-  if (useVector) await flushPendingVectors(s);
-  const vector = useVector ? (await timed('vector', () => vectorSearch(s, query, limit, scope, lexical))).filter(hitAllowed) : [];
-  const useSemantic = useVector && options.semantic !== false;
-  const semantic = useSemantic ? (await timed('semantic', () => semanticSearch(s, query, limit, scope, [...lexical, ...vector]))).filter(hitAllowed) : [];
+  // Diagnostic switch: OMNI_DISABLE_VECTOR=1 measures the lexical route alone
+  // and also closes the semantic route (historical behaviour). OMNI_DISABLE_HASHED=1
+  // closes only the hashed `vectors` route, so semantic quality can be measured
+  // without the zero-config fallback.
+  const vectorRoutes = process.env.OMNI_DISABLE_VECTOR !== '1';
+  const hashedEnabled = vectorRoutes && process.env.OMNI_DISABLE_HASHED !== '1';
+  if (vectorRoutes) await flushPendingVectors(s);
+  const useSemantic = vectorRoutes && options.semantic !== false;
+  // Semantic is the primary vector route. Hashed n-grams remain the fallback
+  // for stores without the model, a failed model, or a query with no semantic
+  // hit; they must not add a second noisy rank when semantic already answered.
+  const semantic = useSemantic
+    ? (await timed('semantic', () => semanticSearch(s, query, limit, scope, lexical))).filter(hitAllowed)
+    : [];
+  const vector = hashedEnabled && semantic.length === 0
+    ? (await timed('vector', () => vectorSearch(s, query, limit, scope, [...lexical, ...semantic]))).filter(hitAllowed)
+    : [];
   const graph = (await timed('graph', () => graphExpand(s, [...lexical, ...vector, ...semantic], Math.min(limit, 10), scope))).filter(hitAllowed);
   if (profile) {
     profile.hits = lexical.length + vector.length + semantic.length + graph.length;

@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.3.3 |
-| 插件版本 | 4.3.3 |
+| 文档版本 | 4.4.0 |
+| 插件版本 | 4.4.0 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-25 |
@@ -54,7 +54,7 @@
 | FR-14 | 界面浏览 | 左栏「记忆」面板列出笔记与事实，含类型、正文、来源、作用域、重要性 | ✅ |
 | FR-15 | 界面搜索 | 面板搜索框调用同一检索算法，展示命中条数与结果 | ✅ |
 | FR-16 | 界面遗忘 | 面板按钮触发遗忘并刷新列表 | ✅ |
-| FR-17 | 向量融合排序 | 黄金集 MRR 不低于仅词面基线 | ✅ 内置本地语义：词面 MRR 0.776 → 0.927（hashed）→ **0.979**（BGE-small-zh int8） |
+| FR-17 | 向量融合排序 | 黄金集 MRR 不低于仅词面基线 | ✅ 内置本地语义：词面 MRR 0.776 → 0.927（hashed）→ **0.958**（语义优先，BGE-small-zh int8；旧双路 0.979） |
 | FR-18 | 图游走召回 | 通过实体边扩散，召回直接匹配不到的相关条目 | ✅ 已实现（2 跳、衰减 0.5、按边召回） |
 | FR-19 | 冲突标记 | 笔记之间冲突时置 `contested=1` 并在界面标注 | ✅ 已实现（显式 `contradicts` + 余弦 ≥0.9 启发） |
 | FR-20 | 做梦校验 | 离线任务用原文核对笔记，发现错误时标记并留痕；替代需人工确认且可回滚 | ✅ 已实现（覆盖度 + 特征词缺失判定；`apply` 只标记，`commit`/单条 replace 才替代） |
@@ -125,7 +125,7 @@
 | ADR-004 | 注入策略 | 单段系统提示，1200 字预算，30s 缓存 | [ADR/004-injection.md](ADR/004-injection.md) |
 | ADR-005 | 界面位置 | 左栏导航 + `main` 面板，不用 `conversation.view` | [ADR/005-ui-seat.md](ADR/005-ui-seat.md) |
 | ADR-006 | 检索顺序 | 先词面（FTS+分词），向量与图后置 | [ADR/006-retrieval-order.md](ADR/006-retrieval-order.md) |
-| ADR-007 | 默认向量后端（历史） | 哈希字符 n-gram（512 维）+ RRF，非语义；3.9.2 起本地语义并行，hashed 保留为一路与降级后端 | [ADR/007-embedding-backend.md](ADR/007-embedding-backend.md) |
+| ADR-007 | 默认向量后端（历史） | 哈希字符 n-gram（512 维）+ RRF，非语义；3.9.2 起本地语义并行；4.4.0 起语义为主，hashed 降为语义不可用/空结果时的兜底 | [ADR/007-embedding-backend.md](ADR/007-embedding-backend.md) |
 | ADR-008 | 嵌入后端可插拔 | 环境变量切换；远程写入入队、检索前惰性刷新 | [ADR/008-pluggable-embedding.md](ADR/008-pluggable-embedding.md) |
 | ADR-009 | 图路线与冲突 | 按遍历到的边召回；冲突用显式声明 + 相似度启发 | [ADR/009-graph-and-contradiction.md](ADR/009-graph-and-contradiction.md) |
 | ADR-010 | 做梦校验 | 确定性覆盖度 + 特征词缺失；不调用模型 | [ADR/010-dreaming.md](ADR/010-dreaming.md) |
@@ -354,8 +354,8 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
   远程模式下写入只入队，检索前批量刷新（≤32 条/次）；失败保留队列并回退词面。
 - 存储：`vectors(kind, owner_id, dim, vec)`；维度随后端变化，检索只取当前后端维度的行（切换后端无需迁移）。
 - 召回：逐行余弦，阈值 **0.2**；哈希后端额外要求**共享至少一个 token**（抑制碰撞噪声），远程后端不需要。
-- 融合：RRF，`1/(60+rank)` 叠加四路排名（词面 / hashed 或远程向量 / 本地语义 / 图）；权重为词面 1、hashed/远程 1、本地语义 2、图 0.5，避免哈希碰撞压过明确的语义改写命中。命中项暴露 `lexicalScore` / `vectorScore` / `semanticScore` / `rrf`。
-- 诊断开关：`OMNI_DISABLE_VECTOR=1` 同时关闭 hashed/远程向量与本地语义，只跑词面路线（基线与回归对比）。
+- 融合：RRF，`1/(60+rank)` 叠加参与本轮的排名（词面 / 本地语义 / 图；语义无结果时才有 hashed 或远程向量）；权重为词面 1、hashed/远程 1、本地语义 2、图 0.5，避免哈希碰撞压过明确的语义改写命中。命中项暴露 `lexicalScore` / `vectorScore` / `semanticScore` / `rrf`。
+- 诊断开关：`OMNI_DISABLE_VECTOR=1` 同时关闭 hashed/远程向量与本地语义，只跑词面路线（基线与回归对比）；`OMNI_DISABLE_HASHED=1` 只关闭 hashed/远程向量，保留本地语义，用于测量语义单独质量。
 
 ### 6.5.1 本地语义路线（v3.9.2 / v3.9.3）
 
@@ -368,7 +368,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - 状态：`memory_status` / `/omni-memory/status` 的 `semantic` 暴露 `enabled/model/dim/pending/indexed/dropped/failureCount/retryAt/running/backfillDone/lastError/gcError/gcFailedAt`；`embedding` 暴露 `pending` / `dropped` / `lastDropAt`。`memory_reindex({semantic:true})` 回填缺行，`semanticForce:true` 清当前签名后按源文本重建。
 - 开关：`OMNI_DISABLE_SEMANTIC=1` 单独关闭；`OMNI_DISABLE_VECTOR=1` 同时关闭；`OMNI_SEMANTIC_MODEL_DIR` 可替换同结构模型；`OMNI_SEMANTIC_BATCH` 默认 8（1–64）。
 - 降级：模型缺失、损坏、WASM 加载失败或内存不足时返回空，词面/hashed/图路线继续工作；`lastError` 留痕。
-- 实测：冷加载 208ms，RSS 216MB，512 维；20 次查询 191ms（约 9.5ms/query）；黄金集 recall 1.000、MRR 0.979。
+- 实测：冷加载 208ms，RSS 216MB，512 维；20 次查询 191ms（约 9.5ms/query）；黄金集 recall 1.000、MRR 0.958（4.4.0 语义优先；旧双路 0.979）。
 
 ### 6.5.2 大规模库的自适应有界（v3.12.1 引入，v3.12.2 修正判定）
 
@@ -618,7 +618,8 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | `OMNI_JUDGE_MODEL` | 自动挑选（优先 `flash/mini/haiku/small/lite`） | 模型 id | 复核使用的模型 | 大模型更准但更贵 | ADR-015 |
 | `OMNI_AUTO_RECALL` | 开启（未设置即开） | `0` 关闭 | 装配时是否用当前用户消息预取 top-3 | 每轮一次本地检索（10k 行 p95 ≈ 10ms） | ADR-012 |
 | `OMNI_DREAM_INTERVAL_MS` | `0`（关闭） | 正整数毫秒 | 后台做梦校验的周期 | 每次最多 100 条笔记 × 300 条转录 | ADR-010 |
-| `OMNI_DISABLE_VECTOR` | 未设置 | `1` 关闭 | 同时关闭 hashed/远程向量与本地语义 | 关闭后退化为纯词面：黄金集 MRR 0.979 → 0.776 | ADR-006/007/029 |
+| `OMNI_DISABLE_VECTOR` | 未设置 | `1` 关闭 | 同时关闭 hashed/远程向量与本地语义 | 关闭后退化为纯词面：黄金集 MRR 0.958 → 0.776 | ADR-006/007/029 |
+| `OMNI_DISABLE_HASHED` | 未设置 | `1` 关闭 | 只关闭 hashed/远程向量 | 保留本地语义；用于测量语义单独质量（0.958） | ADR-007/029 |
 | `OMNI_DISABLE_SEMANTIC` | 未设置 | `1` 关闭 | 只关闭内置本地语义 | hashed/词面/图仍工作；黄金集回落到 0.927 | ADR-029 |
 | `OMNI_SEMANTIC_MODEL_DIR` | 包内 `models/bge-small-zh-v1.5` | 目录 | 替换本地语义模型 | 需同结构 int8 ONNX + tokenizer | ADR-029 |
 | `OMNI_SEMANTIC_BATCH` | `8` | 1–64 | 本地语义每批条数 | 越大越快回填，单批内存越高 | ADR-029 |

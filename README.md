@@ -32,7 +32,7 @@ npm run serve                  # 打开 http://127.0.0.1:7788/hub
 Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-git checkout v4.3.3
+git checkout v4.4.0
 npm ci
 npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
 npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
@@ -65,7 +65,7 @@ npm run serve
 
 ## 核心能力
 
-- **混合检索**：词面（FTS5 trigram + 中文二元索引）+ 向量（内置 BGE-small-zh int8 本地语义，512 维；可选接远程嵌入）+ 图游走，四路 RRF 融合排序；可选 cross-encoder rerank（Jina / Cohere / SiliconFlow / 自建兼容端点），只对 top-20 候选做 0..1 归一化后混合，exact problemKey 命中始终优先
+- **混合检索**：词面（FTS5 trigram + 中文二元索引）+ 语义优先（内置 BGE-small-zh int8，512 维；语义不可用或空结果时用 hashed/远程向量兜底）+ 图游走，RRF 融合排序；可选 cross-encoder rerank（Jina / Cohere / SiliconFlow / 自建兼容端点），只对 top-20 候选做 0..1 归一化后混合，exact problemKey 命中始终优先
 - **会话自动捕获**：`memory_ingest` 把任意宿主的对话轮次落成转录与待审候选；候选先 pending，`memory_candidate` 接受后才成为正式笔记，不让人写库成为唯一入口
 - **经验巩固**：`memory_consolidate` 按 `problemKey` 把多条活跃笔记压成带来源链的摘要；默认 dry-run，应用时只写 `superseded_by`，不删除原行
 - **分层画像**：注入画像显式分为 `## 全局`、`## 当前项目`，事实段单独保留，项目规则不再和全局规则混在一起
@@ -121,8 +121,8 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.3.3
-npm run verify:release -- --tag v4.3.3 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.4.0
+npm run verify:release -- --tag v4.4.0 --launcher ./omni-serve-7788.exe
 ```
 
 第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
@@ -204,6 +204,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 | `OMNI_RERANK_TIMEOUT_MS` | `5000` | rerank 超时；失败时回落到融合排序，不影响主结果 |
 | `OMNI_DREAM_INTERVAL_MS` | `0`（关） | 定时做梦校验 |
 | `OMNI_DISABLE_VECTOR` | 未设置 | `1` 同时关闭 hashed/远程向量与内置语义（诊断用） |
+| `OMNI_DISABLE_HASHED` | 未设置 | `1` 只关闭 hashed/远程向量，保留本地语义（测量语义单独质量） |
 | `OMNI_DISABLE_GRAPH` | 未设置 | `1` 关闭图路线 |
 
 ## 模型工具
@@ -259,7 +260,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 - 4.2.1：CLI 未给 `--dir` 时先向上找 `.omni-project`，找不到则回落到 CLI 所在仓库根，避免从 chat cwd 启动时落到 `proj:new-chat`；HTTP `/omni-memory/search` 同步返回 `total`/`returned`/`offset`/`truncated`。
 - 4.3.0：CLI `context`/`search` 默认改为词法 + hashed 向量，不再每次冷加载 37.5 MiB 本地语义模型；`--semantic` 或 `OMNI_CLI_SEMANTIC=1` 显式开启。实测同一查询：默认 **139ms**、语义 **478ms**；`context` 默认 **144ms**、语义 **467ms**。搜索返回结构收敛到单一构造点，CLI 参数错误改为一行提示并退出 2。
 - 4.3.1：`memory_context` 读路径只读版本缓存，不再等待 GitHub 探针（TTL 强制过期时仍 **142ms**，旧路径 0.5–2.5s）；`memory_write` 校验 `kind` 白名单，非法值返回错误而不是静默落成 note；CLI 布尔 flag 可放在关键词前；HTTP 空查询回填 `scope`；`npm test` 加 `--test-timeout=60000`，避免并行挂起。
-- 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → 旧 hashed 混合 0.927 → 内置本地语义单独 **0.979**；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
+- 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → hashed 混合 0.927 → 语义优先 **0.958**（旧双路 0.979，recall 仍 1.0）；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
 
 ```bash
 npm test

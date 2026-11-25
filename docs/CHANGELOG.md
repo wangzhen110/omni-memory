@@ -2,6 +2,17 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.4.0] — 2026-11-25
+
+### 变更
+- **双向量收敛为“语义为主、hashed 兜底”**：`runSearch` 先跑词面召回，再将词面候选交给内置语义；语义有结果时不再融合 hashed `vectors`，语义不可用、失败或空结果时 hashed 才接手。语义不再排在 hashed 之后，也不再被 `OMNI_DISABLE_VECTOR` 连带关闭。
+- **新增诊断开关 `OMNI_DISABLE_HASHED=1`**：只关闭 hashed `vectors`，保留本地语义，用于分离测量两路质量；`OMNI_DISABLE_VECTOR=1` 仍按历史行为同时关闭两路。
+- **hashed 写入不变**：CLI 零配置且本地语义模型缺失时，hashed 仍是唯一向量召回；本版不删除 `vectors` 表，也不清理现有 5 MiB，避免默认召回从 0.927 掉回 0.776。
+- **修掉版本硬编码测试**：`open-source.test.mjs` 改为校验 semver 格式并与 `package-lock.json` 一致，不再每版手改。
+
+### 测试
+- 黄金集新增“仅语义无 hashed”模式：词面 **0.776** → hashed **0.927** → 仅语义 **0.958** → 语义优先 **0.958**（旧双路 0.979，recall 仍 1.0）。完整 `npm test` **451/451** 通过。
+
 ## [4.3.3] — 2026-11-25
 
 ### 变更

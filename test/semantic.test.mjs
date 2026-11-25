@@ -79,7 +79,7 @@ test('FR-21 a paraphrase with zero shared characters recalls the note', async ()
     const hit = await app.call('memory_search', { query: '那个把界面弄没的坑' });
     assert.equal(hit.value.hits.length, 1, 'semantic route should recall the note');
     const first = hit.value.hits[0];
-    assert.ok(first.vectorScore > 0, 'vector route must contribute');
+    assert.ok(first.vectorScore > 0, 'remote embedding route must contribute');
     assert.equal(first.lexicalScore ?? null, null, 'lexical route cannot match this query');
   });
 });
@@ -113,6 +113,7 @@ test('FR-21 the bundled local model recalls a paraphrase with zero shared charac
   assert.equal(hit.value.hits.length, 1, 'local semantic route should recall the note');
   const first = hit.value.hits[0];
   assert.ok(first.semanticScore > 0, 'local semantic route must contribute');
+  assert.equal(first.vectorScore ?? null, null, 'hashed fallback must not fuse when semantic answered');
   assert.equal(first.lexicalScore ?? null, null, 'lexical route cannot match this query');
 });
 

@@ -78,9 +78,12 @@ if (semanticIndex.value.semantic?.enabled !== true) {
 }
 
 async function evaluate(mode) {
-  // mode: 'lexical' | 'vector' | 'full'
+  // mode: 'lexical' | 'vector' | 'semantic' | 'full'
   process.env.OMNI_DISABLE_VECTOR = mode === 'lexical' ? '1' : '';
-  process.env.OMNI_DISABLE_SEMANTIC = mode === 'full' ? '' : '1';
+  process.env.OMNI_DISABLE_HASHED = mode === 'semantic' || mode === 'lexical' ? '1' : '';
+  // OMNI_DISABLE_VECTOR closes the semantic route too (historical switch), so
+  // 'vector' also needs the semantic flag; 'semantic' keeps semantic on.
+  process.env.OMNI_DISABLE_SEMANTIC = mode === 'lexical' || mode === 'vector' ? '1' : '';
   process.env.OMNI_DISABLE_GRAPH = mode === 'full' ? '' : '1';
   let hits = 0;
   let mrr = 0;
@@ -107,22 +110,25 @@ async function evaluate(mode) {
 
 const lexical = await evaluate('lexical');
 const vector = await evaluate('vector');
+const semantic = await evaluate('semantic');
 const full = await evaluate('full');
 
 const targets = { recall: 0.85, mrr: 0.9 };
-const pass = full.recall >= targets.recall && full.mrr >= targets.mrr;
+const pass = full.recall >= targets.recall && full.mrr >= targets.mrr && semantic.mrr >= 0.95;
 
 console.log(JSON.stringify({
   corpus: CORPUS.length,
   questions: QUESTIONS.length,
   lexicalOnly: lexical,
   lexicalPlusHashedVector: vector,
-  full_lexical_hashed_semantic_graph: full,
+  lexicalPlusSemanticNoHashed: semantic,
+  full_semanticFirst_withHashedFallback: full,
   delta: {
     hashedVectorVsLexical: Number((vector.mrr - lexical.mrr).toFixed(3)),
-    semanticAndGraphVsVector: Number((full.mrr - vector.mrr).toFixed(3)),
+    semanticVsHashed: Number((semantic.mrr - vector.mrr).toFixed(3)),
+    semanticFirstVsFull: Number((full.mrr - semantic.mrr).toFixed(3)),
   },
-  targets,
+  targets: { ...targets, semanticMrr: 0.95 },
   pass,
 }, null, 2));
 

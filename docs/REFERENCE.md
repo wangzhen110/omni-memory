@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 4.3.3 · 生成日期 2026-11-25 · 依据源码与真实 schema v19 核对
+> 版本 4.4.0 · 生成日期 2026-11-25 · 依据源码与真实 schema v19 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -159,15 +159,15 @@ evidence: npm test → 242/242 passed
 
 ### 2.7 检索
 
-三路并行，然后在融合层合并：
+语义优先，hashed 兜底，再与图合并：
 
 1. **词面**：SQLite FTS5（trigram）＋中文二元索引（`bigrams` 表，逐字切 2 字组合）。
-2. **向量**：默认 512 维字符 n-gram 哈希向量（零依赖、离线可用）；配置 `OMNI_EMBED_URL` 后这一路改走远程真语义嵌入，维度持久化在 `meta`，换模型会触发回填。
-3. **本地语义**：包内 `BAAI/bge-small-zh-v1.5` int8 ONNX + ONNX Runtime WASM，512 维，进程内 CPU；查询加 BGE 指令前缀，阈值 0.25；与 hashed 向量分表存放，互不混算。旧库按 `semantic-backfill` 跨进程租约分批回填，租约 TTL 120 秒并按批续租；已索引库启动时不加载模型。
+2. **本地语义**：包内 `BAAI/bge-small-zh-v1.5` int8 ONNX + ONNX Runtime WASM，512 维，进程内 CPU；查询加 BGE 指令前缀，阈值 0.25；与 hashed 向量分表存放，互不混算。旧库按 `semantic-backfill` 跨进程租约分批回填，租约 TTL 120 秒并按批续租；已索引库启动时不加载模型。语义有结果时，不再融合 hashed。
+3. **向量兜底**：默认 512 维字符 n-gram 哈希向量（零依赖、离线可用）；配置 `OMNI_EMBED_URL` 后这一路改走远程真语义嵌入。只在本地语义关闭、失败或空结果时参与融合。
 4. **图**：从 `facts` 生成的 `entities` + `edges`，做 2 跳关联召回。
-四路排名用 RRF 融合（词面 1 / hashed 或远程 1 / 本地语义 2 / 图 0.5）；命中项分别带 `lexicalScore`、`vectorScore`、`semanticScore`、`rrf`。
+参与本轮的排名用 RRF 融合（词面 1 / hashed 或远程 1 / 本地语义 2 / 图 0.5）；命中项分别带 `lexicalScore`、`vectorScore`、`semanticScore`、`rrf`。
 
-CLI 是短生命周期进程，`context` / `search` 默认只走词法 + hashed 向量，避免每次调用冷加载 37.5 MiB 本地模型；需要语义召回时加 `--semantic`，或设 `OMNI_CLI_SEMANTIC=1`。MCP / HTTP 常驻进程默认启用本地语义。
+CLI 是短生命周期进程，`context` / `search` 默认只走词法 + hashed 向量，避免每次调用冷加载 37.5 MiB 本地模型；需要语义召回时加 `--semantic`，或设 `OMNI_CLI_SEMANTIC=1`。MCP / HTTP 常驻进程默认启用本地语义，语义命中时不跑 hashed。
 
 融合用 RRF（Reciprocal Rank Fusion，`K=60`），再叠加重要性、problemKey 精确命中、状态修正。候选池按 `limit × 4` 取，避免小样本抖动。
 
@@ -609,6 +609,7 @@ mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 | `OMNI_ACTIVE_COUNT_TTL_MS` | `60000` | 可召回行数缓存时间；0 表示每次判定都重新 COUNT，主要用于测试 |
 | `OMNI_OPEN_LEASE_WAIT_MS` | `150000` | 打开时等待迁移租约的上限（毫秒，上限 300000）；0 表示立即失败 |
 | `OMNI_DISABLE_VECTOR` / `OMNI_DISABLE_GRAPH` / `OMNI_DISABLE_SEMANTIC` | 未设置 | 诊断：关闭对应路线；`DISABLE_VECTOR` 同时关本地语义 |
+| `OMNI_DISABLE_HASHED` | 未设置 | 诊断：只关 hashed/远程向量，保留本地语义，用于测语义单独质量 |
 | `OMNI_CLI_SEMANTIC` | 未设置 | `1` 让 CLI `context`/`search` 默认启用本地语义；默认 CLI 只走词法 + hashed |
 
 ---
