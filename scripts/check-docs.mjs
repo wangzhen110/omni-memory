@@ -14,18 +14,20 @@ const read = file => readFileSync(path.join(root, file), 'utf8');
 
 const pkg = JSON.parse(read('package.json'));
 const index = read('index.js');
+const toolSource = index + read('lib/tool-definitions.mjs');
+const routeSource = index + read('lib/read-routes.mjs');
 const readme = read('README.md');
 const design = read('docs/DESIGN.md');
 const changelog = read('docs/CHANGELOG.md');
 const mcpReadme = read('hosts/mcp/README.md');
 const adapterSource = read('hosts/shared/context-tool.mjs') + read('hosts/shared/rules.mjs');
 
-const tools = [...new Set([...index.matchAll(/name:\s*'(memory_[a-z_]+)'/g)].map(match => match[1]))].sort();
+const tools = [...new Set([...toolSource.matchAll(/name:\s*'(memory_[a-z_]+)'/g)].map(match => match[1]))].sort();
 const adapterTools = [...new Set([...adapterSource.matchAll(/name:\s*'(memory_[a-z_]+)'/g)].map(match => match[1]))]
   .filter(tool => !tools.includes(tool))
   .sort();
 const mcpTools = tools.length + adapterTools.length;
-const routes = [...new Set([...index.matchAll(/path:\s*'\/omni-memory\/([a-z/.]+)'/g)].map(match => match[1]))].sort();
+const routes = [...new Set([...routeSource.matchAll(/path:\s*'\/omni-memory\/([a-z/.]+)'/g)].map(match => match[1]))].sort();
 const adrCount = readdirSync(path.join(root, 'docs', 'ADR')).filter(file => file.endsWith('.md')).length;
 
 let tests = 0;

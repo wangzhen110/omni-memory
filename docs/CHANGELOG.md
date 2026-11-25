@@ -2,6 +2,19 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.5.0] — 2026-11-25
+
+### 变更
+- **`index.js` 从 8,721 行降到 1,231 行**：只保留模块组装、公开导出、会话捕获与 `apply(ctx)`；核心按域拆到 `lib/store.mjs`（~3,300 行，SQLite/schema/迁移/向量/备份/候选）、`lib/search.mjs`（~1,500 行，词面/语义/图/RRF/dream）、`lib/tool-definitions.mjs`（~1,350 行，工具定义）、`lib/read-routes.mjs`（~1,130 行，HTTP 路由）。
+- **运行时依赖注入，不反向 import `index.js`**：各模块用 `bindStoreRuntime()` / `bindSearchRuntime()` / `bindToolRuntime()` / `bindRouteRuntime()` 接收宿主函数与可变状态 getter，模块图保持无环；`store`、`lastInjection`、`lastSearchProfile`、`lastJudge`、`vectorDropped` 等仍走实时绑定，不拍启动快照。
+- **`configureStore(home)` 支持同进程多 home**：ESM 缓存会复用模块，新宿主重新求值 `index.js` 时显式重置 `DB_FILE`、备份目录、workspace 缓存、SQLite 单例与检索缓存；`closeStore()` 在宿主 dispose 时关闭句柄，顺序启动的 HTTP 实例可安全接管同一库。
+- **不改 schema、不改工具/HTTP 协议**：`SCHEMA_VERSION` 仍为 19；23 个工具与 21 条路由的名称、参数、返回结构不变。
+
+### 测试
+- 完整 `npm test` **451/451** 通过；`node --check` 覆盖 `index.js` 与四个新模块；黄金集 `semantic-first` MRR **0.958**、recall **1.0**，与 4.4.0 持平。
+- 回归覆盖：工具注册、候选审阅/巩固、备份导入导出、HTTP 生命周期顺序重启、`/overview` 聚合、语义回填与锁超时。
+
+
 ## [4.4.0] — 2026-11-25
 
 ### 变更

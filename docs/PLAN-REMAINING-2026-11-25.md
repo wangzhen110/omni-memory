@@ -4,6 +4,8 @@
 
 本计划只处理上一轮挂起的三项，不夹带新功能；每项单独过门禁、单独发布，前一项未验收不进入下一项。
 
+**执行结果（2026-11-25）**：三项全部完成并发布。P3-9 → v4.3.3；P2-5 → v4.4.0；P2-3 → v4.5.0。P2-3 实际落地为 `lib/store.mjs`（~3,300 行）、`lib/search.mjs`（~1,500 行）、`lib/tool-definitions.mjs`（~1,350 行）、`lib/read-routes.mjs`（~1,130 行），`index.js` **8,721 → 1,231 行**；画像/会话/启动仍留在 `index.js`，未强拆。全量测试 **451/451**，黄金集 `semantic-first` MRR **0.958**、recall **1.0**。
+
 ## 一、P3-9 `notes_fts` 正文副本（v4.3.3）
 
 目标：把 `notes_fts` 从普通 FTS5 内容表改为 `content='notes'` 的 external-content 索引，去掉 `notes_fts_content` 的 1.9 MiB 正文副本，同时保证写入、修订、遗忘、恢复、物理删除五条路径的索引一致。

@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.4.0 |
-| 插件版本 | 4.4.0 |
+| 文档版本 | 4.5.0 |
+| 插件版本 | 4.5.0 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-25 |
@@ -163,8 +163,11 @@
 
 ```
 DSH Host 进程
-├── 本插件 Host 半边（index.js，~7900 行；路由/工具/导入/store schema 已按组拆分）
-│   ├── store         SQLite 句柄与 schema/迁移（唯一写入口）
+├── 本插件 Host 半边（index.js，~1,230 行，只保留组装/导出/启动；核心按域拆分）
+│   ├── lib/store.mjs        SQLite 句柄、schema/迁移、向量队列、备份与候选（~3,300 行）
+│   ├── lib/search.mjs       词面/语义/图召回、RRF 排序与 dream（~1,500 行）
+│   ├── lib/tool-definitions.mjs  23 个 MCP/DSH 工具定义（~1,350 行）
+│   ├── lib/read-routes.mjs  21 条 loopback HTTP 路由（~1,130 行）
 │   ├── capture       session/event → chunks
 │   ├── recall        agent/inbox/claimed → 异步预取 top-3（TTL 120s）
 │   ├── retrieval     分词 / FTS / bigram / hashed 或远程向量 / 本地语义 / 图游走 / RRF
