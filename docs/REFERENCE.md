@@ -72,10 +72,12 @@ memory_write(kind, text, scope?)
 优先级从高到低：
 
 1. 显式 `scope`（`global` 或 `proj:*`）；传 `all` 会被拒绝，因为 `all` 只读。
-2. 文本命中**全局提示词**且未命中项目提示词 → `global`。全局提示词包括：偏好、习惯、以后、总是、永远、一律、所有项目、跨项目、通用、铁律、禁止、不要再、宁可不。
-3. 文本命中**项目提示词** → 当前项目层。项目提示词包括：本项目、这个项目、本仓库、src/、docs/、package.json、.mjs、.ts、.js、构建、部署、迁移、表结构、字段。
+2. 文本命中**强全局提示词**（用户偏好、跨项目、所有项目、以后所有、今后所有、一律、永远、铁律、禁止、不要再、宁可不）→ `global`；弱全局词（偏好、习惯、以后、总是、通用）只在没有项目提示词时生效。
+3. 文本命中**项目提示词** → 当前项目层。项目提示词包括：本项目、这个项目、本仓库、src/、docs/、package.json、.mjs、.ts、.js、构建、部署、迁移、表结构、字段，以及项目名、CLI、search/write/context、scope、proj:、note#、盘符路径。
 4. 都没命中 → 落到当前项目层（`default-to-project`）。
 5. 没有项目信息 → `global`。
+
+CLI 的 `--dir` 不是提示词，而是硬绑定：给了 `--dir` 且没给 `--scope` 时，`write` / `ingest` / `candidates` / `consolidate` 直接写该项目层；要写全局规则必须显式 `--scope global`。这样“项目审计”不会因为出现“偏好/规则”被误抬到 global。
 
 设计取向：**宁可把该升级为全局的规则先留在项目层，也不让项目细节泄漏到全局**。项目层的东西以后好找，泄漏出去的收不回来。
 
@@ -83,13 +85,23 @@ memory_write(kind, text, scope?)
 
 ### 2.3 项目键
 
+仓库根可以放一个 `.omni-project` 文件声明稳定身份：
+
+```json
+{"key":"proj:全息记忆#30534c","name":"全息记忆"}
+```
+
+有文件时优先用它，路径哈希只作为旧仓库的 fallback。这样同一个仓库通过 `D:\...`、`C:\...`、大写盘符或不同 shell 进入，都落到同一个项目层，不再产生第二份键。
+
+没有文件时仍按路径生成：
+
 ```
 proj:<目录名（截 40 字符，非法字符转 -）>#<路径 FNV-1a 哈希前 6 位>
 ```
 
 Windows 与 macOS 在哈希前把规范化路径转小写，Linux 保留大小写；因此同一工作区在这些平台上不因大小写分裂。
 
-例：`D:\xiangmu\全息记忆` → 3.9.4 起为 `proj:全息记忆#30534c`。3.9.3 及以前的旧键 `proj:全息记忆#deff23` 会在首次打开该路径时通过 schema v15 的 `scope_aliases` 迁移到 canonical 键；迁移只针对由完整路径可确定的键，不按目录名猜测合并。
+例：`D:\xiangmu\全息记忆` 的旧路径键是 `proj:全息记忆#deff23`；仓库根 `.omni-project` 把稳定键钉在 `proj:全息记忆#30534c`。首次打开时 schema v15 的 `scope_aliases` 仍会把旧键迁到 canonical 键；迁移只针对由完整路径可确定的键，不按目录名猜测合并。
 
 没有留下 `project_path` 的旧键不会被自动猜测合并；确认两个 scope 属于同一项目后，用 CLI 显式补：
 
@@ -340,9 +352,11 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 - `status` string，`all|verified|unverified|failed|expired`，默认 all
 - `kind` string，`all|note|fact|chunk`，默认 all
 - `limit` number，默认 8，1..30；非数字或越界直接报错，不再静默返回空结果
+- `offset` number，默认 0，0..100；跳过前面已排序的候选，用于分页
+- `cwd` string，可选；按工作目录解析项目层，CLI `--dir` 用它
 - `scope` string，可选；`all` 表示跨所有项目
 
-返回：`total`、`scope`、`problemKey`、`hits[]`（含 kind/id/text/scope/score/rrf/contested/solutionStatus）。
+返回：`total`、`returned`、`offset`、`truncated`、`scope`、`problemKey`、`hits[]`（含完整的 `text`、`snippet`、`matchedTerms`、`score`、`why`、`recencyBoost`、可选 `staleVersion`，以及 kind/id/scope/contested/solutionStatus）。文本不再按 400 字硬截；分页用 `offset`，`truncated` 表示当前页之后还有候选。命中排序会给近期笔记很小的时间加权，并把带旧产品版本号的结论标记为 `staleVersion`、轻微降权；旧结论仍可检索，但不会盖过当前版本。
 
 ### 5.5 memory_solution_report
 参数：
@@ -353,7 +367,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 作用：`success` 标 verified 并累加 `reuseCount`；`failed`/`expired` 记死路。调用时机是"结果已知之后"，不是写入时。
 
 ### 5.6 memory_profile
-参数：`scope` 可选。返回常驻画像文本（预算 1200 字符）与存储统计。
+参数：`scope` 可选。返回常驻画像文本（预算 1200 字符）与存储统计。画像只收用户规则、项目结论与稳定设置；`专业知识/`、知识库、测试/审计/部署报告和工具清单不进入预算。跨项目部分按 `文档版本` 分层显示；项目技术笔记可被检索，但不会自动变成用户偏好。
 
 ### 5.7 memory_persona
 参数：
@@ -520,19 +534,29 @@ node hosts/cli.mjs <命令>
 
 rules    [--file <路径>]... [--write] [--create]
          默认预览；--write 落盘，区块幂等
-context  [--query <文本> | --stdin] [--scope <层级>] [--limit <n>]
+context  [--dir <项目>] [--query <文本> | --stdin] [--scope <层级>] [--limit <n>]
          --stdin 读钩子传入的 JSON，取其中的 prompt / user_prompt / text
          输出纯文本上下文，供 SessionStart / UserPromptSubmit 钩子拼接
-search   <关键词> | --problem-key <指纹>  [--scope] [--status] [--kind] [--limit]
+search   <关键词> | --problem-key <指纹>  [--dir <项目>] [--scope] [--status] [--kind]
+         [--limit] [--offset] [--json]
+         输出 matched N / showing M、分数、why、snippet；--json 返回 total/returned/offset/truncated
 write    --kind note|fact|episode (--text <文本> | --stdin | --file <路径>)
-         [--scope] [--importance] [--source]
+         [--dir <项目>] [--scope] [--importance] [--source]
          [--problem-key] [--status] [--evidence]
          [--subject --relation --object] [--cardinality] [--contradicts <id,id>]
-         输出写入结果 JSON：id / scope / scopeReason / deduped / solutionStatus
+         给 --dir 且没给 --scope 时强制项目层；全局规则显式 --scope global
 report   --id <笔记id> --outcome success|failed|expired [--evidence <证据>]
+feedback --kind note|fact --id <id> --rating useful|misleading [--dir <项目>] [--scope]
+         记录一次真实召回反馈；quality 排序的闭环信号
 forget   --kind note|fact|chunk --id <行id>
+project  show --dir <项目>
+         init --dir <项目> [--name <名称>] [--key <proj键>]
+         link --from <旧proj键> --to <新proj键> [--apply]
+         默认预览；--apply 事务内合并历史键
 scope-alias --from <旧proj键> --to <新proj键> [--apply]
          默认预览；--apply 事务内合并 scope；--list 列出已记录别名
+kb-migrate [--source-prefix 专业知识/] [--from global] [--to proj:专业知识#967a81] [--apply]
+         把导入的领域知识从 global 移到独立项目层；默认 dry-run
 serve    [--port <端口>] [--bind <地址>]
 doctor   [--home <目录>] [--port <端口>] [--task <任务名>] [--json] [--strict]
          [--skip-http] [--skip-task]
@@ -540,7 +564,7 @@ doctor   [--home <目录>] [--port <端口>] [--task <任务名>] [--json] [--st
 mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 ```
 
-所有命令共用 `--dir`（项目目录）与 `OMNI_*` 环境变量。`write` / `report` / `forget` 走的是与 MCP 完全相同的工具实现，不存在第二套写入路径。
+所有命令共用 `--dir`（项目目录）与 `OMNI_*` 环境变量。`--dir` 会读取仓库根 `.omni-project` 的稳定键，并硬绑定写入层；不想要项目绑定就显式写 `--scope global`。`write` / `report` / `forget` 走的是与 MCP 完全相同的工具实现，不存在第二套写入路径。
 
 一键安装不在 CLI 里，而是独立入口：`npm run setup:dry:release` 看计划并验签，`npm run setup` 等价于 `node scripts/install.mjs --apply --start --require-release`；它先跑 `omni doctor` 的只读 preflight，验证官方 Release 清单、签名 commit、干净工作树与启动器 SHA-256，再安装内容寻址启动器、写侧车配置，并在任务缺失时创建 `OmniMemory7788`。本地开发用 `npm run setup:dev`，只校验同提交哈希。
 

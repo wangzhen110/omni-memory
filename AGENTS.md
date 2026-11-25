@@ -38,10 +38,16 @@
 ## 豆包宿主接入
 
 - **默认零配置，不要求用户添加自定义连接器。** 本会话若能看到 `memory_*` 工具，直接按上面的规则调用。
-- 没有原生工具时，用现成 CLI：`node hosts\cli.mjs context --dir <项目> --query "<任务>"` 读取；写入用 `node hosts\cli.mjs write --dir <项目> --kind note ...`。CLI 会落到当前项目层，不需要 HTTP，也不需要修改豆包设置。若宿主报 `non_interactive_command_*.ps1` 找不到，等 2 秒重试一次；仍失败才走只读兜底，不要连续重试三次。
+- 没有原生工具时，用现成 CLI：`node hosts\cli.mjs context --dir <项目> --query "<任务>"` 读取；写入用 `node hosts\cli.mjs write --dir <项目> --kind note ...`。`--dir` 现在硬绑定项目层（读取仓库根 `.omni-project` 的稳定键），不会因为文案里出现“偏好/规则”被分类器抬到 global；要写全局规则必须显式加 `--scope global`。每轮对话可再用 `omni ingest --dir <项目> --role user|assistant --text ...` 写入转录，候选会进待审队列。不需要 HTTP，也不需要修改豆包设置。若宿主报 `non_interactive_command_*.ps1` 找不到，等 2 秒重试一次；仍失败才走只读兜底，不要连续重试三次。
 - CLI 也不可用时，才用 `GET http://127.0.0.1:7788/omni-memory/packet?cwd=<项目目录>&q=<任务>` 做只读兜底；必须带 `cwd`，否则默认 global，不能当项目层用。写入等 CLI 恢复。
 - 连接器只是可选增强；用户不主动要求时，不要提“去插件页保存连接器”。
 - Agent 不自动修改豆包设置、配置或注册表。
+
+### 项目身份文件
+
+- 仓库根 `.omni-project` 是项目身份的稳定来源，例如 `{"key":"proj:全息记忆#30534c","name":"全息记忆"}`。不要把它改写成路径哈希；路径哈希只用于没有文件的旧仓库。
+- 新仓库可运行 `node hosts\cli.mjs project init --dir <项目> --name <名称>` 生成；已有两个历史键时用 `project link --from <旧键> --to <新键> --apply` 合并。
+- 判断当前落点用 `node hosts\cli.mjs project show --dir <项目>`，不要靠猜路径。
 
 ## 读取记忆时的版本提醒（只报告，不自动更新）
 

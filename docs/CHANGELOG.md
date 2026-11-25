@@ -2,6 +2,18 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.2.0] — 2026-11-25
+
+### 修复
+- **项目身份不再靠路径哈希赌运气**：仓库根 `.omni-project` 可声明稳定 `key` / `name`；`projectShow`、CLI 与写入统一优先读它。同仓库从任意盘符或大小写路径进入，都会落到同一个 `proj:全息记忆#30534c`；没有文件的旧仓库仍走路径哈希，并提供 `omni project init` 生成。
+- **CLI `--dir` 硬绑定项目层**：`write` / `ingest` / `candidates` / `consolidate` 在给了 `--dir` 且没有 `--scope` 时强制 `scope=project`，分类器不再把“偏好/规则”这类字样误判成 global；全局规则必须显式 `--scope global`。
+- **画像与领域知识分层**：`buildProfileText` 过滤 `专业知识/`、知识库、测试/审计/部署报告和工具清单，只保留用户规则与项目结论；`personaEvidence` 用独立过滤，避免技术碎片进入人设。新增 `omni kb-migrate`（默认 dry-run，`--apply` 才迁移），把 1,208 条知识库笔记从 global 移到 `proj:专业知识#967a81`。
+- **搜索输出可用**：`memory_search` 返回完整 `text`、`snippet`、`matchedTerms`、`score`、`why`、`total` / `returned` / `offset` / `truncated`；CLI 支持 `--json` 与 `--offset`，不再每条硬截 400 字；命中按新旧加权，旧版本结论标记 `staleVersion`。
+- **待审与版本新鲜度口径**：`/overview` 新增 `pendingBreakdown`（争议笔记/争议事实/候选/被替代/过期事实）与 `coverage`（转录、事实、图谱、召回、来源覆盖率）；`/hub` 的待处理数改用单一 `pending`，不再重复累加候选与争议。
+
+### 测试
+- 新增 CLI 项目身份、画像过滤、搜索输出、旧版本标记、kb 迁移与 overview 口径用例；完整 `npm test` **444/444** 通过；`npm run check` 通过（444 tests、23 core / 25 MCP、21 routes、31 ADRs、version 4.2.0、syntax 56 files）。
+
 ## [4.1.1] — 2026-11-24
 
 ### 界面

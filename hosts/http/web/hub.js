@@ -106,10 +106,7 @@ async function load() {
   const version = overview?.version || health?.version || '—';
   const total = Number(stats.notes || 0) + Number(stats.facts || 0);
   const score = Number(healthData.score ?? 0);
-  const pending = Number(stats.pending || 0) +
-    Number(stats.pendingCandidates || 0) +
-    Number(stats.contested || 0) +
-    Number(stats.expiredFacts || 0);
+  const pending = Number(stats.pendingBreakdown?.total ?? stats.pending ?? 0);
 
   setText('versionPill', `v${version}`);
   setText('dbPill', health ? '本地库 · 运行中' : '本地库 · 已连接');

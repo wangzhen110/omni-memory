@@ -31,11 +31,12 @@ const USAGE = `全息记忆 · omni
   omni rules   [--file <路径>]... [--write] [--create]
                默认只预览；--write 落盘（区块幂等，可重复执行）
                不给 --file 时，自动查找 CLAUDE.md / AGENTS.md / .cursorrules
-  omni context [--query <文本>] [--scope <层级>] [--limit <n>]
+  omni context [--query <文本>] [--scope <层级>] [--limit <n>] [--dir <目录>]
                输出画像与相关记忆，适合给 hooks 拼接上下文
-  omni search  <关键词> [--scope <层级>] [--limit <n>] [--rerank]
+  omni search  <关键词> [--scope <层级>] [--limit <n>] [--offset <n>] [--json] [--rerank] [--dir <目录>]
+               文本模式显示分数、命中理由与候选总数；--json 输出完整命中对象
   omni ingest  (--text <文本> | --stdin | --file <路径>) [--role user|assistant|system|tool]
-               [--session <id>] [--source <来源>] [--cwd <目录>] [--scope <层级>]
+               [--session <id>] [--source <来源>] [--cwd <目录>] [--dir <目录>] [--scope <层级>]
                [--no-extract]   把一轮对话写入转录层；默认生成待确认候选 note
   omni candidates [--status pending|accepted|rejected|all] [--scope <层级>] [--cwd <目录>]
                查看候选 note 队列
@@ -48,12 +49,23 @@ const USAGE = `全息记忆 · omni
                [--problem-key <指纹>] [--status verified|unverified|failed|expired]
                [--evidence <证据>] [--subject <实体> --relation <关系> --object <值>]
                [--cardinality single|multi] [--contradicts <id,id>]
+  omni feedback --kind note|fact --id <id> --rating useful|misleading [--dir <目录>] [--scope <层级>]
+               记录一次真实召回反馈；这是 quality 排序的闭环信号
   omni report  --id <笔记id> --outcome success|failed|expired [--evidence <证据>]
+               记录方案的真实结果；success 标 verified，failed/expired 留死路
   omni forget  --kind note|fact|chunk --id <行id>
   omni scope-alias --from <旧proj键> --to <新proj键> [--apply]
                旧项目键没有 project_path 证据时，显式合并 scope；默认只预览
   omni scope-alias --list
                列出已记录的旧键 → canonical 键映射
+  omni project show [--dir <目录>]
+               显示当前目录解析到的项目键、身份文件与路径回退键
+  omni project init [--dir <目录>] [--force]
+               在当前目录写 .omni-project；已有文件默认不覆盖
+  omni project link --from <旧proj键> --to <新proj键> [--apply]
+               合并同一项目的两个历史键；默认只预览
+  omni kb-migrate [--source-prefix 专业知识/] [--from global] [--to proj:专业知识#967a81] [--apply]
+               把导入的领域知识从 global 移到独立项目层；默认 dry-run
   omni serve   [--port <端口>] [--bind <地址>]
   omni doctor  [--home <目录>] [--port <端口>] [--task <任务名>] [--json] [--strict]
                只读诊断：Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务
@@ -62,6 +74,12 @@ const USAGE = `全息记忆 · omni
 环境变量:
   OMNI_HOME         数据根目录，默认 $DSH_HOME 再退回 ~/.dsh
   OMNI_PROJECT_DIR  项目层绑定的目录，默认当前目录
+  OMNI_HTTP_PORT    7788 服务端口，默认 7788
+
+通用选项:
+  --dir <目录>      把本次命令的项目层绑定到该目录；context/search/write/ingest 都适用
+                    写入时若未显式 --scope，--dir 会强制落到项目层；全局规则请显式 --scope global
+  --scope global    显式写全局层；--scope project 表示当前项目；--scope all 只读
 `;
 
 function parseArgs(argv) {
@@ -101,6 +119,11 @@ const command = (positional.shift() ?? 'help').toLowerCase();
 const workdir = path.resolve(String(flags.dir ?? process.env.OMNI_PROJECT_DIR ?? process.cwd()));
 
 const log = message => console.error(`[omni] ${message}`);
+
+if (flags.help === true || process.argv.includes('-h')) {
+  process.stdout.write(USAGE);
+  process.exit(0);
+}
 
 function readStdin() {
   return new Promise(resolve => {
@@ -242,6 +265,7 @@ async function commandIngest() {
   if (flags.session) args.sessionId = String(flags.session);
   if (flags.source) args.source = String(flags.source);
   if (flags.scope) args.scope = String(flags.scope);
+  else if (flags.dir) args.scope = 'project';
   if (flags['no-extract'] === true) args.extract = false;
   const booted = await boot();
   try {
@@ -257,6 +281,7 @@ async function commandCandidates() {
   if (flags.status) args.status = String(flags.status);
   if (flags.scope) args.scope = String(flags.scope);
   if (flags.cwd) args.cwd = String(flags.cwd);
+  else if (flags.dir) args.cwd = workdir;
   if (flags.limit) args.limit = Number(flags.limit);
   const booted = await boot();
   try {
@@ -278,6 +303,7 @@ async function commandCandidate() {
   const args = { action, id };
   if (flags.scope) args.scope = String(flags.scope);
   if (flags.cwd) args.cwd = String(flags.cwd);
+  else if (flags.dir) args.cwd = workdir;
   if (flags.reason) args.reason = String(flags.reason);
   const booted = await boot();
   try {
@@ -297,6 +323,7 @@ async function commandConsolidate() {
   }
   const args = { problemKey };
   if (flags.scope) args.scope = String(flags.scope);
+  else if (flags.dir) args.scope = 'project';
   if (flags['min-notes']) args.minNotes = Number(flags['min-notes']);
   if (flags.apply === true) args.apply = true;
   const booted = await boot();
@@ -323,6 +350,7 @@ async function commandWrite() {
 
   const args = { kind, text };
   if (flags.scope) args.scope = String(flags.scope);
+  else if (flags.dir) args.scope = 'project';
   if (flags.importance) args.importance = Number(flags.importance);
   if (flags.source) args.source = String(flags.source);
   if (flags['problem-key']) args.problemKey = String(flags['problem-key']);
@@ -362,6 +390,26 @@ async function commandReport() {
   }
 }
 
+async function commandFeedback() {
+  const kind = String(flags.kind ?? '');
+  const id = Number(flags.id);
+  const rating = String(flags.rating ?? '');
+  if (!id || !kind || !rating) {
+    log('需要 --kind note|fact、--id 与 --rating useful|misleading');
+    process.exitCode = 2;
+    return;
+  }
+  const booted = await boot();
+  try {
+    const args = { kind, id, rating };
+    if (flags.scope) args.scope = String(flags.scope);
+    const value = await callTool(booted, 'memory_feedback', args);
+    process.stdout.write(JSON.stringify(value) + '\n');
+  } finally {
+    booted.host.dispose();
+  }
+}
+
 async function commandForget() {
   const id = Number(flags.id);
   const kind = String(flags.kind ?? '');
@@ -390,12 +438,18 @@ async function commandSearch() {
   const booted = await boot();
   try {
     const args = { query, limit: Number(flags.limit ?? 8) };
+    if (flags.offset) args.offset = Number(flags.offset);
     if (flags.scope) args.scope = String(flags.scope);
+    if (flags.dir) args.cwd = workdir;
     if (problemKey) args.problemKey = problemKey;
     if (flags.status) args.status = String(flags.status);
     if (flags.kind) args.kind = String(flags.kind);
     if (flags.rerank) args.rerank = true;
     const value = await callTool(booted, 'memory_search', args);
+    if (flags.json === true) {
+      process.stdout.write(JSON.stringify(value, null, 2) + '\n');
+      return;
+    }
     const def = booted.host.tools.get('memory_search');
     const blocks = def.output.render(args, value);
     process.stdout.write(blocks.map(block => block.text).join('\n') + '\n');
@@ -441,6 +495,88 @@ async function commandScopeAlias() {
   } finally {
     booted.host.dispose();
   }
+}
+
+async function commandProject() {
+  const action = String(positional[0] ?? 'show').trim().toLowerCase();
+  const { projectIdentityFromCwd, projectKeyFromCwd, legacyProjectKeyFromCwd, openStore, migrateScopeAlias, scopeHasRows } = await import('../index.js');
+  if (action === 'show' || action === 'status') {
+    const identity = projectIdentityFromCwd(workdir);
+    const key = projectKeyFromCwd(workdir);
+    const legacy = legacyProjectKeyFromCwd(workdir);
+    process.stdout.write(JSON.stringify({
+      dir: workdir,
+      key,
+      pathFallback: legacy,
+      identity: identity ? { source: identity.source, file: identity.file, root: identity.root, name: identity.name } : null,
+    }, null, 2) + '\n');
+    return;
+  }
+  if (action === 'init') {
+    const file = path.join(workdir, '.omni-project');
+    if (existsSync(file) && flags.force !== true) {
+      log(`已存在：${file}（加 --force 覆盖）`);
+      process.stdout.write(JSON.stringify({ dir: workdir, file, key: projectKeyFromCwd(workdir), created: false }) + '\n');
+      return;
+    }
+    const key = projectKeyFromCwd(workdir);
+    if (!/^proj:[^#\s]+#[a-z0-9]{6,}$/i.test(key)) {
+      log(`无法从 ${workdir} 解析项目键；请在项目目录内执行`);
+      process.exitCode = 2;
+      return;
+    }
+    const name = path.basename(workdir) || 'project';
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify({ key, name }, null, 2) + '\n', 'utf8');
+    process.stdout.write(JSON.stringify({ dir: workdir, file, key, name, created: true }) + '\n');
+    return;
+  }
+  if (action === 'link') {
+    const from = String(flags.from ?? '').trim();
+    const to = String(flags.to ?? '').trim();
+    if (!from.startsWith('proj:') || !to.startsWith('proj:')) {
+      log('--from 与 --to 必须是 proj:<名称>#<哈希> 形式；不允许合并 global');
+      process.exitCode = 2;
+      return;
+    }
+    if (from === to) {
+      log('--from 与 --to 相同，无需迁移');
+      return;
+    }
+    const booted = await boot();
+    try {
+      const store = openStore();
+      const db = store.db;
+      const preview = {
+        from, to,
+        fromHasRows: scopeHasRows(db, from),
+        toHasRows: scopeHasRows(db, to),
+        applied: flags.apply === true,
+      };
+      if (flags.apply !== true) {
+        process.stdout.write(JSON.stringify({ ...preview, hint: '加 --apply 执行合并；默认只预览' }) + '\n');
+        return;
+      }
+      process.stdout.write(JSON.stringify({ ...preview, ...migrateScopeAlias(db, from, to, { literal: true }) }) + '\n');
+    } finally {
+      booted.host.dispose();
+    }
+    return;
+  }
+  log(`未知 project 动作：${action}；可用 show / init / link`);
+  process.exitCode = 2;
+}
+
+async function commandKbMigrate() {
+  const { openStore, migrateKnowledgeNotes } = await import('../index.js');
+  const store = openStore();
+  const result = migrateKnowledgeNotes(store.db, {
+    fromScope: String(flags.from ?? 'global'),
+    target: String(flags.to ?? 'proj:专业知识#967a81'),
+    sourcePrefix: String(flags['source-prefix'] ?? '专业知识/'),
+    apply: flags.apply === true,
+  });
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 }
 
 async function commandServe() {
@@ -512,11 +648,20 @@ switch (command) {
   case 'report':
     await commandReport();
     break;
+  case 'feedback':
+    await commandFeedback();
+    break;
   case 'forget':
     await commandForget();
     break;
   case 'scope-alias':
     await commandScopeAlias();
+    break;
+  case 'project':
+    await commandProject();
+    break;
+  case 'kb-migrate':
+    await commandKbMigrate();
     break;
   case 'serve':
     await commandServe();

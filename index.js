@@ -129,9 +129,86 @@ function fnv1a(text) {
   return hash >>> 0;
 }
 
+const PROJECT_IDENTITY_FILE_NAMES = ['.omni-project', '.omni/project.json'];
+const PROJECT_IDENTITY_CACHE_MS = 60_000;
+const PROJECT_IDENTITY_CACHE = new Map();
+
+function readProjectIdentityFile(file) {
+  let raw;
+  try {
+    raw = readFileSync(file, 'utf8').trim();
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+
+  let parsed = null;
+  try { parsed = JSON.parse(raw); } catch { /* plain text is also allowed */ }
+
+  let key = '';
+  let id = '';
+  let name = '';
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    key = String(parsed.key ?? '').trim();
+    id = String(parsed.id ?? '').trim();
+    name = String(parsed.name ?? '').trim();
+  } else {
+    // A one-line file is enough: either an explicit key or a stable project id.
+    const first = raw.split(/\r?\n/).map(line => line.trim()).find(Boolean) ?? '';
+    if (first.startsWith('proj:')) key = first.split(/\s+/)[0];
+    else id = first.split(/\s+/)[0];
+  }
+
+  if (/^proj:[^#\s]+#[a-z0-9]{6,}$/i.test(key)) return { key, name, file };
+  const seed = id || raw;
+  if (!seed) return null;
+  const label = (name || path.basename(path.dirname(file)) || 'project')
+    .replace(/[^\p{L}\p{N}._-]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'project';
+  return {
+    key: `proj:${label}#${fnv1a(seed).toString(16).padStart(8, '0').slice(0, 6)}`,
+    name: name || label,
+    file,
+  };
+}
+
+/**
+ * A repo-local `.omni-project` is the stable identity. It is deliberately read
+ * before the path hash so two checkouts on different drives (or a moved folder)
+ * resolve to one project layer. The file is only a hint: an invalid or missing
+ * file falls back to the historical path-derived key.
+ */
+function projectIdentityFromCwd(cwd) {
+  const resolved = path.resolve(String(cwd ?? '').trim() || '.');
+  const cached = PROJECT_IDENTITY_CACHE.get(resolved);
+  if (cached && Date.now() - cached.at < PROJECT_IDENTITY_CACHE_MS) return cached.value;
+
+  let dir = resolved;
+  for (let depth = 0; depth < 12; depth += 1) {
+    for (const name of PROJECT_IDENTITY_FILE_NAMES) {
+      const file = path.join(dir, name);
+      if (!existsSync(file)) continue;
+      const identity = readProjectIdentityFile(file);
+      if (identity) {
+        const value = { ...identity, root: dir, source: 'file' };
+        PROJECT_IDENTITY_CACHE.set(resolved, { at: Date.now(), value });
+        return value;
+      }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  PROJECT_IDENTITY_CACHE.set(resolved, { at: Date.now(), value: null });
+  return null;
+}
+
 function projectKeyFromCwd(cwd, platform = process.platform) {
   const raw = String(cwd ?? '').trim();
   if (!raw) return SCOPE_GLOBAL;
+  const projectIdentity = projectIdentityFromCwd(raw);
+  if (projectIdentity?.key) return projectIdentity.key;
   const normalized = raw.replaceAll('\\', '/').replace(/\/+$/, '') || raw;
   // Windows and macOS paths are case-insensitive by default. Keeping the hash
   // case-sensitive there meant the same workspace opened as `C:\Repo` and
@@ -156,8 +233,8 @@ function projectKeyFromPath(normalized) {
   return `proj:${safe || 'project'}#${fnv1a(normalized).toString(16).slice(0, 6)}`;
 }
 
-export { projectKeyFromCwd, legacyProjectKeyFromCwd };
-export { openStore, migrateScopeAlias, scopeHasRows };
+export { projectKeyFromCwd, legacyProjectKeyFromCwd, projectIdentityFromCwd };
+export { openStore, migrateScopeAlias, scopeHasRows, migrateKnowledgeNotes };
 
 const WORKSPACES_DIR = path.join(DSH_HOME, 'sessions');
 
@@ -219,20 +296,32 @@ const GLOBAL_HINTS = [
   '偏好', '习惯', '以后', '总是', '永远', '一律', '所有项目', '跨项目', '通用',
   '铁律', '禁止', '不要再', '宁可不',
 ];
+// These are strong enough to outrank a project name inside the same sentence.
+// "用户偏好：涉及全息记忆的工作……" is global; "全息记忆 4.1.1 的 CLI 作用域"
+// is project knowledge even though it mentions a preferred project.
+const GLOBAL_STRONG_HINTS = [
+  '用户偏好', '跨项目', '所有项目', '以后所有', '今后所有', '一律', '永远', '铁律', '禁止', '不要再', '宁可不',
+];
 const PROJECT_HINTS = [
   '本项目', '这个项目', '当前项目', '本仓库', '本工程', '这个插件', '本插件',
-  'src/', 'docs/', 'package.json', '.mjs', '.ts', '.js', '构建', '部署', '迁移', '表结构', '字段',
+  '项目', '仓库', '代码', '目录', '路径', '本机', '工作目录', '当前目录',
+  '全息记忆', 'CLI', 'search', 'write', 'context', 'scope', 'proj:', 'note#',
+  'src/', 'docs/', 'hosts/', 'index.js', 'package.json', '.mjs', '.ts', '.js',
+  '构建', '部署', '迁移', '表结构', '字段', '版本', '审计', '修复', '优化',
+  'D:\\', 'C:\\',
 ];
 
 function classifyScope(text, project) {
   const value = String(text ?? '');
   const globalScore = GLOBAL_HINTS.filter(hint => value.includes(hint)).length;
+  const strongGlobalScore = GLOBAL_STRONG_HINTS.filter(hint => value.includes(hint)).length;
   const projectScore = PROJECT_HINTS.filter(hint => value.includes(hint)).length;
   if (!project) return { scope: SCOPE_GLOBAL, reason: 'no-project', confidence: 1 };
-  if (globalScore > 0 && projectScore === 0) {
-    return { scope: SCOPE_GLOBAL, reason: 'cross-project wording', confidence: 0.8 };
+  if (strongGlobalScore > 0 && (strongGlobalScore > 1 || /^(?:用户偏好|跨项目|所有项目|以后所有|今后所有|一律|永远|铁律|禁止|不要再|宁可不)/.test(value))) {
+    return { scope: SCOPE_GLOBAL, reason: 'cross-project wording', confidence: 0.85 };
   }
   if (projectScore > 0) return { scope: project, reason: 'project-specific wording', confidence: 0.85 };
+  if (globalScore > 0) return { scope: SCOPE_GLOBAL, reason: 'cross-project wording', confidence: 0.8 };
   return { scope: project, reason: 'default-to-project', confidence: 0.55 };
 }
 
@@ -391,6 +480,54 @@ function migrateScopeAlias(db, from, to, options = {}) {
     upsertScopeAlias(db, source, target);
   });
   return { migrated: true, from: source, to: target, ...counts };
+}
+
+/**
+ * Move imported domain knowledge out of the global layer without touching the
+ * user's rules. The source prefix is the same convention used by the knowledge
+ * importer (`专业知识/<path>#<section>`), so the migration is auditable and can
+ * be dry-run before it writes.
+ */
+function migrateKnowledgeNotes(db, options = {}) {
+  const fromScope = String(options.fromScope ?? SCOPE_GLOBAL).trim();
+  const targetScope = String(options.target ?? 'proj:专业知识#967a81').trim();
+  const sourcePrefix = String(options.sourcePrefix ?? '专业知识/').trim();
+  if (!sourcePrefix) throw new Error('sourcePrefix is required');
+  if (!targetScope.startsWith('proj:')) throw new Error('target must be a proj:<name>#<hash> scope');
+  if (targetScope === SCOPE_GLOBAL) throw new Error('target must not be global');
+
+  const where = "deleted_at IS NULL AND superseded_by IS NULL AND scope = ? AND source LIKE ?";
+  const params = [fromScope, `${sourcePrefix}%`];
+  const candidates = prepareCached(db, `
+    SELECT id, scope, source, substr(text, 1, 120) AS sample
+    FROM notes WHERE ${where} ORDER BY id
+  `).all(...params);
+  const total = candidates.length;
+  const targetExisting = Number(prepareCached(db,
+    'SELECT COUNT(*) AS n FROM notes WHERE deleted_at IS NULL AND superseded_by IS NULL AND scope = ?'
+  ).get(targetScope).n ?? 0);
+  const preview = {
+    fromScope,
+    targetScope,
+    sourcePrefix,
+    total,
+    targetExisting,
+    sample: candidates.slice(0, 5),
+    applied: options.apply === true,
+  };
+  if (!total || options.apply !== true) {
+    return {
+      ...preview,
+      moved: 0,
+      ...(total ? { hint: '加 --apply 执行迁移；默认只预览' } : { hint: '没有匹配的知识库笔记' }),
+    };
+  }
+  const moved = Number(transaction(db, () => prepareCached(db, `
+    UPDATE notes SET scope = ?, revision = revision + 1
+    WHERE ${where}
+  `).run(targetScope, ...params).changes));
+  invalidateProfile();
+  return { ...preview, moved, remaining: Math.max(0, total - moved) };
 }
 
 /**
@@ -3220,6 +3357,100 @@ function matchRatio(row, columns, terms) {
   return hit / terms.length;
 }
 
+function matchedTermsOf(row, columns, terms) {
+  if (!terms.length) return [];
+  const haystack = columns.map(column => String(row[column] ?? '').toLowerCase()).join('\n');
+  return terms.filter(term => haystack.includes(String(term).toLowerCase())).slice(0, 6);
+}
+
+/**
+ * A search result is a pointer, not the whole note. Keep the beginning and the
+ * tail so a conclusion at the end of a long note is still visible; if a query
+ * term has a clear match, show a window around it instead.
+ */
+function searchExcerpt(text, terms = [], max = 460) {
+  const source = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (source.length <= max) return source;
+  const lower = source.toLowerCase();
+  let anchor = -1;
+  for (const term of terms) {
+    const at = lower.indexOf(String(term).toLowerCase());
+    if (at >= 0 && (anchor < 0 || at < anchor)) anchor = at;
+  }
+  if (anchor > 100 && anchor < source.length - 100) {
+    const start = Math.max(0, anchor - 100);
+    const end = Math.min(source.length, start + max - 2);
+    return `${start > 0 ? '…' : ''}${source.slice(start, end)}${end < source.length ? '…' : ''}`;
+  }
+  const head = source.slice(0, 200);
+  const tail = source.slice(-220);
+  return `${head} … ${tail}`;
+}
+
+function hitWhy(hit) {
+  const numeric = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  const reasons = [];
+  if (hit.exactProblem) reasons.push('problemKey');
+  if (numeric(hit.lexicalScore) || hit.via === 'lexical') reasons.push('lexical');
+  if (numeric(hit.vectorScore) || hit.via === 'vector') reasons.push('vector');
+  if (numeric(hit.semanticScore) || hit.via === 'semantic') reasons.push('semantic');
+  if (numeric(hit.graphScore) || hit.via === 'graph') reasons.push('graph');
+  if (hit.solutionStatus === 'verified') reasons.push('verified');
+  if (Number(hit.reuseCount) > 0) reasons.push(`reused×${Number(hit.reuseCount)}`);
+  if (hit.contested) reasons.push('contested');
+  if (hit.staleVersion) reasons.push('stale-version');
+  return reasons.join('+') || 'matched';
+}
+
+function versionParts(value) {
+  const match = String(value ?? '').match(/(\d{1,5})\.(\d{1,5})\.(\d{1,5})/);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function compareVersionParts(a, b) {
+  for (let i = 0; i < 3; i += 1) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return 0;
+}
+
+/**
+ * A note can be correct when written and stale months later. Only flag version
+ * claims that also name this product; a GB/T number or a date is not a release.
+ */
+function staleVersionIn(text, currentVersion = currentPackageVersion()) {
+  const body = String(text ?? '');
+  if (!/(全息记忆|omni)/i.test(body)) return null;
+  const current = versionParts(currentVersion);
+  if (!current || current.every(n => n === 0)) return null;
+  const versions = [];
+  const add = (value) => {
+    const parts = versionParts(value);
+    if (!parts) return;
+    if (parts[0] === current[0] && parts[1] === current[1] && parts[2] === current[2]) return;
+    if (!versions.some(item => item.text === value)) versions.push({ text: value, parts });
+  };
+  // "全息记忆 3.11.8", "全息记忆（3.11.8）", "omni-memory v4.1.0"
+  for (const match of body.matchAll(/(?:全息记忆|omni(?:-memory)?)[^\n。；]{0,60}?v?(\d{1,4}\.\d{1,4}\.\d{1,4})/gi)) add(match[1]);
+  // "3.11.8 的全息记忆", "v4.1.0 把 /hub ... 全息记忆"
+  for (const match of body.matchAll(/v?(\d{1,4}\.\d{1,4}\.\d{1,4})[^\n。；]{0,60}?(?:全息记忆|omni)/gi)) add(match[1]);
+  // A release note often starts with its version and names the product later.
+  const start = body.match(/^\s*(?:v|版本)?(\d{1,4}\.\d{1,4}\.\d{1,4})/i);
+  if (start) add(start[1]);
+  for (const item of versions) {
+    if (compareVersionParts(item.parts, current) < 0) return item.text;
+  }
+  return null;
+}
+
+function recencyBoost(ts) {
+  const ageDays = (Date.now() - Number(ts ?? 0)) / (24 * 60 * 60 * 1000);
+  if (!Number.isFinite(ageDays)) return 0;
+  const age = Math.max(0, ageDays);
+  return 0.02 / (1 + age / 30);
+}
+
 function rank(items) {
   return items.sort((a, b) => b.score - a.score);
 }
@@ -3560,7 +3791,10 @@ function searchChunks(s, terms, limit, scope) {
       role: row.role,
       source: row.source ?? '',
       scope: row.scope ?? null,
-      text: String(row.text).slice(0, 400),
+      text: String(row.text),
+      snippet: searchExcerpt(row.text, terms),
+      matchedTerms: matchedTermsOf(row, ['text', 'source'], terms),
+      via: 'lexical',
       score: 0.6 * Math.max(textScore, ratio) + 0.2 * Number(row.importance ?? 0.5) + 0.2 * recencyScore(row.ts),
     });
   };
@@ -3601,7 +3835,10 @@ function searchNotes(s, terms, limit, scope, options = {}) {
       contested: Number(row.contested ?? 0) === 1,
       ...solutionFields(row),
       ...feedbackFields(row),
-      text: String(row.text).slice(0, 400),
+      text: String(row.text),
+      snippet: searchExcerpt(row.text, terms),
+      matchedTerms: matchedTermsOf(row, ['text'], terms),
+      via: 'lexical',
       score: 0.6 * Math.max(textScore, matchRatio(row, ['text'], terms))
         + 0.2 * Number(row.importance ?? 0.5)
         + 0.2 * recencyScore(row.ts)
@@ -3662,7 +3899,10 @@ function searchProblemKey(s, problemKey, limit, scope, options = {}) {
         contested: Number(row.contested ?? 0) === 1,
         ...solutionFields(row),
         ...feedbackFields(row),
-        text: String(row.text).slice(0, 400),
+        text: String(row.text),
+        snippet: searchExcerpt(row.text, []),
+        matchedTerms: [],
+        via: 'lexical',
         score: 2 + solutionBoost(row.solution_status, row.reuse_count) + feedbackBoost(row),
         exactProblem: true,
       }));
@@ -3689,7 +3929,10 @@ function searchFacts(s, terms, limit, scope) {
       source: row.source ?? '',
       scope: row.scope ?? null,
       ...feedbackFields(row),
-      text: String(row.text).slice(0, 400),
+      text: String(row.text),
+      snippet: searchExcerpt(row.text, terms),
+      matchedTerms: matchedTermsOf(row, ['text', 'subject', 'object'], terms),
+      via: 'lexical',
       score: 0.6 * Math.max(textScore, matchRatio(row, ['text', 'subject', 'object'], terms))
         + 0.2 * Number(row.confidence ?? 0.7)
         + 0.2 * recencyScore(row.valid_from)
@@ -3973,6 +4216,7 @@ function dreamRollback(s, noteId, scope = SCOPE_GLOBAL) {
 async function semanticSearch(s, queryText, limit, scope, candidates = []) {
   const config = semanticConfig();
   if (!config.enabled) return [];
+  const terms = queryTerms(queryText);
   const state = semanticState(s);
   if (state.retryAt > now()) return [];
   // A note written in this same turn is still queued. Index one batch before
@@ -4040,7 +4284,9 @@ async function semanticSearch(s, queryText, limit, scope, candidates = []) {
             id: Number(row.owner_id),
             ts: Number(row.ts ?? row.valid_from ?? 0),
             scope: row.scope ?? null,
-            text: String(row.text ?? '').slice(0, 400),
+            text: String(row.text ?? ''),
+            snippet: searchExcerpt(row.text, terms),
+            matchedTerms: matchedTermsOf(row, ['text'], terms),
             source: row.source ?? '',
             ...(spec.kind === 'note' ? solutionFields(row) : {}),
             score,
@@ -4066,6 +4312,7 @@ const RRF_WEIGHT = { lexical: 1, vector: 1, semantic: 2, graph: 0.5 };
 
 async function vectorSearch(s, queryText, limit, scope, candidates = []) {
   const config = backendConfig();
+  const terms = queryTerms(queryText);
   let dim = activeVectorDim();
   if (!dim && config.kind === 'remote') dim = await ensureRemoteDim(s);
   if (!dim) return [];
@@ -4143,7 +4390,9 @@ async function vectorSearch(s, queryText, limit, scope, candidates = []) {
         id: Number(row.owner_id),
         ts: Number(row.ts ?? row.valid_from ?? 0),
         scope: row.scope ?? null,
-        text: String(row.text ?? '').slice(0, 400),
+        text: String(row.text ?? ''),
+        snippet: searchExcerpt(row.text, terms),
+        matchedTerms: matchedTermsOf(row, ['text'], terms),
         source: row.source ?? '',
         ...(spec.kind === 'note' ? solutionFields(row) : {}),
         score,
@@ -4158,27 +4407,38 @@ async function vectorSearch(s, queryText, limit, scope, candidates = []) {
 
 /** Drop duplicate sentences across layers, keeping the best-scoring copy. */
 function finalizeHits(ranked, limit) {
-  const seen = new Set();
-  const hits = [];
   // A transcript chunk is evidence, not the conclusion. When an accepted note
   // and its source chunk collapse to the same text, keep the note visible in
   // search instead of letting the raw chunk shadow it. Do not stop at `limit`:
-  // a higher-priority duplicate may appear later in the ranked list.
+  // count every unique candidate first, then return the requested window.
   const kindPriority = hit => hit.kind === 'note' ? 3 : hit.kind === 'fact' ? 2 : 1;
   const textKey = hit => String(hit.text).replace(/\s+/g, '').slice(0, 120);
+  const byKey = new Map();
   for (const hit of ranked) {
     const key = textKey(hit);
-    const existing = hits.findIndex(item => textKey(item) === key);
-    if (existing >= 0) {
-      if (kindPriority(hit) > kindPriority(hits[existing])) hits[existing] = hit;
-      continue;
-    }
-    if (hits.length < limit) {
-      seen.add(key);
-      hits.push(hit);
+    const existing = byKey.get(key);
+    if (!existing || kindPriority(hit) > kindPriority(existing) || (kindPriority(hit) === kindPriority(existing) && Number(hit.score ?? 0) > Number(existing.score ?? 0))) {
+      byKey.set(key, hit);
     }
   }
-  return { total: hits.length, hits: hits.sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0)) };
+  const unique = [...byKey.values()].map(hit => {
+    const boost = recencyBoost(hit.ts);
+    const stale = staleVersionIn(hit.text);
+    const score = Math.max(0, Number(hit.score ?? 0) + boost - (stale ? 0.02 : 0));
+    return {
+      ...hit,
+      score,
+      recencyBoost: Number(boost.toFixed(4)),
+      ...(stale ? { staleVersion: stale } : {}),
+      why: hitWhy({ ...hit, staleVersion: stale }),
+    };
+  }).sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0));
+  const total = unique.length;
+  const hits = unique.slice(0, Math.max(1, Number(limit) || 8)).map(hit => ({
+    ...hit,
+    snippet: hit.snippet ?? searchExcerpt(hit.text, hit.matchedTerms ?? []),
+  }));
+  return { total, returned: hits.length, truncated: hits.length < total, hits };
 }
 
 /** Reciprocal rank fusion of the lexical and vector routes. */
@@ -4608,18 +4868,47 @@ function personaSet(db, input, options = {}) {
 }
 
 /** Evidence for persona synthesis: recent high-signal notes and active facts. */
+function profileEligibleNote(row) {
+  const text = String(row?.text ?? '').trim();
+  const source = String(row?.source ?? '');
+  if (!text) return false;
+  // Imported domain knowledge is not a user rule. Keep it searchable in its own
+  // project/kb layer, but never spend the always-injected profile budget on it.
+  if (/^(?:专业知识|知识库|knowledge|kb)[\\/]/i.test(source)) return false;
+  // Test, audit and deployment reports describe the system, not the user.
+  if (/(测试结论|测试报告|审计报告|审计发现|验收报告|复审|回归测试|压测|基准测试|benchmark|隔离副本库|缺陷|本机部署|版本更新|CHANGELOG|Release)/i.test(text)) return false;
+  // A knowledge-import or tooling note is an operating fact, not a standing
+  // instruction. Generic project conclusions (including consolidation summaries)
+  // remain eligible; only obvious support chatter is filtered.
+  if (/(专业知识库|知识库已灌入|Obsidian 笔记库|GitHub push|github\.com|140\.82|CLI|工具清单|插件|面板|schema|memory_|HTTP GET|HTTP POST|JSON body|端口|API token|数据库表|ADR|busy_timeout|npm run|importance|参考手册|多客户端并发|v\d+\.\d+\.\d+|\/hub|\/m|dashboard\.css|star-map|抖音|视频|发布片)/i.test(text)
+    && !/(用户偏好|铁律|长期设定|固定规则|一律|永远|禁止|不得)/i.test(text)) return false;
+  return true;
+}
+
+/** Persona evidence may read ordinary notes, but never technical fragments. */
+function personaEvidenceEligible(row) {
+  const text = String(row?.text ?? '').trim();
+  const source = String(row?.source ?? '');
+  if (!text) return false;
+  if (/^(?:专业知识|知识库|knowledge|kb)[\\/]/i.test(source)) return false;
+  if (/(测试结论|测试报告|审计报告|审计发现|验收报告|复审|回归测试|压测|基准测试|benchmark|隔离副本库|缺陷|本机部署|版本更新|CHANGELOG|Release)/i.test(text)) return false;
+  if (/(插件|面板|schema|ADR|memory_|测试|路由|接口|迁移|数据库|函数|字段|版本|用例|构建|HTTP|JSON|CLI|search|write|context|scope|proj:|note#|v\d|代码|仓库|路径|目录|审计|修复|优化|token|API)/i.test(text)) return false;
+  return true;
+}
+
 function personaEvidence(db) {
   const notes = [];
   const facts = [];
   const technical = /(插件|面板|schema|ADR|memory_|测试|路由|接口|迁移|数据库|函数|字段|版本|用例|构建|HTTP)/i;
   try {
     const rows = prepareCached(db, `
-      SELECT text FROM notes
+      SELECT text, source FROM notes
       WHERE deleted_at IS NULL AND superseded_by IS NULL AND contested = 0
         AND (scope = 'global' OR scope IS NULL)
       ORDER BY importance DESC, ts DESC LIMIT 40
     `).all();
     for (const row of rows) {
+      if (!personaEvidenceEligible(row)) continue;
       const text = String(row.text);
       if (!technical.test(text)) notes.push(text);
     }
@@ -4855,19 +5144,21 @@ function buildProfileText(projectKey, options = {}) {
       ? "AND (scope = 'global' OR scope IS NULL OR scope = ?)"
       : "AND (scope = 'global' OR scope IS NULL)";
   const rows = prepareCached(s.db,
-    `SELECT id, text, importance, scope FROM notes
+    `SELECT id, text, importance, scope, source FROM notes
      WHERE deleted_at IS NULL AND superseded_by IS NULL AND contested = 0
        AND COALESCE(solution_status, 'unverified') NOT IN ('failed', 'expired') ${noteScope}
      ORDER BY importance DESC, ts DESC LIMIT 60`
   ).all(...(projectKey ? [projectKey] : []));
   // Global notes follow the model everywhere; project notes only in their own
   // project. Unknown project => global only, so one project cannot leak into
-  // another through the always-injected block.
+  // another through the always-injected block. Only stable rules and user
+  // settings are eligible; searchable reports/knowledge stay out of this budget.
   const visible = includeAll ? rows : rows.filter(row => {
     const scope = String(row.scope ?? 'global');
     if (scope === 'global' || scope === '') return true;
     return projectKey ? scope === projectKey : false;
   });
+  const eligible = visible.filter(row => profileEligibleNote(row));
   const lines = [];
   let used = 0;
   const addLine = line => {
@@ -4879,9 +5170,9 @@ function buildProfileText(projectKey, options = {}) {
   // Layered profile: global rules first, then the current project's rules.
   // The headings make the budget boundary visible instead of silently mixing
   // two layers into one undifferentiated bullet list.
-  const globalRows = visible.filter(row => String(row.scope ?? SCOPE_GLOBAL) === SCOPE_GLOBAL);
+  const globalRows = eligible.filter(row => String(row.scope ?? SCOPE_GLOBAL) === SCOPE_GLOBAL);
   const projectRows = projectKey
-    ? visible.filter(row => String(row.scope ?? SCOPE_GLOBAL) === projectKey)
+    ? eligible.filter(row => String(row.scope ?? SCOPE_GLOBAL) === projectKey)
     : [];
   const addSection = (title, items) => {
     if (!items.length) return;
@@ -4895,7 +5186,7 @@ function buildProfileText(projectKey, options = {}) {
   addSection('## 全局', globalRows);
   addSection('## 当前项目', projectRows);
   if (includeAll) {
-    const otherRows = visible.filter(row => {
+    const otherRows = eligible.filter(row => {
       const scope = String(row.scope ?? SCOPE_GLOBAL);
       return scope !== SCOPE_GLOBAL && scope !== projectKey;
     });
@@ -4947,7 +5238,8 @@ async function buildMemoryPacket(scope, query, options = {}) {
       const layer = hit.scope && hit.scope !== 'global' ? ` · ${hit.scope}` : '';
       const flag = hit.contested ? ' · contested' : '';
       const status = hit.solutionStatus && hit.solutionStatus !== 'unverified' ? ` · ${hit.solutionStatus}` : '';
-      return `- [${hit.kind}#${hit.id}] ${String(hit.text ?? '').replace(/\s+/g, ' ').slice(0, 220)}${layer}${status}${flag}`;
+      const stale = hit.staleVersion ? ` · old:v${hit.staleVersion}` : '';
+      return `- [${hit.kind}#${hit.id}] ${String(hit.text ?? '').replace(/\s+/g, ' ').slice(0, 220)}${layer}${status}${stale}${flag}`;
     }).join('\n'));
   }
   if (!sections.length) {
@@ -5704,7 +5996,12 @@ function defineWriteReadTools(ctx, registerLocalTool) {
           enum: ['all', 'note', 'fact', 'chunk'],
           description: 'Optional layer filter: note, fact, chunk, or all (default).',
         },
+        cwd: {
+          type: 'string',
+          description: 'Derive the project layer from a working directory when scope is omitted. CLI --dir uses this.',
+        },
         limit: { type: 'number', description: 'Maximum hits, default 8, max 30.' },
+        offset: { type: 'number', description: 'Skip this many ranked candidates before returning hits, 0..100 (default 0).' },
         rerank: { type: 'boolean', description: 'Set false to skip the optional cross-encoder reranker (OMNI_RERANK_*); defaults to the configured provider.' },
         scope: {
           type: 'string',
@@ -5714,9 +6011,12 @@ function defineWriteReadTools(ctx, registerLocalTool) {
       required: [],
     },
     output: {
-      schema: { type: 'object', properties: { total: { type: 'number' }, scope: { type: 'string' }, problemKey: { type: 'string' }, hits: { type: 'array', items: { type: 'object' } } } },
+      schema: { type: 'object', properties: { total: { type: 'number' }, returned: { type: 'number' }, offset: { type: 'number' }, truncated: { type: 'boolean' }, scope: { type: 'string' }, problemKey: { type: 'string' }, hits: { type: 'array', items: { type: 'object' } } } },
       render: (_args, value) => {
         if (!value.hits.length) return textBlock(`no memory matched (scope ${value.scope ?? 'all'})`);
+        const total = Number(value.total ?? value.hits.length);
+        const returned = Number(value.returned ?? value.hits.length);
+        const offset = Number(value.offset ?? 0);
         const lines = value.hits.map((hit, index) => {
           const pointer = hit.source ? ` · ${hit.source}` : '';
           const flag = hit.contested ? ' · contested' : '';
@@ -5728,9 +6028,14 @@ function defineWriteReadTools(ctx, registerLocalTool) {
           const feedback = (hit.usefulCount || hit.misleadingCount)
             ? ` · feedback +${hit.usefulCount ?? 0}/-${hit.misleadingCount ?? 0}`
             : '';
-          return `${index + 1}. [${hit.kind}#${hit.id}${layer}${flag}${solution}${problem}${feedback}] ${hit.text.replace(/\s+/g, ' ')}${pointer}`;
+          const score = Number.isFinite(Number(hit.score)) ? ` · ${Number(hit.score).toFixed(3)}` : '';
+          const why = hit.why ? ` · ${hit.why}` : '';
+          const stale = hit.staleVersion ? ` · old:v${hit.staleVersion}` : '';
+          const when = Number(hit.ts) ? ` · ${new Date(Number(hit.ts)).toISOString().slice(0, 10)}` : '';
+          const body = String(hit.snippet ?? hit.text ?? '').replace(/\s+/g, ' ');
+          return `${offset + index + 1}. [${hit.kind}#${hit.id}${layer}${flag}${solution}${problem}${feedback}${score}${stale}${when}${why}] ${body}${pointer}`;
         });
-        return textBlock(`matched ${value.total} (scope ${value.scope ?? 'all'})\n${lines.join('\n')}`);
+        return textBlock(`matched ${total} candidate(s) · showing ${returned}${offset ? ` from ${offset}` : ''} (scope ${value.scope ?? 'all'})\n${lines.join('\n')}`);
       },
     },
     async execute(args, toolContext = {}) {
@@ -5742,6 +6047,14 @@ function defineWriteReadTools(ctx, registerLocalTool) {
           throw new Error('limit must be a number between 1 and 30');
         }
         limit = Math.floor(value);
+      }
+      let offset = 0;
+      if (args.offset != null) {
+        const value = Number(args.offset);
+        if (!Number.isFinite(value) || value < 0 || value > 100) {
+          throw new Error('offset must be a number between 0 and 100');
+        }
+        offset = Math.floor(value);
       }
       const query = String(args.query ?? '');
       const problemKey = normalizeProblemKey(args.problemKey);
@@ -5756,16 +6069,18 @@ function defineWriteReadTools(ctx, registerLocalTool) {
       const requested = normalizeScopeInput(args.scope);
       // Retrieval judgement: an explicit request wins; otherwise scope to the
       // current project (plus the global layer), never to every project.
-      const scope = requested === 'all' ? null : (requested || currentProject(toolContext) || SCOPE_GLOBAL);
+      const project = args.cwd ? resolveProjectKey(s.db, String(args.cwd)) : currentProject(toolContext);
+      const scope = requested === 'all' ? null : (requested || project || SCOPE_GLOBAL);
       if (!queryTerms(query).length && !problemKey) {
-        return { total: 0, scope: scope ?? 'all', hits: [] };
+        return { total: 0, returned: 0, offset, truncated: false, scope: scope ?? 'all', hits: [] };
       }
+      const poolLimit = Math.min(60, Math.max(limit + offset, limit * 3, 24));
       const exact = problemKey && (requestedKind === 'all' || requestedKind === 'note')
-        ? searchProblemKey(s, problemKey, limit, scope, { status: requestedStatus })
+        ? searchProblemKey(s, problemKey, poolLimit, scope, { status: requestedStatus })
         : [];
       const result = queryTerms(query).length
-        ? await runSearch(s, query, limit, scope, { status: requestedStatus, kind: requestedKind, rerank: args.rerank })
-        : { hits: [] };
+        ? await runSearch(s, query, poolLimit, scope, { status: requestedStatus, kind: requestedKind, rerank: args.rerank })
+        : { total: 0, returned: 0, truncated: false, hits: [] };
       const merged = [];
       const seen = new Set();
       for (const hit of [...exact, ...result.hits]) {
@@ -5773,13 +6088,17 @@ function defineWriteReadTools(ctx, registerLocalTool) {
         if (seen.has(key)) continue;
         seen.add(key);
         merged.push(hit);
-        if (merged.length >= limit) break;
       }
+      const total = merged.length;
+      const window = merged.slice(offset, offset + limit);
       return {
-        total: merged.length,
+        total,
+        returned: window.length,
+        offset,
+        truncated: offset + window.length < total,
         scope: scope ?? 'all',
         ...(problemKey ? { problemKey } : {}),
-        hits: merged,
+        hits: window,
       };
     },
   }));
@@ -7339,6 +7658,22 @@ function registerReadRoutes(add) {
         }
       }
       const edgeCount = count('SELECT COUNT(*) AS n FROM edges WHERE valid_to IS NULL');
+      const sourceNotes = count(
+        `SELECT COUNT(*) AS n FROM notes WHERE ${noteActive} AND source IS NOT NULL AND source <> ''`,
+        noteScope.params,
+      );
+      const sourceRate = notesActive ? Math.round(sourceNotes / notesActive * 1000) / 10 : null;
+      const usefulRate = recallTotal ? Math.round(usefulCount / recallTotal * 1000) / 10 : null;
+      const pendingBreakdown = {
+        contestedNotes,
+        contestedFacts,
+        candidates: pendingCandidates,
+        supersededNotes,
+        expiredFacts,
+        total: pending,
+      };
+      const factPerHundred = notesActive ? Math.round(factsActive / notesActive * 1000) / 10 : null;
+      const graphDensity = graphNodes.size ? Math.round((graphLinks.length + edgeCount) / graphNodes.size * 100) / 100 : null;
 
       return json(res, 200, {
         ok: true,
@@ -7357,15 +7692,25 @@ function registerReadRoutes(add) {
           contested: contestedNotes + contestedFacts,
           pending,
           pendingCandidates,
+          pendingBreakdown,
           supersededNotes,
           expiredFacts,
+          sourceNotes,
+          sourceRate,
           recallTotal,
           usefulCount,
           misleadingCount,
-          usefulRate: recallTotal ? Math.round(usefulCount / recallTotal * 1000) / 10 : null,
+          usefulRate,
           entities: graphNodes.size,
           relations: graphLinks.length + edgeCount,
           connections: graphLinks.length + edgeCount,
+          coverage: {
+            transcript: { chunks: chunksActive, projects: visibleTranscriptProjects },
+            facts: { active: factsActive, perHundredNotes: factPerHundred },
+            graph: { entities: graphNodes.size, relations: graphLinks.length + edgeCount, density: graphDensity },
+            recall: { total: recallTotal, useful: usefulCount, misleading: misleadingCount, rate: usefulRate },
+            source: { notes: sourceNotes, rate: sourceRate },
+          },
         },
         health: {
           valid,

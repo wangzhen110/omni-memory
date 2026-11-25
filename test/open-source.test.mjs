@@ -17,7 +17,7 @@ test('LICENSE is AGPL-3.0 and package metadata agrees', () => {
   assert.match(license, /Version 3, 19 November 2007/);
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.license, 'AGPL-3.0-only');
-  assert.equal(pkg.version, '4.1.1');
+  assert.equal(pkg.version, '4.2.0');
 });
 
 test('governance and onboarding files exist', () => {
