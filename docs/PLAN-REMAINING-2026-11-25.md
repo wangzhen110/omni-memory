@@ -4,7 +4,7 @@
 
 本计划只处理上一轮挂起的三项，不夹带新功能；每项单独过门禁、单独发布，前一项未验收不进入下一项。
 
-**执行结果（2026-11-25）**：三项全部完成并发布。P3-9 → v4.3.3；P2-5 → v4.4.0；P2-3 → v4.5.0。P2-3 实际落地为 `lib/store.mjs`（~3,300 行）、`lib/search.mjs`（~1,500 行）、`lib/tool-definitions.mjs`（~1,350 行）、`lib/read-routes.mjs`（~1,130 行），`index.js` **8,721 → 1,231 行**；画像/会话/启动仍留在 `index.js`，未强拆。全量测试 **451/451**，黄金集 `semantic-first` MRR **0.958**、recall **1.0**。
+**执行结果（2026-11-26）**：三项全部完成并发布。P3-9 → v4.3.3；P2-5 → v4.4.0；P2-3 → v4.5.0；可选收尾 → v4.5.1。P2-3 实际落地为 `lib/store.mjs`（~3,300 行）、`lib/search.mjs`（~1,500 行）、`lib/profile.mjs`（~640 行）、`lib/tool-definitions.mjs`（~1,350 行）、`lib/read-routes.mjs`（~1,130 行），`index.js` **8,721 → 678 行**。全量测试 **452/452**，黄金集 `semantic-first` MRR **0.958**、recall **1.0**。
 
 ## 一、P3-9 `notes_fts` 正文副本（v4.3.3）
 

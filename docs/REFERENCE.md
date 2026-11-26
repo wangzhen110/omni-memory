@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 4.5.0 · 生成日期 2026-11-25 · 依据源码与真实 schema v19 核对
+> 版本 4.5.1 · 生成日期 2026-11-25 · 依据源码与真实 schema v19 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -19,7 +19,7 @@
         │
    适配层 hosts/          薄壳：把宿主接口翻译成 ctx
         │
-   内核 index.js + lib/   index.js 只做组装/导出；store/search/tools/routes 分域实现，不认识任何宿主
+   内核 index.js + lib/   index.js 只做组装/导出；store/search/profile/tools/routes 分域实现，不认识任何宿主
         │
    SQLite（omni.db）        单文件、本地、可备份
 ```
@@ -621,7 +621,7 @@ mcp      以 stdio 启动 MCP（等同 hosts/mcp/bin.mjs）
 - **无模型复核 / dream 定时**：非 DSH 宿主不提供 `llm`，两项能力自然关闭。
 - **HTTP 无鉴权**：靠回环 + 同源校验；跨机部署前必须自己加反代与鉴权。
 - **Node 22 上 `node:sqlite` 是实验特性**：可用，但会有一条已被入口屏蔽的警告；`engines` 声明 `>=22.13`，本机实测 Node 22.23.2。
-- **core 已拆分**：`index.js` 只保留 ~1,230 行组装层；核心域在 `lib/store.mjs`、`lib/search.mjs`、`lib/tool-definitions.mjs`、`lib/read-routes.mjs`。新增宿主要走 `hosts/shared/boot.mjs`，不要再写第二套内核。
+- **core 已拆分**：`index.js` 只保留 ~680 行会话捕获与宿主壳；核心域在 `lib/store.mjs`、`lib/search.mjs`、`lib/profile.mjs`、`lib/tool-definitions.mjs`、`lib/read-routes.mjs`。新增宿主要走 `hosts/shared/boot.mjs`，不要再写第二套内核。
 - **默认语义是本地模型**：`BAAI/bge-small-zh-v1.5` int8，随包 37.5 MiB，零配置离线；只有想换远程嵌入时才配 `OMNI_EMBED_URL` 并 `memory_reindex(vectors=true)`。本地语义用 `memory_reindex(semantic=true)`。
 
 ---
@@ -687,9 +687,10 @@ memory_reindex(bigrams=true, vectors=true)
 ## 12. 文件地图
 
 ```
-index.js                组装层 + DSH 插件入口（约 1,230 行）
+index.js                会话捕获 + HTTP 安全壳 + DSH 插件入口（约 680 行）
 lib/store.mjs           核心 store、schema/迁移、向量、备份、候选（约 3,300 行）
 lib/search.mjs          检索、RRF、图扩展、dream（约 1,500 行）
+lib/profile.mjs         画像、persona、memory packet、OpenAPI（约 640 行）
 lib/tool-definitions.mjs  MCP/DSH 工具定义（约 1,350 行）
 lib/read-routes.mjs     HTTP 路由（约 1,130 行）
 client.js               DSH 客户端星图（React）

@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.5.0 |
-| 插件版本 | 4.5.0 |
+| 文档版本 | 4.5.1 |
+| 插件版本 | 4.5.1 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-25 |
@@ -98,7 +98,7 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 451/451（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 452/452（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
 | NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 423 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
@@ -163,9 +163,10 @@
 
 ```
 DSH Host 进程
-├── 本插件 Host 半边（index.js，~1,230 行，只保留组装/导出/启动；核心按域拆分）
+├── 本插件 Host 半边（index.js，~680 行，只保留会话捕获/HTTP 安全壳/attachSession/apply）
 │   ├── lib/store.mjs        SQLite 句柄、schema/迁移、向量队列、备份与候选（~3,300 行）
 │   ├── lib/search.mjs       词面/语义/图召回、RRF 排序与 dream（~1,500 行）
+│   ├── lib/profile.mjs      画像、persona、memory packet、OpenAPI（~640 行）
 │   ├── lib/tool-definitions.mjs  23 个 MCP/DSH 工具定义（~1,350 行）
 │   ├── lib/read-routes.mjs  21 条 loopback HTTP 路由（~1,130 行）
 │   ├── capture       session/event → chunks

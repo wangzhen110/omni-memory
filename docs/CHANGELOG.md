@@ -2,6 +2,16 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.5.1] — 2026-11-26
+
+### 变更
+- **hashed 向量孤儿清理**：新增 `pruneHashedVectors()`，只在启动时删除 owner 已删除/已 supersede 的 `vectors` 行，活跃行继续作为零配置兜底；新增 `hashed_gc_version` 标记，成功后才落标记。
+- **画像域独立成模块**：`persona/profile/packet/openapi` 从 `index.js` 搬到 `lib/profile.mjs`（~640 行）；`index.js` 进一步从 1,231 行降到 **678 行**，只保留会话捕获、HTTP 安全壳、`attachSession` 与 `apply`。
+- 不改 schema（仍为 19）、不改工具/HTTP 协议。
+
+### 测试
+- 新增 `test/hashed-gc.test.mjs`：孤儿向量删除、活跃向量保留。完整 `npm test` **452/452** 通过。
+
 ## [4.5.0] — 2026-11-25
 
 ### 变更
