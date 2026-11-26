@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 119 次提交；更新记录自身的提交不计入列表。
+> 共 121 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,7 +15,9 @@
 
 ## 2026-11-26
 
-- 09:24:25 `7fc61285` — feat: v4.5.1 prune hashed orphans and extract profile module — [提交](https://github.com/wangzhen110/omni-memory/commit/7fc61285be2bd283bccfe46a3755667f80f56043)
+- 10:59:59 `16d42393` — feat: v4.6.0 project code index with schema 20 — [提交](https://github.com/wangzhen110/omni-memory/commit/16d423939461d5aab4f39b46867bf695cce50f4a)
+- 09:24:32 `200808f7` — docs: update log for v4.5.1 — [提交](https://github.com/wangzhen110/omni-memory/commit/200808f70f348d8295ba55b3da39cfa857b0b4d8)
+- 09:24:25 `62163fdd` — feat: v4.5.1 prune hashed orphans and extract profile module — [提交](https://github.com/wangzhen110/omni-memory/commit/62163fddb75c38ff8b1cd6d902c4d74c35817888)
 
 ## 2026-11-25
 
