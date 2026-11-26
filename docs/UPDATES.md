@@ -15,7 +15,7 @@
 
 ## 2026-11-26
 
-- 16:03:58 `6d254617` — docs: record 4.6.6 publish result in completion report — [提交](https://github.com/wangzhen110/omni-memory/commit/6d254617141c1cab3bc6da032c2d14af46199d55)
+- 16:03:58 `488d05f2` — docs: record 4.6.6 publish result in completion report — [提交](https://github.com/wangzhen110/omni-memory/commit/488d05f279308f4956e5054f0fe4999703c27a18)
 - 15:56:15 `4189285d` — test: isolate the ADR-020 p95 budget (4.6.6) — [提交](https://github.com/wangzhen110/omni-memory/commit/4189285d7600bd8880529f2fe03cd301cf70e2fc)
 - 15:32:56 `9ed8f669` — fix(report): make release numbers come from TAP evidence (4.6.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/9ed8f669263437418ee547d46a34fdda7e04b32a)
 - 14:58:16 `f38ef798` — fix(gates): close the 4.6.3 review gaps (4.6.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/f38ef798193e74aa09e98d6a19edbc3b119c7618)
