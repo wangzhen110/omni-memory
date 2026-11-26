@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 127 次提交；更新记录自身的提交不计入列表。
+> 共 128 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-26
 
+- 15:32:56 `74bc2a36` — fix(report): make release numbers come from TAP evidence (4.6.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/74bc2a361b93db7bfd506bd77b70e4e803bb6713)
 - 14:58:16 `f38ef798` — fix(gates): close the 4.6.3 review gaps (4.6.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/f38ef798193e74aa09e98d6a19edbc3b119c7618)
 - 14:36:01 `f3b2077e` — 4.6.3: close the TAP coverage and duplicate-summary gaps — [提交](https://github.com/wangzhen110/omni-memory/commit/f3b2077ee9fa429642a2c48a71507b8aeda94009)
 - 13:58:29 `5547496f` — 4.6.2: add the remediation completion report — [提交](https://github.com/wangzhen110/omni-memory/commit/5547496fbc134e28e9c9487817256b603d42df67)
