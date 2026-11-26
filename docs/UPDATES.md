@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 117 次提交；更新记录自身的提交不计入列表。
+> 共 119 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -13,8 +13,13 @@
 - [3.9.4 完成报告](./COMPLETION-3.9.4-2026-11-21.md)
 - [3.9.5 完成报告](./COMPLETION-3.9.5-2026-11-21.md)
 
+## 2026-11-26
+
+- 09:24:25 `7fc61285` — feat: v4.5.1 prune hashed orphans and extract profile module — [提交](https://github.com/wangzhen110/omni-memory/commit/7fc61285be2bd283bccfe46a3755667f80f56043)
+
 ## 2026-11-25
 
+- 12:00:44 `1a157c21` — docs: update log for v4.5.0 — [提交](https://github.com/wangzhen110/omni-memory/commit/1a157c21bea4d970c03c613f679c59bba15e608a)
 - 12:00:37 `483c2f1d` — refactor: v4.5.0 split index into store/search/tools/routes — [提交](https://github.com/wangzhen110/omni-memory/commit/483c2f1de79867fb1aac6d609a7bc78c67040f94)
 - 11:32:49 `75d204c1` — docs: update log for v4.4.0 — [提交](https://github.com/wangzhen110/omni-memory/commit/75d204c1d546000ba2fbfa9a7a3aac33a3958841)
 - 11:32:21 `4a9bd6cc` — feat: v4.4.0 semantic-first fusion with hashed fallback — [提交](https://github.com/wangzhen110/omni-memory/commit/4a9bd6cc551ba93ba824cfc74a6c552dfd4a0c3b)
