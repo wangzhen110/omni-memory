@@ -50,13 +50,16 @@ const TASK_NAME = process.env.OMNI_SERVICE_TASK || SERVICE_TASK;
 const HEALTH_URL = process.env.OMNI_HEALTH_URL || 'http://127.0.0.1:7788/health';
 const GITHUB_TOKEN = process.env.OMNI_GITHUB_TOKEN || process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
 /**
- * Test-only hooks are double-gated: OMNI_TEST_MODE alone is not enough, because
- * a stray `OMNI_TEST_MODE=1` in a deployed task could swap the release key or
- * git remote. `NODE_TEST_CONTEXT` is only set by `node --test` and inherited by
- * its child processes.
+ * Test-only hooks are guarded against accidental deployment mistakes:
+ * `OMNI_TEST_MODE=1` alone is not enough, because a stray flag in a deployed
+ * task could swap the release key or git remote. Node's test runner sets
+ * `NODE_TEST_CONTEXT` to `child` or `child-vN` in each test process. This is a
+ * two-condition accident guard, not a security boundary: anyone who can write
+ * the process environment can still forge it.
  */
+const NODE_TEST_CONTEXT = /^child(?:-v\d+)?$/u;
 export function testModeEnabled(env = process.env) {
-  return env.OMNI_TEST_MODE === '1' && Boolean(env.NODE_TEST_CONTEXT);
+  return env.OMNI_TEST_MODE === '1' && NODE_TEST_CONTEXT.test(env.NODE_TEST_CONTEXT || '');
 }
 const TEST_MODE = testModeEnabled();
 const TEST_ENV_NAMES = [
@@ -66,7 +69,7 @@ const TEST_ENV_NAMES = [
   'OMNI_TEST_UPDATE_PUBLIC_KEY_SHA256',
 ];
 if (process.env.OMNI_TEST_MODE === '1' && !TEST_MODE) {
-  console.error('[omni] ignoring OMNI_TEST_MODE=1: test-only hooks require the Node test runner context (NODE_TEST_CONTEXT)');
+  console.error('[omni] ignoring OMNI_TEST_MODE=1: test-only hooks require the Node test runner context (NODE_TEST_CONTEXT=child[-vN])');
 }
 if (!TEST_MODE) {
   const injected = TEST_ENV_NAMES.filter(name => process.env[name]);

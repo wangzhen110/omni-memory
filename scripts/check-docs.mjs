@@ -6,11 +6,18 @@
  * version / test count / route count that the code no longer had. This script
  * fails `npm run check` when the two disagree, so drift cannot ship silently.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-const read = file => readFileSync(path.join(root, file), 'utf8');
+const read = file => {
+  const full = path.join(root, file);
+  if (!existsSync(full)) {
+    console.error(`missing required doc: ${file}`);
+    process.exit(1);
+  }
+  return readFileSync(full, 'utf8');
+};
 
 const pkg = JSON.parse(read('package.json'));
 const index = read('index.js');
@@ -98,6 +105,14 @@ check('MCP README tool count', mcpReadme.includes(`${mcpTools} 个 MCP 工具`),
 check('MCP README route count', mcpReadme.includes(`${routes.length} 条 REST 路由`), `hosts/mcp/README.md does not say ${routes.length} 条 REST 路由`);
 check('DESIGN core tool count', design.includes(`${tools.length} 个插件工具`), `DESIGN does not say ${tools.length} 个插件工具`);
 check('CHANGELOG has current version', new RegExp(`## \\[${pkg.version.replaceAll('.', '\\.')}\\]`).test(changelog), `CHANGELOG has no ${pkg.version} entry`);
+
+// TAP is the truth for pass/fail, but a smaller TAP can also mean a whole test
+// file failed to load and was never seen by the runner. Keep the declaration
+// count as a lower bound so a silently smaller run cannot pass as green.
+if (tap) {
+  check('TAP covers every declared test', tap.tests >= declaredTests,
+    `TAP ran ${tap.tests}, but ${declaredTests} test declarations exist`);
+}
 
 // The rules text used to exist in three long-lived copies plus a summary per
 // host. Every doc must now say the same thing, or a future edit will silently

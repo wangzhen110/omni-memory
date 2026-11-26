@@ -37,6 +37,17 @@
 - Linux 项目路径用例改用 OS 临时目录；`schtasks` 不可用时明确 skip；1000 文件 warm sync 改为相对预算并输出诊断。
 - README 规则口径、REFERENCE REST `limit` 与 persona `clear` 归属、测试环境变量名修正；`check-docs` 扩展 HOST-ADAPTERS/REFERENCE/OpenAPI/规则/persona/limit/变量名。
 
+## 4.6.3 本轮处理
+
+> 状态：已完成（2026-11-26）。只收口测试门禁与平台条件，不改 schema、不改检索权重。
+
+- **3.1 漏跑检测**：`check-docs` 增加 `tap.tests >= declaredTests` 下界；测试文件未被 runner 发现时直接失败，不再只看 `fail=0`。
+- **3.3 重复摘要**：`check-test-results` 要求摘要标签唯一、只有一个 `1..N` plan 且与 `# tests` 一致。
+- **3.2 定性**：`NODE_TEST_CONTEXT` 收紧为 `child` / `child-vN`；文档改称“防误设”，明确不是抗篡改安全边界。
+- **3.4 macOS**：`property-scope-alias` 改用语义变量 `platform` 判断大小写别名差异。
+- **缺文档诊断**：`check-docs` 对缺失必需文档输出明确错误，不再抛 `ENOENT`。
+- **数字勘误**：4.6.2 完成报告的测试口径改为 `486 tests / 482 pass / 2 fail`。
+
 ## 延后项
 
 ### R-01 `note_candidates` 去重未进事务、无唯一约束

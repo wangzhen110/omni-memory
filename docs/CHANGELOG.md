@@ -2,6 +2,20 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.3] — 2026-11-26
+
+### 修复
+- **漏跑检测回归**：`check-docs` 在 TAP 存在时新增 `# tests >= 声明数` 下界；测试文件因 glob、语法或加载失败没被 runner 发现时，计数变小会失败，不能再用 `fail=0` 放行。
+- **TAP 摘要可拼接**：`check-test-results` 拒绝重复的 `# tests` / `# pass` / `# fail` / `# cancelled` 标签，并要求全文件只有一个 `1..N` plan 且与 `# tests` 一致；复现的“前后两段摘要”绕过已关闭。
+- **缺文档抛栈**：`check-docs` 遇到缺失的必需文档时输出 `missing required doc: <path>` 并退出，不再抛出未捕获的 `ENOENT`。
+
+### 变更
+- **测试钩子防误设**：`testModeEnabled()` 的 `NODE_TEST_CONTEXT` 收紧为 `child` / `child-vN`，任意非空字符串不再生效；文档明确该门只防部署误设，不是抗篡改安全边界。
+- **平台条件**：`property-scope-alias` 改用被测语义变量 `platform` 判断大小写别名差异，修正 macOS 上按 Linux 语义误跑的问题。
+
+### 测试
+- 保持 **486/486**；新增 TAP 重复摘要与 plan 不一致的负向实测，测试模式任意字符串不再放行。schema 仍为 20，无数据迁移。
+
 ## [4.6.2] — 2026-11-26
 
 ### 安全

@@ -22,8 +22,12 @@ try {
 }
 
 function count(label) {
-  const match = new RegExp(`^# ${label} (\\d+)$`, 'm').exec(text);
-  return match ? Number(match[1]) : null;
+  const matches = [...text.matchAll(new RegExp(`^# ${label} (\\d+)$`, 'gm'))];
+  if (matches.length > 1) {
+    console.error(`TAP summary repeats # ${label}; refusing to trust a concatenated summary`);
+    process.exit(1);
+  }
+  return matches.length === 1 ? Number(matches[0][1]) : null;
 }
 
 const tests = count('tests');
@@ -39,6 +43,15 @@ if (tests === null || pass === null || fail === null || cancelled === null) {
 }
 if (tests === 0) {
   console.error('TAP summary reports zero tests');
+  process.exit(1);
+}
+const plans = [...text.matchAll(/^1\.\.(\d+)$/gm)];
+if (plans.length !== 1) {
+  console.error(`TAP must contain exactly one plan line; found ${plans.length}`);
+  process.exit(1);
+}
+if (Number(plans[0][1]) !== tests) {
+  console.error(`TAP plan 1..${plans[0][1]} does not match # tests ${tests}`);
   process.exit(1);
 }
 if (fail !== 0) {

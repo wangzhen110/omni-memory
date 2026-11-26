@@ -35,6 +35,8 @@ test('host guard treats only loopback sockets as local', () => {
 test('test-only daily-sync hooks need both the mode flag and a test runner', () => {
   assert.equal(testModeEnabled({ OMNI_TEST_MODE: '1' }), false);
   assert.equal(testModeEnabled({ NODE_TEST_CONTEXT: 'child-v8' }), false);
+  assert.equal(testModeEnabled({ OMNI_TEST_MODE: '1', NODE_TEST_CONTEXT: 'x' }), false);
+  assert.equal(testModeEnabled({ OMNI_TEST_MODE: '1', NODE_TEST_CONTEXT: 'child' }), true);
   assert.equal(testModeEnabled({ OMNI_TEST_MODE: '1', NODE_TEST_CONTEXT: 'child-v8' }), true);
 });
 

@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.6.2 |
-| 插件版本 | 4.6.2 |
+| 文档版本 | 4.6.3 |
+| 插件版本 | 4.6.3 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-26 |
@@ -511,6 +511,14 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - **规则同文**：stdio 与 HTTP 的 `initialize.instructions`、`prompts/get`、`resources/read`、`memory_rules` 共享同一份 `RULES_TEXT`，不再维护会漂移的摘要副本。
 - **测试钩子**：`OMNI_TEST_GIT_FETCH_URL`、`OMNI_TEST_UPDATE_PUBLIC_KEY_FILE`、`OMNI_TEST_UPDATE_KEY_ID`、`OMNI_TEST_UPDATE_PUBLIC_KEY_SHA256` 只在 `OMNI_TEST_MODE=1` **且** `NODE_TEST_CONTEXT` 存在时生效；生产环境遇到 `OMNI_TEST_*` 只告警并忽略。
 - **测试真值**：`npm test` 同时输出 spec 与 TAP，`npm run verify` 调用 `scripts/check-test-results.mjs` 校验真实 `# pass` / `# fail` / `# cancelled`，不再用源码里的 `test(` 计数冒充运行结果。
+
+### 6.16 测试门禁收口（v4.6.3）
+
+- **漏跑检测**：`check-docs` 仍以 TAP 为 pass/fail 真值，但 TAP 的 `# tests` 不得低于 `test/*.test.mjs` 的 `test(` 声明数。测试文件因 glob、语法或加载失败未被发现时，计数变小会直接失败，不能靠 `fail=0` 放行。
+- **摘要唯一**：`check-test-results` 要求每个 `# tests / # pass / # fail / # cancelled` 标签全文件唯一，且只能有一个 `1..N` plan，`N` 必须等于 `# tests`；重复摘要、拼接 TAP 与 plan 不一致都拒绝。
+- **防误设而非安全边界**：测试钩子仍要求 `OMNI_TEST_MODE=1`，`NODE_TEST_CONTEXT` 收紧为 Node 测试运行器实际写入的 `child` / `child-vN`。能写进程环境的主体仍可伪造，因此该门只防部署脚本误设，不承担抗篡改职责。
+- **平台条件**：scope 属性测试使用被测语义变量 `platform` 判断大小写别名差异，macOS 上不再按 Linux 语义误跑。
+- **缺文档可诊断**：`check-docs` 遇到缺失的 DESIGN/REFERENCE 等必需文件时输出明确的 `missing required doc` 并退出，不再抛出未捕获的 `ENOENT`。
 
 ---
 

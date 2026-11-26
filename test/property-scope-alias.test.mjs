@@ -86,11 +86,11 @@ test('prop: legacy key preserves casing and collapses for lowercase paths', () =
       const win = process.platform === 'win32';
       const mixed = win ? `C:\\Work\\${f}` : `/home/Work/${f}`;
       const lower = win ? `c:/work/${f.toLowerCase()}` : `/home/work/${f.toLowerCase()}`;
-      const platform = win ? 'win32' : 'linux';
+      const platform = win ? 'win32' : process.platform;
       assert.match(legacyProjectKeyFromCwd(mixed), /proj:/u);
       assert.equal(legacyProjectKeyFromCwd(lower), projectKeyFromCwd(lower, platform),
         'lowercase path: legacy == canonical');
-      if (f !== f.toLowerCase() && process.platform !== 'linux') {
+      if (f !== f.toLowerCase() && platform !== 'linux') {
         assert.notEqual(legacyProjectKeyFromCwd(mixed), projectKeyFromCwd(mixed, platform),
           'cased path: legacy key differs from canonical (migration candidate exists)');
       }
