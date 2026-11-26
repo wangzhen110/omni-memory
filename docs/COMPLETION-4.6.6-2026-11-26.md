@@ -36,6 +36,11 @@
 
 ## 发布
 
-- 版本：`package.json` / `package-lock.json` 4.6.6。
-- tag `v4.6.6`；签名 manifest 与 Release 资产随 GitHub Release 发布。
-- 生产 7788 与云主机在发布后升级到同一 commit。
+- 版本：`package.json` / `package-lock.json` 4.6.6；`package.json` sha256 `9384f140cf29d7165f65de88a788d9209147f1f10abe89abbfbc248f9f6041fd`。
+- tag：`v4.6.6`（annotated；远端 tag object `c20fec28ca9d321e3b7e59165499bb970690d84c`）。
+- Release：[459104815](https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.6)。
+- 发布提交：`71759101867f236f363600816bffdb59f975ac1d`（Release 建立时的 main 提交；本报告勘误是它之上的 `docs:` 文档提交，`v4.6.6` 随后指向勘误后的提交，实际值以 `git rev-parse v4.6.6^{commit}` 与 Release 正文为准）。
+- 资产：`omni-update-manifest-v2.json` 629 B、`omni-update-manifest.json` 482 B，均已上传到该 Release。
+- 验签：`verify-release --tag v4.6.6` 返回 `ok: true`，`version` 4.6.6、`commit` 与发布提交一致、`keyId` `omni-ed25519-2026-01`。
+- 生产 7788：`npm run setup` 验签通过后升级，`/health` 返回 `4.6.6` / 30 tools，doctor 0 错误 0 警告。
+- 云主机 `/home/user/omni-memory-vm`：`git merge --ff-only origin/main` 快进到 `7175910`，`npm run verify` 通过（494 tests / 491 pass / 3 skipped / 0 fail，3 个 skip 为平台相关用例），TAP 真值门、文档一致性、更新日志覆盖 129 个提交哈希均通过。
