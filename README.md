@@ -32,7 +32,7 @@ npm run serve                  # 打开 http://127.0.0.1:7788/hub
 Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-git checkout v4.6.5
+git checkout v4.6.6
 npm ci
 npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
 npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
@@ -140,8 +140,8 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.6.5
-npm run verify:release -- --tag v4.6.5 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.6.6
+npm run verify:release -- --tag v4.6.6 --launcher ./omni-serve-7788.exe
 ```
 
 第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
@@ -280,6 +280,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 - 4.3.0：CLI `context`/`search` 默认改为词法 + hashed 向量，不再每次冷加载 37.5 MiB 本地语义模型；`--semantic` 或 `OMNI_CLI_SEMANTIC=1` 显式开启。实测同一查询：默认 **139ms**、语义 **478ms**；`context` 默认 **144ms**、语义 **467ms**。搜索返回结构收敛到单一构造点，CLI 参数错误改为一行提示并退出 2。
 - 4.3.1：`memory_context` 读路径只读版本缓存，不再等待 GitHub 探针（TTL 强制过期时仍 **142ms**，旧路径 0.5–2.5s）；`memory_write` 校验 `kind` 白名单，非法值返回错误而不是静默落成 note；CLI 布尔 flag 可放在关键词前；HTTP 空查询回填 `scope`；`npm test` 加 `--test-timeout=60000`，避免并行挂起。
 - 4.6.0：新增项目代码索引（schema 20 五张派生表、JS/TS/OpenAPI/GraphQL/generic 适配器、增量/sha 漂移/删除清理、CLI/5 个 MCP 工具/5 条 HTTP 路由/`/project` 页面）；`memory_context` 命中项目引用时追加带 `sourceRef`、行号、`sha`、`stale` 的有预算项目包。1,001 文件冷索引 <1s、热增量 `parsed=0`、精确查询 p95 <50ms；测试 **476/476**。
+- 4.6.6：性能测试隔离，不改 schema（仍为 20）。`npm test` 改为串行执行，避免 ADR-020 的 p95 被其他测试进程争用成假失败；300ms 预算未放宽，全量约 99s。测试 **494/494**。
 - 4.6.5：报告证据链收口，不改 schema（仍为 20）。新增 `tap-evidence` 证据文件，完成报告必须逐字引用 TAP 的汇总、时长、ADR 诊断和 1000 文件索引，`check-docs` 拒绝手抄数字；显式 `--tap` 缺文件直接失败，摘要不完整不再输出误导性的“0 failure”；DESIGN 语义门补自动化正负回归。测试 **494/494**。
 - 4.6.4：4.6.3 复核收口，不改 schema（仍为 20）。修正 DESIGN 中测试钩子的旧口径，并由 `check-docs` 校验该语义；TAP 文件存在但缺 `# tests` 时直接失败，不再回退到声明数；新增 6 条门禁负向回归，覆盖重复摘要、plan 不一致、多个 plan 与漏跑下界；4.6.3 报告的时长和 1000 文件索引改回 TAP 快照原文。测试 **492/492**。
 - 4.6.3：测试门禁收口，不改 schema（仍为 20）。TAP 计数低于声明数时 `check-docs` 必须失败，防止测试文件漏加载后仍放行；TAP 真值门拒绝重复摘要和非 `1..N` plan；测试钩子只接受 Node 测试运行器的 `NODE_TEST_CONTEXT=child[-vN]`，并明确为防误设、不是安全边界；修正 macOS 上 scope 属性测试的平台条件；缺 docs 文件时检查显式报错而不是抛栈。测试 **486/486**。
@@ -367,6 +368,7 @@ https://github.com/wangzhen110/omni-memory · AGPL-3.0-only
 https://github.com/wangzhen110/omni-memory/issues/new?template=commercial-license.yml
 
 **备用渠道**：64271785@qq.com（标题请注明「商业例外 + 用途」）
+
 
 
 
