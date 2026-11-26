@@ -332,7 +332,8 @@ function httpBodyError(code, message, status = 400) {
   return error;
 }
 
-function readJsonBody(req, limit = 8192, options = {}) {
+// Exported so the strict/non-strict matrix can be unit tested without a socket.
+export function readJsonBody(req, limit = 8192, options = {}) {
   const strict = options.strict === true;
   const allowMissing = options.allowMissing !== false;
   return new Promise((resolve, reject) => {

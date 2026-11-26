@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.6.6 |
-| 插件版本 | 4.6.6 |
+| 文档版本 | 4.6.7 |
+| 插件版本 | 4.6.7 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-26 |
@@ -100,9 +100,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 494/494（100%，TAP 真值门） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 527/527（100%，TAP 真值门） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 494 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 527 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -537,7 +537,20 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 ### 6.19 性能测试隔离（v4.6.6）
 
 - **串行全量**：`npm test` 加 `--test-concurrency=1`。ADR-020 的 p95 是墙钟延迟，不能在其他测试进程争用 CPU/磁盘时测量；串行后 10k/100k 场景稳定低于 300ms，预算不变。
-- **代价**：全量从约 30s 增加到约 99s，换来可复现的发布门结果；这是测试调度修正，不是产品性能降级。
+- **代价**：全量从约 30s 增加到约 100s，换来可复现的发布门结果；这是测试调度修正，不是产品性能降级。
+
+### 6.20 入口层与主链路补测（v4.6.7）
+
+覆盖率评审（`docs/COVERAGE-REVIEW-2026-11-26.md`）给出的结论是“工具高覆盖、入口低覆盖”：
+
+- **请求体边界必须逐码断言**：`readJsonBody` 的 strict 分支按错误码 + 状态码固定——`body_unavailable`/400、`body_empty`/400、`body_invalid_json`/400、`body_invalid_object`/400、`body_too_large`/413，并断言超限会 `resume()` 排空；lenient 分支一律降级为 `{}`。为可单测，该函数从内部函数改为导出，行为不变。
+- **注入预算是一条硬上限**：prompt section 的最终文本（含 persona、画像头部、项目行、召回块）不得超过 `PROFILE_BUDGET`（1200）；超限时先丢召回块再截断，并把 `chars`/`recall`/`auto`/`project`/`routes`/`scopeId` 写入 `lastInjection` 诊断。
+- **争议记忆不进注入**：`contested` 与 `superseded_by` 非空的命中不注入、也不计入 `recall` 数。
+- **后台合并是租约任务**：`OMNI_DREAM_INTERVAL_MS` 默认关闭；开启后每个间隔取 `dream` 租约，取不到就跳过，异常不得抛出到宿主，退出时释放。
+- **写盘类 CLI 必须验副作用**：`project link` 默认只预览、`--apply` 才迁移 scope 并写别名；`global` 不可合并、自链接直接返回。`rules` 预览不改盘，`--create` 才新建，`--write` 落盘且重复写字节一致，marker 不成对时跳过而不是删正文。
+- **stdio 是生产主链路**：`serveStdio` 的帧处理、`-32700`/`-32601` 错误码、链式串行、stdin 结束与 `stop()` 必须有跨进程断言；`hosts/mcp/bin.mjs` 用 spawn 冒烟验证绝对不向 stderr 泄漏 `ExperimentalWarning`。
+
+补测范围之外仍留有缺口，记入 `docs/REMEDIATION-BACKLOG.md`（P1：`memory_write` 的 raced 并发分支需双进程才可靠复现；`lib/store.mjs` 的 force reindex / restore、`lib/read-routes.mjs` 的 dream 路由、`hosts/shared/doctor.mjs` 分支）。
 
 ---
 
@@ -720,6 +733,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - 想省钱又怕误判：`auto`，只让模型复核规则没把握的（约三分之一写入）。
 - 完全离线/隐私敏感：`off` + `OMNI_DISABLE_VECTOR=1`，只保留词面与规则。
 - 复核太慢导致层归属"跳动"可见：把 `OMNI_SCOPE_JUDGE` 改 `auto`，或把 `OMNI_JUDGE_MODEL` 固定成更快的模型。
+
 
 
 

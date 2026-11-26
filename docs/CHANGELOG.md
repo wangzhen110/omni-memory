@@ -2,6 +2,19 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.7] — 2026-11-26
+
+### 新增
+- **入口层补测**：按 `docs/COVERAGE-REVIEW-2026-11-26.md` 的 P0 清单，补齐 `readJsonBody` 严格矩阵（超限 413、非法 JSON、非对象、空体、流不可读）、prompt 注入预算裁剪与争议过滤、`OMNI_DREAM_INTERVAL_MS` 定时租约、CLI `project` 族与 `rules` 写盘/预览、MCP stdio 帧处理与 `bin.mjs` spawn 冒烟。
+- **测试文件**：`test/entry-body-4.6.7.test.mjs`、`test/prompt-and-dream-4.6.7.test.mjs`、`test/cli-project-rules-4.6.7.test.mjs`、`test/mcp-stdio-4.6.7.test.mjs`（含 `test/fixtures/mcp-stdio-harness.mjs`），共 33 条。
+
+### 变更
+- `index.js` 的 `readJsonBody` 改为导出，仅用于单测；行为、默认值与错误码不变。
+- 不改 schema（仍为 20），不改检索权重，不调整 ADR-020 的 300ms 预算。
+
+### 测试
+- **527/527**，0 fail、0 skip；全量串行约 106s。
+
 ## [4.6.6] — 2026-11-26
 
 ### 修复
