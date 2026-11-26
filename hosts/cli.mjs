@@ -61,6 +61,14 @@ const USAGE = `全息记忆 · omni
                列出已记录的旧键 → canonical 键映射
   omni project show [--dir <目录>]
                显示当前目录解析到的项目键、身份文件与路径回退键
+  omni index   [--dir <目录>] [--scope <层级>] [--full] [--no-ctags] [--json]
+               建立/增量重建项目代码索引；一条命令即可让当前项目可查询
+  omni project status [--dir <目录>] [--root <目录>] [--scope <层级>] [--json]
+               显示代码索引覆盖、stale/missing 与最近索引时间
+  omni project search <关键词> [--dir <目录>] [--scope <层级>] [--kind <类型>] [--limit <n>] [--json]
+  omni project context <模块|符号|路径|路由> [--dir <目录>] [--scope <层级>] [--budget <字符>]
+  omni project impact <模块|符号|路径|路由> [--dir <目录>] [--scope <层级>] [--depth <n>] [--json]
+               精确代码事实；为什么/历史/坑仍用 memory_search
   omni project init [--dir <目录>] [--force]
                在当前目录写 .omni-project；已有文件默认不覆盖
   omni project link --from <旧proj键> --to <新proj键> [--apply]
@@ -86,8 +94,8 @@ const USAGE = `全息记忆 · omni
 `;
 
 const BOOLEAN_FLAGS = new Set([
-  'apply', 'check', 'create', 'force', 'help', 'json', 'list', 'no-extract',
-  'rerank', 'semantic', 'skip-http', 'skip-task', 'stdin', 'strict', 'write',
+  'apply', 'check', 'create', 'force', 'help', 'json', 'list', 'no-extract', 'no-ctags',
+  'full', 'rerank', 'semantic', 'skip-http', 'skip-task', 'stdin', 'strict', 'write',
 ]);
 
 function parseArgs(argv) {
@@ -561,10 +569,55 @@ async function commandScopeAlias() {
   }
 }
 
+async function commandIndex() {
+  const { openStore, projectKeyFromCwd } = await import('../index.js');
+  const { indexProject } = await import('../lib/project-index.mjs');
+  const root = path.resolve(String(flags.root ?? flags.dir ?? workdir));
+  if (!existsSync(root)) {
+    log(`目录不存在：${root}`);
+    process.exitCode = 2;
+    return;
+  }
+  const explicit = String(flags.scope ?? '').trim();
+  const scope = explicit && explicit !== 'project'
+    ? explicit
+    : projectKeyFromCwd(root);
+  const report = indexProject(openStore().db, root, {
+    scope,
+    full: flags.full === true,
+    ctags: flags['no-ctags'] !== true,
+  });
+  if (flags.json === true) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    return;
+  }
+  process.stdout.write(`indexed ${report.files} files (${report.parsed} parsed, ${report.unchanged} unchanged, ${report.removed} removed) · ${report.modules} modules · ${report.symbols} symbols · ${report.apis} APIs · ${report.edges} edges · ${report.durationMs}ms\n`);
+  process.stdout.write(`scope ${report.scope} · root ${report.root}\n`);
+}
+
+function printProjectSearch(value) {
+  const out = [];
+  for (const row of value.modules ?? []) out.push(`[module] ${row.key} ${row.name} — ${row.description || ''}`);
+  for (const row of value.symbols ?? []) out.push(`[${row.kind}] ${row.path}:${row.line} ${row.qualifiedName}${row.signature ? ` ${row.signature}` : ''}${row.stale ? ' (stale)' : ''}`);
+  for (const row of value.apis ?? []) out.push(`[api] ${row.method} ${row.route}${row.summary ? ` — ${row.summary}` : ''} ${row.path}:${row.line}${row.stale ? ' (stale)' : ''}`);
+  for (const row of value.files ?? []) out.push(`[file] ${row.path} ${row.lang} ${row.loc} loc${row.stale ? ' (stale)' : ''}`);
+  process.stdout.write((out.length ? out.join('\n') : `未命中：${value.query || ''}`) + '\n');
+}
+
 async function commandProject() {
   const action = String(positional[0] ?? 'show').trim().toLowerCase();
   const { projectIdentityFromCwd, projectKeyFromCwd, legacyProjectKeyFromCwd, openStore, migrateScopeAlias, scopeHasRows } = await import('../index.js');
   if (action === 'show' || action === 'status') {
+    if (action === 'status') {
+      const { projectStatus } = await import('../lib/project-index.mjs');
+      const root = path.resolve(String(flags.root ?? flags.dir ?? workdir));
+      const explicit = String(flags.scope ?? '').trim();
+      const scope = explicit && explicit !== 'project' ? explicit : projectKeyFromCwd(root);
+      const value = projectStatus(openStore().db, root, { scope });
+      if (flags.json === true) process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+      else process.stdout.write(`project ${scope} · ${value.counts.files} files · ${value.counts.modules} modules · ${value.counts.symbols} symbols · ${value.counts.apis} APIs · ${value.counts.edges} edges · stale ${value.stale} · missing ${value.missing}\n`);
+      return;
+    }
     const identity = projectIdentityFromCwd(workdir);
     const key = projectKeyFromCwd(workdir);
     const legacy = legacyProjectKeyFromCwd(workdir);
@@ -574,6 +627,49 @@ async function commandProject() {
       pathFallback: legacy,
       identity: identity ? { source: identity.source, file: identity.file, root: identity.root, name: identity.name } : null,
     }, null, 2) + '\n');
+    return;
+  }
+  if (action === 'search' || action === 'context' || action === 'impact') {
+    const { projectContext, projectImpact, projectSearch } = await import('../lib/project-index.mjs');
+    const root = path.resolve(String(flags.root ?? flags.dir ?? workdir));
+    const explicit = String(flags.scope ?? '').trim();
+    const scope = explicit && explicit !== 'project' ? explicit : projectKeyFromCwd(root);
+    const db = openStore().db;
+    if (action === 'search') {
+      const query = String(positional[1] ?? '').trim();
+      const value = projectSearch(db, query, {
+        scope, root,
+        kind: flags.kind ?? 'all',
+        path: flags.path,
+        module: flags.module,
+        method: flags.method,
+        limit: Number(flags.limit ?? 20),
+      });
+      if (flags.json === true) process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+      else printProjectSearch(value);
+      return;
+    }
+    const ref = String(positional[1] ?? '').trim();
+    if (!ref) {
+      log(`缺少引用；用法：omni project ${action} <模块|符号|路径|路由>`);
+      process.exitCode = 2;
+      return;
+    }
+    if (action === 'context') {
+      const value = projectContext(db, ref, { scope, root, budget: Number(flags.budget ?? 1800) });
+      process.stdout.write(value.text + '\n');
+      return;
+    }
+    const value = projectImpact(db, ref, { scope, root, depth: Number(flags.depth ?? 4) });
+    if (flags.json === true) process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+    else {
+      process.stdout.write(`impact ${value.ok ? 'ok' : 'not found'} · ${value.importers.length} importer(s) · ${value.tests.length} test(s)\n`);
+      if (value.importers.length) process.stdout.write(value.importers.map(item => `- ${item}`).join('\n') + '\n');
+    }
+    return;
+  }
+  if (action === 'sync') {
+    await commandIndex();
     return;
   }
   if (action === 'init') {
@@ -724,6 +820,12 @@ try {
     break;
   case 'project':
     await commandProject();
+    break;
+  case 'index':
+    await commandIndex();
+    break;
+  case 'index':
+    await commandIndex();
     break;
   case 'kb-migrate':
     await commandKbMigrate();

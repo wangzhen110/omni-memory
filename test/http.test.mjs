@@ -36,18 +36,18 @@ test('http adapter: routes mount, MCP over HTTP works, panel is served', async (
   const url = server.url;
 
   try {
-    assert.equal(server.routes, 21, 'all plugin routes should mount through the shim');
+    assert.equal(server.routes, 26, 'all plugin routes should mount through the shim');
 
     const health = await (await fetch(`${url}/health`)).json();
     assert.equal(health.ok, true);
-    assert.equal(health.tools, 25, '23 plugin tools plus memory_context and memory_rules');
-    assert.equal(health.routes ?? server.routes, 21);
+    assert.equal(health.tools, 30, '28 plugin tools plus memory_context and memory_rules');
+    assert.equal(health.routes ?? server.routes, 26);
 
     const metrics = await (await fetch(`${url}/metrics`)).json();
     assert.equal(metrics.ok, true);
     assert.equal(metrics.version, 'test');
-    assert.equal(metrics.tools, 25);
-    assert.equal(metrics.routes, 21);
+    assert.equal(metrics.tools, 30);
+    assert.equal(metrics.routes, 26);
     assert.ok(metrics.uptimeSeconds >= 0);
     assert.ok(metrics.requests >= 2, 'health and metrics are counted');
     assert.equal(metrics.errors, 0);

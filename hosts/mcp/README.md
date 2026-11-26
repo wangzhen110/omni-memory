@@ -11,9 +11,10 @@
 `index.js` 里的记忆内核本身不认识宿主，只通过 `apply(ctx)` 用到 4 个必选宿主接口。`hosts/shared/headless.mjs` 把这几个接口实现成一个最小上下文，于是同一份内核不用改一行，就能以 MCP 服务的形式启动。
 
 **能用的**
-- 全部 23 个内核 `memory_*` 工具，参数与返回和 DSH 内完全一致（同一份定义，不是复制品）
+- 全部 28 个内核工具（23 个 `memory_*` + 5 个 `project_*`），参数与返回和 DSH 内完全一致（同一份定义，不是复制品）
 - `memory_context`：一次调用返回用户设定 + 常驻画像 + 与本任务相关的记忆
-- `memory_rules`：返回工作规则，给不读 resources 的客户端兜底（以上合计 25 个 MCP 工具）
+- `memory_rules`：返回工作规则，给不读 resources 的客户端兜底（以上合计 30 个 MCP 工具）
+- 项目代码索引：`project_sync` / `project_search` / `project_context` / `project_status` / `project_impact` 查询模块、符号、API 契约与反向影响面
 - 项目分层：按 `OMNI_PROJECT_DIR`（默认进程工作目录）推导 `proj:<名>#<哈希>`，与 DSH 在同一目录下用的是同一层
 - 数据共享：默认指向 `$DSH_HOME/memory/omni.db`，DSH 里存的东西，MCP 客户端直接能搜到；反过来也一样
 
@@ -164,7 +165,7 @@ node hosts/cli.mjs serve --port 7788
 - `POST /mcp`：Streamable HTTP 的 JSON 响应模式，方法表与 stdio 完全相同
 - `GET /`：记忆概览仪表盘；`/panel.html` 是记忆列表 / 搜索 / 星图 / 规则旧面板
 - `GET /health`、`GET /rules`
-- `/omni-memory/*`：插件原有的 21 条 REST 路由，原样挂载，没有第二套实现
+- `/omni-memory/*`：插件原有的 26 条 REST 路由，原样挂载，没有第二套实现
 
 客户端里填 MCP 地址 `http://127.0.0.1:7788/mcp` 即可。默认只监听回环地址。
 
@@ -177,7 +178,7 @@ node --test test/mcp.test.mjs test/http.test.mjs test/rules.test.mjs
 ```
 
 - `mcp.test.mjs` 真拉进程走 stdio：握手、工具列表、写入、召回、错误路径、prompts、resources
-- `http.test.mjs` 起真服务：21 条路由挂载、HTTP MCP、面板、REST 与 MCP 共库
+- `http.test.mjs` 起真服务：26 条路由挂载、HTTP MCP、面板、REST 与 MCP 共库
 - `rules.test.mjs` 钉住规则区块的幂等与替换
 
 ---

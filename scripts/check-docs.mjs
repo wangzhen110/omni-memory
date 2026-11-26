@@ -22,7 +22,7 @@ const changelog = read('docs/CHANGELOG.md');
 const mcpReadme = read('hosts/mcp/README.md');
 const adapterSource = read('hosts/shared/context-tool.mjs') + read('hosts/shared/rules.mjs');
 
-const tools = [...new Set([...toolSource.matchAll(/name:\s*'(memory_[a-z_]+)'/g)].map(match => match[1]))].sort();
+const tools = [...new Set([...toolSource.matchAll(/name:\s*'((?:memory|project)_[a-z_]+)'/g)].map(match => match[1]))].sort();
 const adapterTools = [...new Set([...adapterSource.matchAll(/name:\s*'(memory_[a-z_]+)'/g)].map(match => match[1]))]
   .filter(tool => !tools.includes(tool))
   .sort();

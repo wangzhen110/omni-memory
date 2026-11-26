@@ -61,6 +61,7 @@ export function makeContextTool(host) {
         properties: {
           text: { type: 'string' },
           hits: { type: 'number' },
+          project: { type: ['object', 'null'], additionalProperties: true },
           update: { type: ['object', 'null'], additionalProperties: true },
         },
       },
@@ -109,10 +110,20 @@ export function makeContextTool(host) {
         sections.push('## 与当前任务相关\n' + lines.join('\n'));
       }
 
+      // Code facts only appear when the task names a project reference and the
+      // index can resolve it. This keeps unrelated prompts from paying the
+      // project-packet token cost.
+      const projectArgs = { ref: query, budget: Math.min(900, CONTEXT_BUDGET) };
+      if (args.scope) projectArgs.scope = args.scope;
+      const project = query ? await run('project_context', projectArgs, toolContext) : null;
+      const projectText = String(project?.text ?? '').trim();
+      if (project?.ok && projectText && /^## 项目代码索引/m.test(projectText)) sections.push(projectText);
+
       if (!sections.length) {
         return {
           text: '长期记忆为空。这是第一次使用：先正常干活，值得留下的结论再用 memory_write 写入。',
           hits: 0,
+          project: null,
           update: version?.updateAvailable ? {
             localVersion: version.localVersion,
             remoteVersion: version.remoteVersion,
@@ -130,6 +141,7 @@ export function makeContextTool(host) {
       return {
         text,
         hits: hits.length,
+        project: projectText ? { stale: Number(project?.stale ?? 0), chars: projectText.length } : null,
         update: version?.updateAvailable ? {
           localVersion: version.localVersion,
           remoteVersion: version.remoteVersion,

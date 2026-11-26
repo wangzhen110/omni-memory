@@ -5,7 +5,7 @@ import { boot, fakeReq, fakePost, fakePostConsumed, fakeRes } from './helpers.mj
 
 const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
-test('twenty one loopback routes are registered', async () => {
+test('twenty-six loopback routes are registered', async () => {
   const app = await boot();
   const paths = app.routes.map(route => route.path).sort();
   assert.deepEqual(paths, [
@@ -26,6 +26,11 @@ test('twenty one loopback routes are registered', async () => {
     '/omni-memory/packet',
     '/omni-memory/persona',
     '/omni-memory/persona/refresh',
+    '/omni-memory/project/context',
+    '/omni-memory/project/impact',
+    '/omni-memory/project/search',
+    '/omni-memory/project/status',
+    '/omni-memory/project/sync',
     '/omni-memory/restore',
     '/omni-memory/search',
     '/omni-memory/status',

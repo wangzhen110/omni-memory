@@ -2,7 +2,7 @@
 
 > **让 AI 不再失忆的本地长期记忆底稿。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
 
-[![tests](https://img.shields.io/badge/tests-452%2F452-brightgreen)](#测试与指标)
+[![tests](https://img.shields.io/badge/tests-476%2F476-brightgreen)](#测试与指标)
 [![node](https://img.shields.io/badge/node-%3E%3D22.13-8de1ff)](#本地安装开发者)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
@@ -12,7 +12,7 @@
 
 **它不是聊天记录导出，也不是把上下文窗口调大。** 它把「原文」「结论」「事实」「关系」分成四层：原文只增不改，笔记带来源可校验，事实有有效期，关系进星图；检索时四路召回，只把相关的那一小段送回模型。
 
-**完整机理与接口参考**：[`docs/REFERENCE.md`](docs/REFERENCE.md) —— schema、写入与检索机理、25 个 MCP 工具（23 个内核工具 + `memory_context` / `memory_rules` 适配工具）、21 条路由、MCP 协议面、CLI、环境变量、AI 调用剧本。执行 `npm run memory:sync` 可把整本手册拆成笔记写进记忆库，之后用 `memory_search` 就能直接检索到。
+**完整机理与接口参考**：[`docs/REFERENCE.md`](docs/REFERENCE.md) —— schema、写入与检索机理、30 个 MCP 工具（28 个内核工具 + `memory_context` / `memory_rules` 适配工具）、26 条路由、MCP 协议面、CLI、环境变量、AI 调用剧本。执行 `npm run memory:sync` 可把整本手册拆成笔记写进记忆库，之后用 `memory_search` 就能直接检索到。
 
 ## 5 分钟跑起来
 
@@ -32,7 +32,7 @@ npm run serve                  # 打开 http://127.0.0.1:7788/hub
 Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-git checkout v4.5.1
+git checkout v4.6.0
 npm ci
 npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
 npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
@@ -65,6 +65,7 @@ npm run serve
 
 ## 核心能力
 
+- **项目代码索引（v4.6.0）**：`omni index --dir <项目>` 一条命令建立可增量重建的模块、符号、API 与依赖索引；源码始终是权威，索引只是缓存。`project_search` / `project_context` / `project_impact` 精确回答“函数在哪、签名是什么、接口契约是什么、改它会波及谁”，并与 note/fact 里“为什么、历史、坑”合并（详见下方「项目代码索引」）
 - **混合检索**：词面（FTS5 trigram + 中文二元索引）+ 语义优先（内置 BGE-small-zh int8，512 维；语义不可用或空结果时用 hashed/远程向量兜底）+ 图游走，RRF 融合排序；可选 cross-encoder rerank（Jina / Cohere / SiliconFlow / 自建兼容端点），只对 top-20 候选做 0..1 归一化后混合，exact problemKey 命中始终优先
 - **会话自动捕获**：`memory_ingest` 把任意宿主的对话轮次落成转录与待审候选；候选先 pending，`memory_candidate` 接受后才成为正式笔记，不让人写库成为唯一入口
 - **经验巩固**：`memory_consolidate` 按 `problemKey` 把多条活跃笔记压成带来源链的摘要；默认 dry-run，应用时只写 `superseded_by`，不删除原行
@@ -82,6 +83,23 @@ npm run serve
 - **多客户端并发**：同一台机器上多个 AI 客户端各起一个服务进程，共用一个 `omni.db`；写入等待而不是报锁错，去重与事实失效在写锁内完成，迁移/索引重建/做梦由全机唯一的租约持有者执行（见 [ADR-028](docs/ADR/028-multi-process-concurrency.md)）
 - **隐私**：全部数据在本地 SQLite（`$OMNI_HOME/memory/omni.db`，未设置时回退 `$DSH_HOME`），HTTP 只监听 loopback；写操作只接受 POST 并校验 Origin/CSRF 头
 
+## 项目代码索引
+
+记忆库解决“为什么、历史、坑”，代码索引解决“在哪、叫什么、签名、契约、波及谁”。两者共用同一个 scope，不互相替代。
+
+```bash
+node hosts/cli.mjs index --dir D:\xiangmu\全息记忆          # 建立或增量重建
+node hosts/cli.mjs project status --dir D:\xiangmu\全息记忆  # 文件/符号/API/stale
+node hosts/cli.mjs project search login --dir D:\xiangmu\全息记忆
+node hosts/cli.mjs project impact lib/project-index.mjs --dir D:\xiangmu\全息记忆
+```
+
+- **schema 20 五张派生表**：`code_files`、`code_symbols`、`code_apis`、`code_modules`、`code_edges`；不存源码正文，只存路径、行号、签名、短摘要和 sha256。
+- **适配器**：JS/TS 导出、函数、类、方法、导入与 Express/Koa/Fastify/Next/装饰器路由；OpenAPI/Swagger JSON+YAML；GraphQL SDL；Python/Go/Rust/Java/Kotlin/C#/PHP/Ruby/GDScript/Lua/Swift/Dart 走 generic，可选 universal-ctags 增强。
+- **增量与漂移**：mtime+size 未变时仍比对 sha，内容变了会被识别；删除的文件在下次同步清理；查询时按当前文件 stamp 标 `stale`/`missing`。
+- **四个入口**：CLI、5 个 `project_*` MCP 工具（`project_sync` / `project_search` / `project_context` / `project_status` / `project_impact`）、5 条 `/omni-memory/project/*` HTTP 路由、`/project` 页面。
+- **与记忆合并**：`memory_context` 命中项目引用时追加有预算的项目包；每条结论带 `sourceRef`、行号、`sha` 和 `stale`，需要“为什么/历史/坑”时再回 note/fact。
+
 ## 安装
 
 ### 插件市场
@@ -96,7 +114,7 @@ npm run serve
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 452 个用例
+npm test          # 476 个用例
 npm run check     # 语法、文档计数与模型资产完整性校验
 ```
 
@@ -121,8 +139,8 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.5.1
-npm run verify:release -- --tag v4.5.1 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.6.0
+npm run verify:release -- --tag v4.6.0 --launcher ./omni-serve-7788.exe
 ```
 
 第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
@@ -152,8 +170,8 @@ node scripts/uninstall-launcher.mjs --remove-binaries --remove-logs
 同一份内核可以脱离 DSH 运行，三个入口共用一个本地记忆库：
 
 - `hosts/mcp/bin.mjs` — 零依赖 stdio MCP 服务，Claude Code、Cursor、Cline、Codex CLI、Zed 都能接
-- `hosts/http/server.mjs` — 独立面板 + REST（直接挂载插件原有的 21 条路由）+ HTTP 上的 MCP（`POST /mcp`）
-- `hosts/cli.mjs` — `omni rules / context / search / serve / mcp`
+- `hosts/http/server.mjs` — 独立面板 + REST（直接挂载插件原有的 26 条路由）+ HTTP 上的 MCP（`POST /mcp`）
+- `hosts/cli.mjs` — `omni rules / context / search / write / index / project / serve / doctor / mcp`
 - `GET /omni-memory/packet` — 面向无 MCP 宿主的可注入记忆包；`openapi.json` 与 `POST /tool` 给 OpenAPI/function-calling 客户端
 - `POST /omni-memory/ingest` / `GET /omni-memory/candidates` / `POST /omni-memory/candidate` — 会话自动捕获与候选审阅；Claude Code 的 `SessionStart`/`Stop` hook 可用 `omni ingest --stdin`
 
@@ -246,7 +264,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**452 / 452 通过**
+- 自动化用例：**476 / 476 通过**
 - 检索延迟（本机复核，**3.12.1/3.12.2 数据**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **129.8ms**（固定旧边界 226.9ms；3.12.1 自适应收紧窗口/采样，3.12.2 修正为按可召回行数判定，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 3.12.0 新增：100k 短笔记 10M 字符检索 p95 **6.9ms**；10k 长笔记 10M 字符 p95 **27.4ms**；120 条确定性质量用例 **120/120**；LoCoMo session 粒度 evidence recall@10 **0.7134**（检索层，不是官方 QA）。完整方法与边界见 [基准与质量实测](docs/BENCHMARKS.md)。
@@ -260,6 +278,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 - 4.2.1：CLI 未给 `--dir` 时先向上找 `.omni-project`，找不到则回落到 CLI 所在仓库根，避免从 chat cwd 启动时落到 `proj:new-chat`；HTTP `/omni-memory/search` 同步返回 `total`/`returned`/`offset`/`truncated`。
 - 4.3.0：CLI `context`/`search` 默认改为词法 + hashed 向量，不再每次冷加载 37.5 MiB 本地语义模型；`--semantic` 或 `OMNI_CLI_SEMANTIC=1` 显式开启。实测同一查询：默认 **139ms**、语义 **478ms**；`context` 默认 **144ms**、语义 **467ms**。搜索返回结构收敛到单一构造点，CLI 参数错误改为一行提示并退出 2。
 - 4.3.1：`memory_context` 读路径只读版本缓存，不再等待 GitHub 探针（TTL 强制过期时仍 **142ms**，旧路径 0.5–2.5s）；`memory_write` 校验 `kind` 白名单，非法值返回错误而不是静默落成 note；CLI 布尔 flag 可放在关键词前；HTTP 空查询回填 `scope`；`npm test` 加 `--test-timeout=60000`，避免并行挂起。
+- 4.6.0：新增项目代码索引（schema 20 五张派生表、JS/TS/OpenAPI/GraphQL/generic 适配器、增量/sha 漂移/删除清理、CLI/5 个 MCP 工具/5 条 HTTP 路由/`/project` 页面）；`memory_context` 命中项目引用时追加带 `sourceRef`、行号、`sha`、`stale` 的有预算项目包。1,001 文件冷索引 <1s、热增量 `parsed=0`、精确查询 p95 <50ms；测试 **476/476**。
 - 黄金集（20 语料 / 24 问题）：词面 MRR 0.776 → hashed 混合 0.927 → 语义优先 **0.958**（旧双路 0.979，recall 仍 1.0）；语义冷加载约 208ms，单查询约 9.5ms（20 次 191ms，本机 CPU）
 
 ```bash
@@ -285,7 +304,7 @@ npm run bench:public:fetch && npm run bench:public
 - [5 分钟上手](docs/QUICKSTART.md)（demo、源码运行、官方安装）
 - [发布验签安装](docs/INSTALL-RELEASE.md)（M2 信任边界）
 - [公开 QA](docs/PUBLIC-QA.md)（可复现的检索与质量基线）
-- [架构决策记录](docs/ADR)（31 份）
+- [架构决策记录](docs/ADR)（32 份）
 - [威胁模型](docs/THREAT-MODEL.md)（信任边界、残余风险、新增路由检查清单）
 - [更新链签名](docs/UPDATE-SIGNING.md)（Ed25519 清单、公钥指纹、发布签名与密钥轮换）
 - 备份/恢复设计见 [ADR-019](docs/ADR/019-backup-restore.md)

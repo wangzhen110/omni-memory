@@ -33,6 +33,8 @@ const STATIC_CACHE = new Map();
 const STATIC_ALIASES = Object.freeze({
   '/hub': 'hub.html',
   '/hub/': 'hub.html',
+  '/project': 'project.html',
+  '/project/': 'project.html',
   '/m': 'm.html',
   '/m/': 'm.html',
 });

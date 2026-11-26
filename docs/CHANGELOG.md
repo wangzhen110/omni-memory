@@ -2,6 +2,22 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.0] — 2026-11-26
+
+### 变更
+- **项目代码索引**：schema 升到 20，新增 `code_files`、`code_symbols`、`code_apis`、`code_modules`、`code_edges` 五张派生表。只存路径、行号、签名、短摘要、`sourceRef` 与 `sha256`，**不存源码正文**；索引是可重建缓存，源码始终是权威。
+- **一条命令建立/增量重建**：`omni index [--dir] [--scope] [--full] [--no-ctags] [--json]`；按 manifest/顶层源目录发现模块，monorepo 子包各自成模块；变更文件只替换自己的符号/API/出边，删除文件清理对应行，不误删其他文件指向它的入边。
+- **漂移检测**：先比 `mtime_ms + bytes`，相同且已知 sha 时仍重读比对 sha，捕获“内容变了但 stat 未变”；查询时按当前文件 stamp 标 `stale`/`missing`。
+- **适配器**：JS/TS 导出、函数、类、方法、导入、Express/Koa/Fastify、`route({method,url})`、装饰器、Next.js `app/**/route.ts` 与 `pages/api/**`；OpenAPI/Swagger JSON+YAML；GraphQL SDL；Python/Go/Rust/Java/Kotlin/C#/PHP/Ruby/GDScript/Lua/Swift/Dart 走 generic，可选 universal-ctags JSON 增强。
+- **查询面**：5 个 `project_*` MCP 工具（`project_sync` / `project_search` / `project_context` / `project_status` / `project_impact`）、5 条 `/omni-memory/project/*` HTTP 路由、CLI `omni project status|search|context|impact|sync`、`/project` 页面。结果带 `path`、`line`、`sha`、`stale`、`sourceRef`；`project_impact` 走反向静态 import BFS，并附模块 tests 边与直接 import 的测试文件。
+- **与记忆合并**：`memory_context` 命中项目引用时追加有预算的项目包（`min(900, 1800)`）；显式项目 scope 的 `buildMemoryPacket` 追加项目包（约 45% 预算，上限 1000）。每条带 `sourceRef`、行号、`sha`、`stale`；空结果分支返回 `project:null`。
+- **OpenAPI 与文档**：`HOST_OPENAPI` 补齐 5 条 project path（共 15 条 path）；README、REFERENCE、DESIGN、ADR-032、CHANGELOG 同步到 4.6.0。
+
+### 测试
+- 新增 `test/project-index.test.mjs` 24 项：五表 schema、JS/TS/OpenAPI JSON+YAML/GraphQL/generic/ctags、增量、删除清理、sha 漂移、全量重建、不存正文、精确查询、上下文预算、影响面、monorepo、stale/missing、1,000 文件性能。
+- 1,000 文件（1,001 含 package.json）专项：冷索引 <1s（验收上限 30s），热增量 `parsed=0` 且 <2s，40 次精确查询 p95 <50ms。
+- 完整 `npm test` **476/476** 通过（原 452 + 新增 24）；路由 26 条、内核工具 28 个、MCP 工具 30 个。
+
 ## [4.5.1] — 2026-11-26
 
 ### 变更

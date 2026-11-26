@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 文档版本 | 4.5.1 |
-| 插件版本 | 4.5.1 |
+| 插件版本 | 4.6.0 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-25 |
@@ -84,6 +84,7 @@
 | FR-44 | 读取记忆时版本提醒 | `memory_context`（MCP/CLI）与 `/omni-memory/packet` 读取时检查云端 `main/package.json`；发现更高版本时在返回文本顶部提示“云端有新版，是否更新由用户决定”，不命令 AI 自动执行；成功结果缓存 30 分钟，失败 5 分钟，Contents API 与 raw 回退共享 2.5s 总预算，检查失败不阻塞记忆读取；缓存回读校验版本结构与 TTL，失败不保留旧远端版本；并发读取用跨进程单飞锁只发一次请求 | ✅ 已实现（3.11.6；`lib/version-check.mjs`） |
 | FR-45 | 产品化入口与诊断 | `/hub` 非等宽档案索引（记忆库/检索/关系图/项目/接入/状态，横向索引行而不是六卡网格）与 `/m` 手机端纸质底稿式只读搜索；`/star-map.html` 保留既有星图；`omni doctor` 只读诊断 Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务；`npm run setup` 先验证官方 Release 的 Ed25519 清单、签名 commit、干净工作树与启动器 SHA-256，再安装/创建计划任务；`setup:dev` 只做同提交哈希自洽；默认 dry-run，`--apply --start` 才落盘与启动 | ✅ 已实现（4.0.1 产品化入口；4.1.0 重绘 `/hub` 与 `/m`；4.1.1 手机读数改为单行；`hosts/shared/doctor.mjs`、`scripts/install.mjs`、`scripts/verify-release.mjs`） |
 | FR-46 | 开源发布与公共验证 | OSI 许可证 AGPL-3.0-only + 商业例外；贡献/安全/行为准则/治理文件；`npm run demo` 隔离演示；`npm run qa` 跑黄金集与 120 例质量套件；`verify:release` 与 `setup --require-release` 共用发布验签逻辑 | ✅ 已实现（4.0.1；`LICENSE`、`LICENSING.md`、`scripts/demo.mjs`、`scripts/qa.mjs`、`docs/QUICKSTART.md`） |
+| FR-47 | 项目代码索引 | 任意项目一条命令建立可增量重建的模块/符号/API/依赖索引；索引是派生缓存，源码始终权威；查询返回 `sourceRef`、行号、`sha`、`stale`；与 note/fact 的决策/历史/坑合并；不存源码正文 | ✅ 已实现（4.6.0，schema 20，ADR-032） |
 
 ### 1.2 非功能需求
 
@@ -98,9 +99,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 452/452（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 476/476（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 423 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 476 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -167,14 +168,17 @@ DSH Host 进程
 │   ├── lib/store.mjs        SQLite 句柄、schema/迁移、向量队列、备份与候选（~3,300 行）
 │   ├── lib/search.mjs       词面/语义/图召回、RRF 排序与 dream（~1,500 行）
 │   ├── lib/profile.mjs      画像、persona、memory packet、OpenAPI（~640 行）
-│   ├── lib/tool-definitions.mjs  23 个 MCP/DSH 工具定义（~1,350 行）
-│   ├── lib/read-routes.mjs  21 条 loopback HTTP 路由（~1,130 行）
+│   ├── lib/project-schema.mjs  schema 20 五张代码索引表与 scope 清理（~200 行）
+│   ├── lib/project-index.mjs   项目扫描/增量/查询/上下文/影响（~1,000 行）
+│   ├── lib/project-adapters/   js / api / generic / ctags 解析器（~1,000 行）
+│   ├── lib/tool-definitions.mjs  28 个 MCP/DSH 工具定义（~1,500 行）
+│   ├── lib/read-routes.mjs  26 条 loopback HTTP 路由（~1,250 行）
 │   ├── capture       session/event → chunks
 │   ├── recall        agent/inbox/claimed → 异步预取 top-3（TTL 120s）
 │   ├── retrieval     分词 / FTS / bigram / hashed 或远程向量 / 本地语义 / 图游走 / RRF
-│   ├── tools         23 个插件工具（write/ingest/candidate/consolidate/search/solution_report/profile/timeline/forget/dream/dream_proposals/dream_replace/dream_rollback/compact/reindex/export/import/restore/link_entity/persona/get/feedback/amend）
+│   ├── tools         28 个插件工具（write/ingest/candidate/consolidate/search/solution_report/profile/timeline/forget/dream/dream_proposals/dream_replace/dream_rollback/compact/reindex/export/import/restore/link_entity/persona/get/feedback/amend/project_sync/project_search/project_context/project_status/project_impact）
 │   ├── prompt        systemPrompt.section：画像 + 召回段（同步读缓存）
-│   └── routes        21 条 loopback HTTP（list/overview/search/graph/node/forget/restore/export/status/persona/persona/refresh/dream/proposals/dream/replace/dream/rollback/packet/openapi.json/tool/ingest/candidates/candidate/consolidate）
+│   └── routes        26 条 loopback HTTP（list/overview/search/graph/node/forget/restore/export/status/persona/persona/refresh/dream/proposals/dream/replace/dream/rollback/packet/openapi.json/tool/ingest/candidates/candidate/consolidate/project/status/project/search/project/context/project/impact/project/sync）
 ├── 本插件 Client 半边（client.js，~1500 行）
 │   ├── sidebar.panellist[id=omni-memory]   左栏入口图标
 │   ├── main[key=omni-memory]               记忆面板（分页/搜索/状态/遗忘）
@@ -228,7 +232,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 ### 4.3 迁移策略
 
 `meta.schema_version` 记录整数版本；启动时按序执行 `MIGRATIONS[n]`。
-**当前版本 19**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。v17 为 notes 增加 `text_hash` 与 `(scope, text_hash)` 索引，写入去重、导入与 restore 先走哈希候选、再比对原文；旧库启动时按 1000 行/批回填 NULL，并用 `notes_text_hash_missing(id) WHERE text_hash IS NULL` 部分索引让稳态缺失探针保持 O(1)。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。v18 把 `bigrams` 改为 `WITHOUT ROWID`，主键 `(gram, layer, owner_id)` 直接服务两字中文查询，另保留 `bigrams_owner(layer, owner_id, gram)` 供删除路径；旧表原先把同一份 gram 存在 hidden rowid、复合主键索引和二级索引三处。v19 把 `notes_fts` 改为 external-content 索引（`content='notes'`、`content_rowid='id'`），不再另存 `notes_fts_content` 正文副本；索引由 6 个 trigger 在插入、修改、supersede、tombstone、恢复、物理删除时同步，重建时只写入 active 行。
+**当前版本 20**。v7 移除全局 `chunks.hash` 唯一索引，改为按 `(hash, scope)` 的部分唯一索引；为 `edges` 补 `scope`、为 `facts` 补 `recorded_at`；新增 `bigrams` 索引表；并回填旧数据的 scope 与 bigram。v11 为 notes 增加故障经验字段，旧行保持为空/NULL，按 unverified 读取。v12 为 notes/facts 增加召回反馈计数（`recall_count`、`last_recall_at`、`useful_count`、`misleading_count`），旧行从 0 起算。v13 新增 `note_candidates`（会话自动捕获的待审候选），带 `status/scope/hash` 索引，旧库补表不丢数据。v14 新增 `semantic_vectors`（按 `(kind, owner_id, model)` 隔离本地语义向量），旧库补表，语义索引由后台回填。v15 新增 `scope_aliases`，用于跨平台路径大小写归一时记录旧项目键到 canonical 键的映射；迁移由 `ensureProjectAlias` 在打开工作区时执行。v16 为检索热路径补 `notes(scope, superseded_by, ts)`、`facts(subject, relation, scope, valid_to)`、`chunks(scope, deleted_at, ts)` 等索引；旧库启动时幂等补齐，不改变数据。v17 为 notes 增加 `text_hash` 与 `(scope, text_hash)` 索引，写入去重、导入与 restore 先走哈希候选、再比对原文；旧库启动时按 1000 行/批回填 NULL，并用 `notes_text_hash_missing(id) WHERE text_hash IS NULL` 部分索引让稳态缺失探针保持 O(1)。新增列/索引必须写迁移，禁止直接改 `CREATE TABLE` 语句（新库与老库必须收敛到同一结构）。v18 把 `bigrams` 改为 `WITHOUT ROWID`，主键 `(gram, layer, owner_id)` 直接服务两字中文查询，另保留 `bigrams_owner(layer, owner_id, gram)` 供删除路径；旧表原先把同一份 gram 存在 hidden rowid、复合主键索引和二级索引三处。v19 把 `notes_fts` 改为 external-content 索引（`content='notes'`、`content_rowid='id'`），不再另存 `notes_fts_content` 正文副本；索引由 6 个 trigger 在插入、修改、supersede、tombstone、恢复、物理删除时同步，重建时只写入 active 行。
 
 | 版本 | 变更 | 迁移动作 |
 |---|---|---|
@@ -249,6 +253,9 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 | 15 | 项目 scope alias | `scope_aliases(alias PRIMARY KEY, canonical, created_at)`；`scope_aliases_canonical` 索引；打开路径时迁移旧键 |
 | 16 | 热查询索引 | 为 notes/facts/chunks/edges 补 scope+状态+时间复合索引；幂等 `CREATE INDEX IF NOT EXISTS`，不改变数据 |
 | 17 | 笔记文本哈希 | `notes.text_hash`、`notes_scope_text_hash(scope, text_hash)`；`notes_text_hash_missing(id) WHERE text_hash IS NULL`；启动按 1000 行/批回填 NULL，去重仍比对原文，碰撞不合并 |
+| 18 | bigram 去冗余 | `bigrams` 改 `WITHOUT ROWID`，主键 `(gram, layer, owner_id)`；保留 `bigrams_owner(layer, owner_id, gram)` 供删除 |
+| 19 | notes FTS 正文瘦身 | `notes_fts` 改 external-content（`content='notes'`），6 个 trigger 同步增删改/替代/墓碑/恢复；去掉 `notes_fts_content` 副本 |
+| 20 | 项目代码索引 | 新增 `code_files`、`code_symbols`、`code_apis`、`code_modules`、`code_edges` 五张派生表；只存路径/行号/签名/摘要/sha256，不存源码正文；启动时幂等补建 |
 
 未带版本的旧库按 v1 处理，自动补齐到当前版本；旧行不受影响（迁移只加列、不删数据）。
 
@@ -288,11 +295,16 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 |---|---|---|---|
 | `/omni-memory/list` | GET | `limit`(1..200, 默认 40), `offset`(≥0), `scope`(`all`\|`global`\|`project`\|项目键) | `{ok, db, fts, schema, index, page{limit,offset,scope,totalNotes,totalFacts,hasMore*}, stats{notes,facts,chunks,globalNotes,projectNotes,contested,verified}, projects[{scope,notes,facts,chunks,lastAt}], chunks[]（仅精确项目键）, notes[], facts[]}` |
 | `/omni-memory/status` | GET | 无 | `{ok, version, autoRecall, lastInjection, routes, aliasRepair, aliasMigration, lastSearch, lastJudge, embedding, semantic, ...}`；`version` 来自 `package.json` |
+| `/omni-memory/project/status` | GET | `root`/`cwd` `scope` | `{ok, root, scope, counts{files,modules,symbols,apis,edges}, stale, missing, indexedAt}` |
+| `/omni-memory/project/search` | GET | `q` `root` `scope` `kind` `path` `module` `method` `limit` | 模块/文件/符号/API 结果，带 `path`、`line`、`sha`、`stale`、`sourceRef` |
+| `/omni-memory/project/context` | GET | `ref`（必填）`root` `scope` `budget` | 有预算的模块/文件/符号/API 上下文；带 `sourceRef`、行号、`sha`、`stale` |
+| `/omni-memory/project/impact` | GET | `ref`（必填）`root` `scope` `depth`（1..8，默认 4） | `{ok, targets, files, modules, importers, tests, stale}`；反向静态 import BFS |
+| `/omni-memory/project/sync` | POST | body `root`（必填）`scope` `full` `ctags` `gitCommit`；header `x-omni-csrf: 1` | `{files,parsed,unchanged,removed,symbols,apis,modules,edges,durationMs}`；增量建立/重建 |
 | `/omni-memory/overview` | GET | `range`(`4w`\|`6w`\|`12w`\|`26w`, 默认 `12w`), `scope`(`all`\|`global`\|`project`\|项目键) | `{ok, version, asOf, range, scope, stats, health, series, daily, projects, profile, activity, graph}`；面向网页概览的真实聚合，不返回全文；非 loopback 403 |
 | `/omni-memory/graph` | GET | 无 | `{ok, nodes[{id,kind,label,weight,scope}], links[{source,target,rel}]}`（节点 ≤300，无悬空边） |
 | `/omni-memory/search` | GET | `q`, `limit`(1..60), `rerank`(0/1) | `{ok, hits[]}`；配置 rerank 后按 cross-encoder 分数重排 |
 | `/omni-memory/packet` | GET | `q` `scope` `cwd` `limit`(1..10, 默认 5) `budget`(400..4000, 默认 1800) `format`(`json`\|`text`) | `{ok, format, scope, query, text, chars, hits, truncated, memories[], update, generatedAt}`；`text` 顶部可能含版本提醒；`format=text` 直接输出纯文本 |
-| `/omni-memory/openapi.json` | GET | — | OpenAPI 3.0 描述：10 条 path（packet/search/list/node/status/tool/ingest/candidates/candidate/consolidate） |
+| `/omni-memory/openapi.json` | GET | — | OpenAPI 3.0 描述：15 条 path（packet/search/list/node/status/tool/ingest/candidates/candidate/consolidate/project/status/project/search/project/context/project/impact/project/sync） |
 | `/omni-memory/tool` | POST | body `name` `arguments`；header `x-omni-csrf: 1` | `{ok, name, value, text}`；仅允许 write/search/solution_report/feedback/get/amend/profile/timeline |
 | `/omni-memory/forget` | **POST**（GET 兼容） | `kind`, `id`, `scope`（查询参数优先；空 body 时从 JSON body 兜底） | `{ok, forgotten, scope}` |
 | `/omni-memory/restore` | POST | `kind`, `id`, `scope`（查询参数优先，JSON body 兜底） | `{ok, restored, reason?, activeId?, activeObject?}`；单值事实/同文本笔记已有 active 值时拒绝恢复 |
@@ -475,6 +487,18 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - `term` 为空 → 返回空集（不查询）。
 - 任一层抛错 → 该层记 0 条，其余层照常（软降级）。
 
+### 6.14 项目代码索引（v4.6.0）
+
+- **定位**：源码是权威，索引只是可重建缓存。索引回答“模块负责什么、函数在哪、签名是什么、接口契约是什么、改它会波及谁”；note/fact 回答“为什么、历史、坑”。两者用同一个项目 scope 合并，不互相替代。
+- **表**：schema 20 新增 `code_files`、`code_symbols`、`code_apis`、`code_modules`、`code_edges` 五张派生表。只存路径、行号、签名、短摘要、`sourceRef`、`sha256`，**不存源码正文**。
+- **扫描**：跳过 `.git`、`node_modules`、构建产物与二进制；按扩展名选择适配器。模块优先由 manifest（`package.json`、`go.mod`、`Cargo.toml`、`pyproject.toml`、`pom.xml`、`build.gradle`、`pubspec.yaml`、`.csproj`）划分；monorepo 子包各自成模块，无 manifest 时按顶层源目录。
+- **适配器**：JS/TS 覆盖导出、函数、类、方法、`export {}`、`export ... from`、CommonJS、`import/require/import()`，以及 Express/Koa/Fastify、`route({method,url})`、装饰器、Next.js `app/**/route.ts` 与 `pages/api/**`；OpenAPI/Swagger JSON+YAML 解析 paths、operationId、tags、auth、request/response、errors、`components.schemas`；GraphQL SDL 把 Query/Mutation/Subscription 字段转为 API；其他语言走 generic 声明/导入/常见路由，`ctags` 模式可用 universal-ctags JSON 增强。
+- **增量**：先比 `mtime_ms + bytes`，相同且已知 sha 时仍重读文件比对 sha，捕获“内容变了但 stat 未变”的漂移；未变文件不解析。变更文件只替换自己的符号/API/出边，不误删其他文件指向它的入边；删除文件时清理该文件全部行与相关边。
+- **stale/missing**：查询时用当前文件 stamp 对比索引记录，内容或存在性变化标 `stale`/`missing`，不假装索引仍准确。
+- **查询面**：CLI（`index`、`project status/search/context/impact/sync`）、5 个 `project_*` MCP 工具、5 条 `/omni-memory/project/*` HTTP 路由、`/project` 页面。`project_search` 返回精确字段与 `sourceRef`；`project_context` 输出有预算的模块/文件/符号/API 包；`project_impact` 走反向静态 import BFS，并附模块 tests 边与直接 import 的测试文件。
+- **与记忆合并**：`memory_context` 在 query 命中项目引用时追加项目包，预算取 `min(900, 1800)`；显式项目 scope 的 `buildMemoryPacket` 也追加项目包，约占总预算 45%（上限 1000）。项目包每条带 `sourceRef`、行号、`sha`、`stale`。空结果分支保留 `project:null`，不静默跳过。
+- **预算**：1,000 文件冷索引 <30s、热增量 <2s、精确查询 p95 <50ms；专项 24 项覆盖 schema、适配器、增量、删除、sha 漂移、查询、上下文、影响面、monorepo、状态和性能。
+
 ---
 
 ## 7. 运行时可观测性
@@ -555,6 +579,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | FR-44 | `test/version-check.test.mjs`、`test/daily-sync.test.mjs`、`test/api.test.mjs` | 提醒文本、contents API、raw 回退、缓存复用、缓存注入拒绝、失败清空旧远端版本、网络失败降级、并发单飞锁、`memory_context` 顶部提醒、`/packet` 文本提醒 |
 | FR-45 | `test/productization.test.mjs`、`test/api.test.mjs`、`test/install-launcher.test.mjs`、`test/install-smoke.test.mjs` | doctor 只读诊断、fresh home 不落库、安装 dry-run 不写文件/不建任务、`/hub` 与 `/m` 由静态服务返回、计划任务缺失时 `--create-task` 才创建、发布验签安装入口 |
 | FR-46 | `test/open-source.test.mjs`、`test/verify-release.test.mjs` | AGPL/治理文件存在、setup 默认 fail-closed 验签、demo/qa 入口、发布清单签名与篡改拒绝 |
+| FR-47 | `test/project-index.test.mjs`、`test/tools.test.mjs`、`test/api.test.mjs` | 五表 schema、JS/TS/OpenAPI/GraphQL/generic/ctags、增量/删除/sha 漂移、search/context/impact、monorepo、1,000 文件性能 |
 | FR-38 | `test/ingest.test.mjs`、`test/capture-rules.test.mjs` | ingest 候选、接受/拒绝、隔离、去重、hook 解析 |
 | FR-39 | `test/consolidation.test.mjs` | dry-run、apply、supersede、来源链、scope 隔离 |
 | FR-40 | `test/rerank.test.mjs`、`test/prompt.test.mjs` | rerank 开关、远程评分顺序、分层画像预算 |

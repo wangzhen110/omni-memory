@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>全息记忆 · 项目代码索引</title>
+<link rel="stylesheet" href="/project.css">
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <a class="brand" href="/hub" aria-label="全息记忆首页">
+      <span class="brand-seal" aria-hidden="true">息</span>
+      <span class="brand-copy"><b>全息记忆</b><small>项目代码索引 · DERIVED CACHE</small></span>
+    </a>
+    <nav class="mast-nav" aria-label="主导航">
+      <a href="/hub">底稿</a>
+      <a href="/">概览</a>
+      <a href="/panel.html">记忆</a>
+      <a href="/star-map.html">关系图</a>
+      <a class="active" href="/project">项目</a>
+      <a href="/m">手机</a>
+    </nav>
+    <div class="mast-meta">
+      <span id="versionPill">v—</span>
+      <span class="meta-db"><i></i><span id="dbPill">本地库</span></span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="error-banner" id="errorBanner" role="alert"></div>
+
+    <section class="hero compact">
+      <div class="hero-copy">
+        <p class="hero-kicker"><span>档案 07</span><span>可重建 · 不存源码正文</span></p>
+        <h1>代码事实，<em>精确到行。</em></h1>
+        <p class="hero-lede">模块负责什么、函数在哪、签名是什么、接口契约是什么、改它会波及谁。源码始终权威，索引只是缓存；为什么、历史、坑仍归 note/fact。</p>
+      </div>
+      <aside class="status-card" aria-label="项目索引状态">
+        <div class="status-title"><span>索引状态</span><b id="statusWord">读取中</b></div>
+        <div class="status-table">
+          <div><span>文件</span><strong id="statusFiles">—</strong></div>
+          <div><span>模块 / 符号</span><strong id="statusModules">—</strong></div>
+          <div><span>API / 边</span><strong id="statusApis">—</strong></div>
+          <div><span>漂移 / 丢失</span><strong id="statusStale">—</strong></div>
+        </div>
+        <div class="status-seal">只读页面 · 写操作需 CSRF</div>
+        <p class="status-note" id="statusRoot">还没有索引。输入项目目录，点“建立索引”。</p>
+      </aside>
+    </section>
+
+    <section class="toolbar">
+      <label>项目目录 <input id="rootInput" type="text" spellcheck="false" placeholder="D:\path\to\project"></label>
+      <label>项目层 <input id="scopeInput" type="text" spellcheck="false" placeholder="留空自动解析"></label>
+      <button id="syncBtn" type="button">建立索引</button>
+      <button id="statusBtn" type="button" class="ghost">刷新状态</button>
+    </section>
+
+    <section class="searchbar">
+      <label for="queryInput">精确查询</label>
+      <input id="queryInput" type="search" placeholder="模块、函数、路径、路由，例如 projectContext / lib/store.mjs / POST /api/login">
+      <button id="searchBtn" type="button">查询</button>
+    </section>
+
+    <section class="results" id="results" aria-live="polite">
+      <p class="empty">先建立索引，或直接输入关键词查询。</p>
+    </section>
+
+    <section class="detail" id="detail" hidden>
+      <div class="detail-head">
+        <h2 id="detailTitle">项目上下文</h2>
+        <div class="detail-actions">
+          <button id="impactBtn" type="button" class="ghost">看影响面</button>
+          <button id="closeDetail" type="button" class="ghost">关闭</button>
+        </div>
+      </div>
+      <pre id="detailText"></pre>
+      <div class="impact" id="impactBox" hidden></div>
+    </section>
+  </main>
+</div>
+<script src="/project.js"></script>
+</body>
+</html>

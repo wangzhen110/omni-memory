@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 4.5.1 · 生成日期 2026-11-25 · 依据源码与真实 schema v19 核对
+> 版本 4.6.0 · 生成日期 2026-11-26 · 依据源码与真实 schema v20 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -196,9 +196,9 @@ DSH 外（MCP 等）：没有注入点，改为 `memory_context` 显式调用，
 
 ---
 
-## 3. 数据模型（schema v19，实测）
+## 3. 数据模型（schema v20，实测）
 
-共 13 张业务表（不含 FTS 影子表）。字段按真实 `PRAGMA table_info` 导出。
+共 13 张业务表 + 5 张代码索引派生表（不含 FTS 影子表）。字段按真实 `PRAGMA table_info` 导出。
 
 ### 3.1 meta
 `key`(pk), `value`
@@ -247,6 +247,17 @@ DSH 外（MCP 等）：没有注入点，改为 `memory_context` 显式调用，
 
 ### 3.13 scope_aliases（项目键别名）
 `alias`(pk), `canonical`, `created_at`，索引 `scope_aliases_canonical(canonical)`。记录旧的项目 scope 键到 canonical 键的映射；只用于跨平台路径大小写归一与显式运维迁移，不改变笔记的可见性规则。`canonical` 本身仍遵循 `proj:<basename>#<hash>` 格式。
+
+### 3.14 代码索引派生表（schema v20，可重建）
+五张表都以 `scope` 为第一列，按项目层隔离；都是派生缓存，源码是权威。
+
+- `code_files`：`scope`, `path`, `lang`, `module`, `bytes`, `loc`, `mtime_ms`, `sha256`, `git_commit`, `indexed_at`；主键 `(scope, path)`，索引 `(scope, module)`、`(lang)`。不存源码正文。
+- `code_symbols`：`scope`, `path`, `module`, `kind`, `name`, `qualified_name`, `signature`, `start_line`, `end_line`, `exported`, `doc`, `source_ref`；主键 `(scope, path, kind, qualified_name, start_line)`；索引按名字、限定名、路径、模块。
+- `code_apis`：`scope`, `path`, `module`, `kind`, `method`, `route`, `handler`, `summary`, `auth`, `request`, `response`, `errors`, `tags`, `source_ref`；索引 `(scope, method, route)`、`route`、`path`、`module`。
+- `code_modules`：`scope`, `key`, `name`, `root`, `description`, `manifest`, `language`, `entry`, `imports_json`, `imported_by_json`, `public_surface_json`, `symbols`, `apis`, `files`, `indexed_at`；索引 `key`。
+- `code_edges`：`scope`, `src`, `dst`, `kind`（imports/contains/tests），索引 `(scope, src)`、`(scope, dst)`。
+
+`stale` 不是列：查询时用当前文件的 `mtime_ms`/`bytes`/`sha256` 与行内记录对比得出；文件消失为 `missing`。删除文件时同步清 `code_files`、该文件的符号/API、出边和相关模块快照；只改一个文件时不会误删其他文件指向它的入边。
 
 ---
 
@@ -316,9 +327,9 @@ MCP 无法写客户端系统提示，所以同一份 `RULES_TEXT` 铺五条路�
 
 ---
 
-## 5. 工具参考（23 个内核工具）
+## 5. 工具参考（28 个内核工具）
 
-MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rules`；因此真实 `tools/list` 返回 **25 个 MCP 工具**，而插件内核本身仍是 23 个 `memory_*` 工具。
+MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rules`；因此真实 `tools/list` 返回 **30 个 MCP 工具**，而插件内核本身是 28 个工具（23 个 `memory_*` + 5 个 `project_*`）。
 
 所有工具都是"失败即报错、成功即返回值"；MCP 侧错误统一转成 `isError: true` 的文本块。
 
@@ -435,9 +446,29 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 参数：`problemKey` 必填；`scope`、`minNotes`（2..10，默认 2）、`apply`（默认 false）。
 作用：同一 `problemKey` + 同一精确 scope 的活跃笔记压成一条来源链摘要；默认 dry-run。`apply` 时按 `[已验证]/[未验证]/[失败尝试]/[已过期]` 分组，旧行只写 `superseded_by`，不删除；反馈计数汇总到摘要。`scope=all/project` 被拒绝。
 
+### 5.26 project_sync
+参数：`root`（项目目录；默认宿主工作目录，别名 `cwd`）、`scope`（默认由 root 解析）、`full`（默认 false；true 清空该 scope 后全量重扫）、`ctags`（默认 true；false 跳过 ctags 增强）、`gitCommit`（可选，给扫描文件打 commit sha）。
+作用：为一个 checkout 建立可增量重建的代码索引。返回 `{ok, root, scope, files, parsed, unchanged, removed, symbols, apis, modules, edges, durationMs}`。只存路径、行号、签名、API 契约、短摘要与 sha256，不存源码正文。
+
+### 5.27 project_search
+参数：`query`（符号/模块/路径/路由/API 名）、`scope`、`root`（用于计算 stale）、`kind`（all/symbol/api/module/file 或 function/class 等）、`path`（路径子串）、`module`、`method`、`limit`（每类上限 80）。
+作用：精确优先查询派生索引。返回 `modules[]`、`symbols[]`、`apis[]`、`files[]`，每个结果带 `path`、`line`、`sha`、`stale`、`sourceRef`。需要“为什么/历史/坑”时回 `memory_search`。
+
+### 5.28 project_context
+参数：`ref` 必填（`module:key`、`code:path#Lx`、`spec:...`、路径、符号名或 HTTP route）、`scope`、`root`、`budget`（默认 1800，最大 4000）。
+作用：给一个模块/文件/符号/API 输出有预算的上下文：职责、公开面、签名、接口契约、依赖、测试与 `sourceRef`/行号/`sha`/`stale`。不替代 note/fact 的叙事。
+
+### 5.29 project_status
+参数：`scope`、`root`（默认索引领取的 root）。
+作用：返回 `{ok, scope, root, counts{files,modules,symbols,apis,edges}, stale, missing, indexedAt}`。stale/missing 由当前文件与索引记录对比得出，不是列。
+
+### 5.30 project_impact
+参数：`ref` 必填（`module:key`、路径、符号名或 HTTP route）、`scope`、`root`、`depth`（反向 import 深度，默认 4，最大 8）。
+作用：改它会波及谁。返回 `{ok, targets, files, modules, importers, tests, stale}`；走反向静态 import BFS，并附模块 tests 边与直接 import 的测试文件。第一版只覆盖静态 import/tests，不是运行时调用图。
+
 ---
 
-## 6. REST 接口（21 条）
+## 6. REST 接口（26 条）
 
 统一前缀 `/omni-memory`，默认只听回环。写操作要求 `POST` 且同源（有 `Origin` 时必须与 Host 一致）；不带 `Origin` 的本地客户端放行。
 
@@ -465,19 +496,25 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 | `/candidates` | GET | `status` `scope` `cwd` `limit` | 列出候选 |
 | `/candidate` | POST | `id` `action` `scope` `cwd` `reason` | 接受/拒绝候选 |
 | `/consolidate` | POST | `problemKey` `scope` `minNotes` `apply` | 按问题指纹巩固笔记 |
+| `/project/status` | GET | `root`/`cwd` `scope` | `{ok, root, scope, counts{files,modules,symbols,apis,edges}, stale, missing, indexedAt}` |
+| `/project/search` | GET | `q` `root` `scope` `kind` `path` `module` `method` `limit` | 模块/文件/符号/API 结果，带 `path`、`line`、`sha`、`stale`、`sourceRef` |
+| `/project/context` | GET | `ref`（必填）`root` `scope` `budget` | 有预算的项目上下文；带 `sourceRef`、行号、`sha`、`stale` |
+| `/project/impact` | GET | `ref`（必填）`root` `scope` `depth` | `{ok, targets, files, modules, importers, tests, stale}` |
+| `/project/sync` | POST | body `root`（必填）`scope` `full` `ctags` `gitCommit`；header `x-omni-csrf: 1` | `{files,parsed,unchanged,removed,symbols,apis,modules,edges,durationMs}` |
 | `/forget` | POST | `kind` `id`（body 或 query） | 墓碑化 |
 
 响应统一带 `ok`。错误为 `{ ok: false, error }`。
 
-`GET /metrics` 是服务级只读指标，不属于 21 条插件 REST 路由：返回 `uptimeSeconds`、`requests`、`errors`、`mcpRequests`、`mcpMessages`、`tools`、`routes` 与 `process.memoryUsage()` 的 RSS/heap。和 `/health` 一样只接受 loopback，非回环请求 403；不包含记忆正文、查询或凭据。
+`GET /metrics` 是服务级只读指标，不属于 26 条插件 REST 路由：返回 `uptimeSeconds`、`requests`、`errors`、`mcpRequests`、`mcpMessages`、`tools`、`routes` 与 `process.memoryUsage()` 的 RSS/heap。和 `/health` 一样只接受 loopback，非回环请求 403；不包含记忆正文、查询或凭据。
 
-静态入口挂在 `GET /`、`GET /hub`、`GET /m`，三者都只允许 loopback：
+静态入口挂在 `GET /`、`GET /hub`、`GET /m`、`GET /project`，都只允许 loopback：
 
 - `/`：原有完整仪表盘（KPI、健康度、增长、项目、热力图、画像、活跃带、星图、动态）。
 - `/hub`：本机记忆档案索引。横向非等宽索引行（记忆库 / 检索 / 关系图 / 项目 / 接入 / 状态），数字来自 `/omni-memory/overview` 与 `/health`；搜索框跳转 `/panel.html?q=`。视觉是墨色底稿，不是六卡网格。
 - `/m`：竖屏只读手机端，纸质底稿式最近归档 + `/omni-memory/search` 搜索；顶部一行档案读数（活跃/健康/工具），不提供写入入口。
+- `/project`：项目代码索引页。输入项目目录/scope 后建立索引、查看覆盖与 stale/missing、精确查询模块/符号/API、查看有预算上下文与影响面；写操作走 `POST /omni-memory/project/sync`，需要 CSRF。
 
-`/hub` 与 `/m` 是无扩展名的 pretty-path，由 `hosts/http/server.mjs` 的 `STATIC_ALIASES` 映射到 `hub.html` / `m.html`，不是新增 REST 路由。星图默认读 `scope=all`，四旋臂三维投影（移植客户端 `MemoryGraph`），自动旋转、拖拽旋转、滚轮缩放、点选节点查详情；`/?tab=map` 可直接打开星图页签。
+`/hub`、`/m`、`/project` 是无扩展名的 pretty-path，由 `hosts/http/server.mjs` 的 `STATIC_ALIASES` 映射到 `hub.html` / `m.html` / `project.html`，不是新增 REST 路由。星图默认读 `scope=all`，四旋臂三维投影（移植客户端 `MemoryGraph`），自动旋转、拖拽旋转、滚轮缩放、点选节点查详情；`/?tab=map` 可直接打开星图页签。
 
 ### 6.1 版本可见、读取提醒与每日同步
 
@@ -552,10 +589,18 @@ report   --id <笔记id> --outcome success|failed|expired [--evidence <证据>]
 feedback --kind note|fact --id <id> --rating useful|misleading [--dir <项目>] [--scope]
          记录一次真实召回反馈；quality 排序的闭环信号
 forget   --kind note|fact|chunk --id <行id>
+index    [--dir <项目>] [--scope <层级>] [--full] [--no-ctags] [--json]
+         一条命令建立或增量重建项目代码索引；--full 清空 scope 后全量重扫
 project  show --dir <项目>
          init --dir <项目> [--name <名称>] [--key <proj键>]
          link --from <旧proj键> --to <新proj键> [--apply]
          默认预览；--apply 事务内合并历史键
+project  status|search|context|impact|sync --dir <项目> [...]
+         status  files/modules/symbols/apis/edges/stale/missing
+         search  <query> [--kind] [--path] [--module] [--method] [--limit]
+         context <ref> [--budget]
+         impact  <ref> [--depth]
+         sync    别名于 omni index
 scope-alias --from <旧proj键> --to <新proj键> [--apply]
          默认预览；--apply 事务内合并 scope；--list 列出已记录别名
 kb-migrate [--source-prefix 专业知识/] [--from global] [--to proj:专业知识#967a81] [--apply]

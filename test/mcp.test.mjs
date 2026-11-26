@@ -94,7 +94,7 @@ test('mcp adapter: handshake, tool listing, write, recall, error path', async t 
 
     const list = await request('tools/list', {});
     const names = list.result.tools.map(tool => tool.name).sort();
-    assert.equal(names.length, 25, `expected 23 memory tools plus memory_context and memory_rules, got ${names.length}`);
+    assert.equal(names.length, 30, `expected 28 memory tools plus memory_context and memory_rules, got ${names.length}`);
     assert.ok(names.includes('memory_context'));
     assert.ok(names.includes('memory_rules'));
     assert.ok(names.includes('memory_write'));
