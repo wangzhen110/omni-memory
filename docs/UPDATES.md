@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 122 次提交；更新记录自身的提交不计入列表。
+> 共 125 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,9 @@
 
 ## 2026-11-26
 
+- 13:58:29 `5547496f` — 4.6.2: add the remediation completion report — [提交](https://github.com/wangzhen110/omni-memory/commit/5547496fbc134e28e9c9487817256b603d42df67)
+- 13:55:15 `f6f21540` — 4.6.2: match the legacy-key assertion to Linux casing semantics — [提交](https://github.com/wangzhen110/omni-memory/commit/f6f21540eacdb500c35908d1133888e24b241cc7)
+- 13:41:33 `e4d9c752` — 4.6.2: close the recheck gaps with fail-closed host and TAP truth gate — [提交](https://github.com/wangzhen110/omni-memory/commit/e4d9c75294adfc74408c7fef73d509a1d2b47ae0)
 - 11:55:06 `1bbb9546` — fix: harden HTTP trust boundary and project limits (4.6.1) — [提交](https://github.com/wangzhen110/omni-memory/commit/1bbb9546c3c8846b239c03785b1a1a7cdff2bd61)
 - 10:59:59 `16d42393` — feat: v4.6.0 project code index with schema 20 — [提交](https://github.com/wangzhen110/omni-memory/commit/16d423939461d5aab4f39b46867bf695cce50f4a)
 - 09:24:32 `200808f7` — docs: update log for v4.5.1 — [提交](https://github.com/wangzhen110/omni-memory/commit/200808f70f348d8295ba55b3da39cfa857b0b4d8)
