@@ -49,7 +49,20 @@ const DEFAULT_REPO = path.resolve(SCRIPT_DIR, '..');
 const TASK_NAME = process.env.OMNI_SERVICE_TASK || SERVICE_TASK;
 const HEALTH_URL = process.env.OMNI_HEALTH_URL || 'http://127.0.0.1:7788/health';
 const GITHUB_TOKEN = process.env.OMNI_GITHUB_TOKEN || process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
-const TEST_GIT_FETCH_URL = process.env.OMNI_TEST_GIT_FETCH_URL || '';
+const TEST_MODE = process.env.OMNI_TEST_MODE === '1';
+const TEST_ENV_NAMES = [
+  'OMNI_TEST_GIT_FETCH_URL',
+  'OMNI_TEST_UPDATE_PUBLIC_KEY_FILE',
+  'OMNI_TEST_UPDATE_KEY_ID',
+  'OMNI_TEST_UPDATE_PUBLIC_KEY_SHA256',
+];
+if (!TEST_MODE) {
+  const injected = TEST_ENV_NAMES.filter(name => process.env[name]);
+  if (injected.length) {
+    console.error(`[omni] ignoring test-only env without OMNI_TEST_MODE=1: ${injected.join(', ')}`);
+  }
+}
+const TEST_GIT_FETCH_URL = TEST_MODE ? (process.env.OMNI_TEST_GIT_FETCH_URL || '') : '';
 const SCHTASKS = process.platform === 'win32'
   ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'schtasks.exe')
   : 'schtasks.exe';
@@ -761,7 +774,7 @@ async function main() {
     const candidate = await fetchReleaseManifest(remote.version);
     // Test-only key injection for the offline CLI integration test. Production
     // runs leave this unset and stay pinned to UPDATE_PUBLIC_KEY_SHA256.
-    const testKeyFile = process.env.OMNI_TEST_UPDATE_PUBLIC_KEY_FILE;
+    const testKeyFile = TEST_MODE ? process.env.OMNI_TEST_UPDATE_PUBLIC_KEY_FILE : null;
     const testOptions = testKeyFile
       ? {
           publicKeyPem: readFileSync(testKeyFile, 'utf8'),

@@ -21,7 +21,7 @@ MCP 定义的是“工具/资源/提示如何暴露”，不是“会话开始�
 node hosts/mcp/bin.mjs
 ```
 
-支持 stdio 与 HTTP `POST /mcp`。`initialize.instructions`、`omni-bootstrap` prompt、`memory_rules` 工具、`omni://rules` 资源都返回同一份规则文本。
+支持 stdio 与 HTTP `POST /mcp`。完整规则文本 `RULES_TEXT` 由 `omni-bootstrap` prompt、`memory_rules` 工具、`omni://rules` 资源三处共享；`initialize.instructions` 是短接入摘要，指向完整规则。
 
 ### 1.1 豆包工作（零配置 CLI 优先；连接器可选）
 
@@ -44,7 +44,7 @@ node hosts\cli.mjs write --dir <repo> --kind note --text "..."
 环境变量：OMNI_HOME=<用户目录>\.dsh；OMNI_PROJECT_DIR=<repo>
 ```
 
-实测：`initialize` 返回 `omni-memory 3.10.3`，`tools/list` 25 个工具。连接器只是可选增强，由豆包客户端管理；Agent 不应自动改豆包设置、配置或注册表。
+实测：`initialize` 返回 `omni-memory 4.6.1`，`tools/list` 30 个工具。连接器只是可选增强，由豆包客户端管理；Agent 不应自动改豆包设置、配置或注册表。
 
 #### 宿主瞬断（2026-11-21 实测）
 
@@ -53,13 +53,13 @@ node hosts\cli.mjs write --dir <repo> --kind note --text "..."
 - 处置：重启豆包客户端可恢复；CLI 首次失败等 2 秒重试一次，仍失败再走 `GET /omni-memory/packet?cwd=<项目>&q=<任务>` 只读兜底。不要连续重试三次，也不要改客户端配置/注册表绕过。
 - 常态化：原生 MCP 连接器由客户端托管 Node 进程，不依赖 PowerShell 临时脚本；但它仍需用户在客户端保存一次，是可选增强。
 
-### 1.2 DSH Desktop 的端口与验收（3.10.3）
+### 1.2 DSH Desktop 的端口与验收（4.6.1）
 
 DSH Desktop 的 `dsh-desktop-host` 启动 Web 应用时固定使用 `--host 127.0.0.1 --port 0`，因此 Web GUI / 插件路由端口由操作系统每次启动随机分配，重启后会变化。
 
 - `http://127.0.0.1:9230/omni-memory/status` 返回 404 是正常的：`9230` 是 DSH 的 inspector ingest（`__DSH_INSPECTOR__`），不是插件路由。
 - `59273` / `59325` 是历史进程的旧 GUI 端口，进程退出后不再监听；不要把它们写死为验收地址。
-- 找当前端口：用 DSH 客户端侧栏打开「全息记忆」（内部相对请求，不依赖端口），或扫描 loopback 端口里 `/omni-memory/status` 返回 200 的那个；状态里的 `routes.status=registered`、`routes.count=21` 表示插件路由已挂载。
+- 找当前端口：用 DSH 客户端侧栏打开「全息记忆」（内部相对请求，不依赖端口），或扫描 loopback 端口里 `/omni-memory/status` 返回 200 的那个；状态里的 `routes.status=registered`、`routes.count=26` 表示插件路由已挂载。
 - 需要固定地址时用独立服务 `node hosts/cli.mjs serve --port 7788`，访问 `http://127.0.0.1:7788/`；它和 DSH 共用同一个 `omni.db`，但不依赖 DSH 的随机端口。
 - 冷启动排查读 `%TEMP%\omni-route-debug.log`：出现 `not ready at apply; polling` 后应跟随 `inject fired` 或 `registered after Nms`；若 60 秒内都没有 `registered`，再看 `/status` 的 `routes.error`。
 
@@ -115,7 +115,7 @@ curl "http://127.0.0.1:7788/omni-memory/packet?scope=all&q=星图"
 curl http://127.0.0.1:7788/omni-memory/openapi.json
 ```
 
-OpenAPI 导出 10 条 path（含 packet、search、list、node、status、tool、ingest、candidates、candidate、consolidate）。工具桥只暴露核心读写工具：`memory_write`、`memory_search`、`memory_solution_report`、`memory_feedback`、`memory_get`、`memory_amend`、`memory_profile`、`memory_timeline`。导出、导入、compact、reindex、dream、persona 等维护面仍留在 MCP/CLI；`consolidate` 走独立 POST 路由，不放进 `/tool`。
+OpenAPI 导出 15 条 path（含 packet、search、list、node、status、tool、ingest、candidates、candidate、consolidate 与 5 条 project/*）。工具桥只暴露核心读写工具：`memory_write`、`memory_search`、`memory_solution_report`、`memory_feedback`、`memory_get`、`memory_amend`、`memory_profile`、`memory_timeline`；省略 `arguments.scope` 时继承服务启动的项目层，显式 `scope` 优先。导出、导入、compact、reindex、dream、persona 等维护面仍留在 MCP/CLI；`consolidate` 走独立 POST 路由，不放进 `/tool`。
 
 ```bash
 curl -X POST http://127.0.0.1:7788/omni-memory/tool \
@@ -126,8 +126,8 @@ curl -X POST http://127.0.0.1:7788/omni-memory/tool \
 
 ## 安全边界
 
-- 所有 HTTP 路由只监听 loopback；非本机请求返回 403。
-- `/tool` 是写操作，必须带 `x-omni-csrf: 1`，并校验 Origin；跨站表单无法伪造该头。
+- 所有 HTTP 路由只监听 loopback；非本机请求返回 403。所有路由（含只读 `/omni-memory/*`）都校验 Host，伪造 Host 返回带 `error` 的 403；`/export` 只接受 GET。
+- `/tool` 是写操作，必须带 `x-omni-csrf: 1`，并校验 Origin；跨站表单无法伪造该头。省略 `arguments.scope` 时按服务启动的项目层执行，不会默认落 global。
 - 跨项目读取/改写需要显式 `scope=all`；默认只走当前项目 + global。
 - 不要把 `--bind 0.0.0.0` 暴露到公网；如果必须远程，前面加 TLS、认证和网络 ACL，且不要把未鉴权的 `/mcp` 或 `/tool` 直接开放。
 - 不建议用桌面 UI 自动化硬注入豆包等闭源聊天端；豆包工作优先用零配置 CLI（`hosts/cli.mjs`），原生自定义连接器只作可选增强。其他没有 MCP 的闭源聊天端才用 `/packet` + 人工/扩展粘贴。

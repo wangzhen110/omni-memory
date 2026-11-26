@@ -58,6 +58,12 @@ export async function bootHost({ workdir = process.cwd(), sessionId, services = 
     session: { id, cwd: resolvedWorkdir },
     scope: { id },
   };
+  // `apply(ctx)` binds `hostCtx` before attachSession runs. The object is the
+  // same reference, so adding the session fields here makes HTTP `/tool` see
+  // the same project layer as MCP without a second global state.
+  host.ctx.agent = toolContext.agent;
+  host.ctx.session = toolContext.session;
+  host.ctx.scope = toolContext.scope;
 
   return { host, project, sessionId: id, workdir: resolvedWorkdir, toolContext };
 }

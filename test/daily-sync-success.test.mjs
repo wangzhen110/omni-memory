@@ -94,6 +94,7 @@ test('daily-sync apply verifies, fast-forwards, gates syntax and installs the la
       env: {
         ...process.env,
         OMNI_HOME: home,
+        OMNI_TEST_MODE: '1',
         OMNI_SERVICE_TASK: 'OmniMemory7788NoTask',
         OMNI_HEALTH_URL: 'http://127.0.0.1:1/health',
         OMNI_TEST_GIT_FETCH_URL: remote,

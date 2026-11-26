@@ -142,6 +142,39 @@ test('occupied port: second startHttpServer rejects in a controlled way, first s
   }
 });
 
+test('HTTP /tool resolves the boot workdir project layer, same as MCP', async () => {
+  const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const marker = `HTTP工具落层 ${nonce}`;
+  let server;
+  try {
+    server = await startHttpServer({ workdir: root, port: 0, version: 'lc', log: () => {} });
+    const write = await fetch(`${server.url}/omni-memory/tool`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-omni-csrf': '1', connection: 'close' },
+      body: JSON.stringify({ name: 'memory_write', arguments: { kind: 'note', text: marker } }),
+      signal: timed(),
+    });
+    assert.equal(write.status, 200);
+    const body = await write.json();
+    assert.match(String(body.value.scope), /^proj:/, 'HTTP /tool must land in the boot project layer');
+
+    const search = async scope => {
+      const res = await fetch(`${server.url}/omni-memory/tool`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-omni-csrf': '1', connection: 'close' },
+        body: JSON.stringify({ name: 'memory_search', arguments: { query: nonce, ...(scope ? { scope } : {}) } }),
+        signal: timed(),
+      });
+      assert.equal(res.status, 200);
+      return (await res.json()).value.hits ?? [];
+    };
+    assert.ok((await search()).some(hit => String(hit.text).includes(nonce)), 'default search should see the project note');
+    assert.equal((await search('global')).length, 0, 'global search must not see a project-only note');
+  } finally {
+    if (server) await server.close();
+  }
+});
+
 test('sequential instances share one home: A writes, closes, B recalls the data', async () => {
   const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const marker = `生命周期落盘回召验证 ${nonce}`;

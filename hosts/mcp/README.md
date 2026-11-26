@@ -28,9 +28,9 @@
 
 ## 怎么把规则真正送到模型
 
-MCP 没有注入点，所以规则准备五条通道，全部指向同一份 `RULES_TEXT`，改一处即全改：
+MCP 没有注入点，所以规则准备五条通道。完整正文 `RULES_TEXT` 由 `prompts/get`、`resources/read`、`memory_rules` 三条读取通道共享；`initialize.instructions` 是短接入摘要，指向完整规则；`omni rules --write` 写同一份托管区块：
 
-1. `initialize` 返回的 `instructions`：多数客户端会拼进上下文。
+1. `initialize` 返回的 `instructions`：接入摘要，多数客户端会拼进上下文。
 2. `prompts/list` → `prompts/get` `omni-bootstrap`：可以把当前任务一起带进去，返回「规则 + 任务」。
 3. `resources/list` → `resources/read` `omni://rules`：模型可主动打开。
 4. 工具 `memory_rules`：客户端既不显示 instructions 也不支持 resources 时的兜底。

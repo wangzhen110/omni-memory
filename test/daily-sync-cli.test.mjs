@@ -169,6 +169,7 @@ test('daily-sync verifies the release manifest before moving HEAD', t => {
       env: {
         ...process.env,
         OMNI_HOME: home,
+        OMNI_TEST_MODE: '1',
         OMNI_TEST_GIT_FETCH_URL: remote,
         OMNI_TEST_REMOTE_VERSION: '3.11.7',
         OMNI_TEST_MANIFEST_JSON: JSON.stringify({
@@ -222,6 +223,7 @@ test('daily-sync reports an update without applying or moving HEAD', t => {
       timeout: 15_000,
       env: {
         ...process.env,
+        OMNI_TEST_MODE: '1',
         OMNI_TEST_REMOTE_VERSION: '3.11.5',
         OMNI_HEALTH_URL: 'http://127.0.0.1:1/health',
       },
@@ -267,6 +269,7 @@ test('daily-sync keeps a dirty checkout on the same-day gate without restarting'
 
     const env = {
       ...process.env,
+      OMNI_TEST_MODE: '1',
       OMNI_TEST_REMOTE_VERSION: '3.11.5',
       OMNI_HEALTH_URL: 'http://127.0.0.1:1/health',
     };

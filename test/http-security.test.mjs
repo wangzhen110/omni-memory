@@ -147,11 +147,13 @@ function rawRequest({ target, method = 'GET', headers = {}, body = '', localAddr
       finish(null, { status: match ? Number(match[1]) : 0, body: payload });
     });
     socket.on('connect', () => {
+      const host = String(headers.host ?? `127.0.0.1:${ctx.port}`);
+      const extra = Object.entries(headers).filter(([key]) => key.toLowerCase() !== 'host');
       const lines = [
         `${method} ${target} HTTP/1.1`,
-        `Host: 127.0.0.1:${ctx.port}`,
+        `Host: ${host}`,
         'Connection: close',
-        ...Object.entries(headers).map(([key, value]) => `${key}: ${value}`),
+        ...extra.map(([key, value]) => `${key}: ${value}`),
         `Content-Length: ${Buffer.byteLength(body)}`,
         '',
         '',
@@ -163,6 +165,25 @@ function rawRequest({ target, method = 'GET', headers = {}, body = '', localAddr
     });
   });
 }
+
+test('forged Host cannot read the export or search surfaces', async () => {
+  for (const target of ['/omni-memory/export', '/omni-memory/search?q=HostProbe', '/omni-memory/status']) {
+    const response = await rawRequest({ target, headers: { host: 'attacker.example' } });
+    assert.equal(response.status, 403, `${target} must reject a rebinding Host`);
+    assert.match(response.body, /forbidden|error/i, `${target} must return an error payload`);
+  }
+});
+
+test('export is a GET-only surface', async () => {
+  const response = await rawRequest({
+    target: '/omni-memory/export',
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-omni-csrf': '1' },
+    body: '{}',
+  });
+  assert.equal(response.status, 405);
+  assert.match(response.body, /export requires GET/);
+});
 
 test('health, metrics, rules and static pages reject non-loopback peers', async () => {
   for (const target of ['/health', '/metrics', '/rules', '/', '/index.html']) {

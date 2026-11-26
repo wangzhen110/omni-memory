@@ -99,14 +99,9 @@ async function request(url, { fetchImpl = fetch, token = '', binary = false, tim
   };
   const response = await fetchImpl(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
   if (!response.ok) {
-    let detail = '';
-    try {
-      const body = await response.text();
-      detail = body ? `: ${body.slice(0, 160)}` : '';
-    } catch {
-      detail = '';
-    }
-    throw new Error(`HTTP ${response.status} for ${url}${detail}`);
+    // Do not echo a proxy/mirror body into logs: it can contain tokens or
+    // unrelated private content. Status plus URL is enough to diagnose.
+    throw new Error(`HTTP ${response.status} for ${url}`);
   }
   if (binary) return Buffer.from(await response.arrayBuffer());
   return response.json();

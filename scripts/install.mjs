@@ -44,7 +44,10 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (!token.startsWith('--')) continue;
-    const [rawKey, inline] = token.slice(2).split('=');
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const rawKey = eq >= 0 ? raw.slice(0, eq) : raw;
+    const inline = eq >= 0 ? raw.slice(eq + 1) : undefined;
     if (inline !== undefined) {
       flags[rawKey] = inline;
       continue;

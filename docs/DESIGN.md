@@ -2,11 +2,11 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.5.1 |
-| 插件版本 | 4.6.0 |
+| 文档版本 | 4.6.1 |
+| 插件版本 | 4.6.1 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
-| 最后更新 | 2026-11-25 |
+| 最后更新 | 2026-11-26 |
 | 变更规则 | 任何行为变更必须先改本文并升版本，再改代码 |
 
 **写作原则**：本规格只声明两类内容——① 已实现且被测试覆盖的行为；② 明确标注为「未实现」并有对应 FR 编号的需求。禁止把计划写成现状。
@@ -85,6 +85,7 @@
 | FR-45 | 产品化入口与诊断 | `/hub` 非等宽档案索引（记忆库/检索/关系图/项目/接入/状态，横向索引行而不是六卡网格）与 `/m` 手机端纸质底稿式只读搜索；`/star-map.html` 保留既有星图；`omni doctor` 只读诊断 Node、数据目录、SQLite 完整性、语义资产、HTTP、计划任务；`npm run setup` 先验证官方 Release 的 Ed25519 清单、签名 commit、干净工作树与启动器 SHA-256，再安装/创建计划任务；`setup:dev` 只做同提交哈希自洽；默认 dry-run，`--apply --start` 才落盘与启动 | ✅ 已实现（4.0.1 产品化入口；4.1.0 重绘 `/hub` 与 `/m`；4.1.1 手机读数改为单行；`hosts/shared/doctor.mjs`、`scripts/install.mjs`、`scripts/verify-release.mjs`） |
 | FR-46 | 开源发布与公共验证 | OSI 许可证 AGPL-3.0-only + 商业例外；贡献/安全/行为准则/治理文件；`npm run demo` 隔离演示；`npm run qa` 跑黄金集与 120 例质量套件；`verify:release` 与 `setup --require-release` 共用发布验签逻辑 | ✅ 已实现（4.0.1；`LICENSE`、`LICENSING.md`、`scripts/demo.mjs`、`scripts/qa.mjs`、`docs/QUICKSTART.md`） |
 | FR-47 | 项目代码索引 | 任意项目一条命令建立可增量重建的模块/符号/API/依赖索引；索引是派生缓存，源码始终权威；查询返回 `sourceRef`、行号、`sha`、`stale`；与 note/fact 的决策/历史/坑合并；不存源码正文 | ✅ 已实现（4.6.0，schema 20，ADR-032） |
+| FR-48 | HTTP 信任边界与工具作用域 | 所有 HTTP 路由先校验 loopback，再拒绝伪造 Host；只读 `/omni-memory/*` 与面板同规则，403 返回 `error`；`/export` 只接受 GET；HTTP `/tool` 省略 `scope` 时继承服务启动的项目/会话层，显式 `scope` 优先；`project_search` 的 `limit` 限定为 1..80 的整数；跨 scope 审计失败写 stderr；`OMNI_TEST_*` 钩子仅在 `OMNI_TEST_MODE=1` 时生效 | ✅ 已实现（4.6.1；`hosts/shared/http-guard.mjs`、`lib/read-routes.mjs`、`lib/project-index.mjs`） |
 
 ### 1.2 非功能需求
 
@@ -99,9 +100,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 476/476（100%） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 483/483（100%） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 476 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 483 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -499,6 +500,16 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - **与记忆合并**：`memory_context` 在 query 命中项目引用时追加项目包，预算取 `min(900, 1800)`；显式项目 scope 的 `buildMemoryPacket` 也追加项目包，约占总预算 45%（上限 1000）。项目包每条带 `sourceRef`、行号、`sha`、`stale`。空结果分支保留 `project:null`，不静默跳过。
 - **预算**：1,000 文件冷索引 <30s、热增量 <2s、精确查询 p95 <50ms；专项 24 项覆盖 schema、适配器、增量、删除、sha 漂移、查询、上下文、影响面、monorepo、状态和性能。
 
+### 6.15 HTTP 信任边界收口（v4.6.1）
+
+- **统一守卫**：`hosts/shared/http-guard.mjs` 收拢 loopback 判定、可信 Host 列表、Host 解析、同源判定与写操作判定；`index.js`、`hosts/http/server.mjs`、`lib/read-routes.mjs` 共用同一实现，不再各写一套。
+- **只读路由**：`/omni-memory/*` 的所有只读路由先校验 loopback，再对“存在但不可信”的 `Host` 返回 `403 {"ok":false,"error":"forbidden host"}`。真实 HTTP/1.1 请求必带 Host，服务级守卫同时拒绝缺失 Host；路由层只拒绝伪造值，便于进程内测试直接驱动 handler。
+- **导出方法**：`/export` 只接受 GET；POST 返回 405，避免只读导出被写成跨站触发面。
+- **工具作用域**：HTTP `/tool` 在调用方未给 `arguments.scope` 时，使用服务启动时由 `bootHost` 解析出的 `agent/session/scope`，与 CLI/MCP 的项目层一致；显式 `scope` 仍然优先，不会被默认值覆盖。
+- **参数边界**：`project_search` 及四个项目查询函数把 `limit` 钳到 `1..上限` 的有限整数；负数、0、非数回退默认，超大值钳到上限。
+- **可观测性**：跨 scope 审计失败写 `console.error`，只记错误消息，不打印查询正文；写路径继续成功，不因审计失败回滚。
+- **测试钩子**：`OMNI_TEST_GIT_FETCH_URL`、`OMNI_TEST_KEY_FILE` 等只在 `OMNI_TEST_MODE=1` 时生效；生产环境遇到 `OMNI_TEST_*` 只告警并忽略。
+
 ---
 
 ## 7. 运行时可观测性
@@ -580,6 +591,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 | FR-45 | `test/productization.test.mjs`、`test/api.test.mjs`、`test/install-launcher.test.mjs`、`test/install-smoke.test.mjs` | doctor 只读诊断、fresh home 不落库、安装 dry-run 不写文件/不建任务、`/hub` 与 `/m` 由静态服务返回、计划任务缺失时 `--create-task` 才创建、发布验签安装入口 |
 | FR-46 | `test/open-source.test.mjs`、`test/verify-release.test.mjs` | AGPL/治理文件存在、setup 默认 fail-closed 验签、demo/qa 入口、发布清单签名与篡改拒绝 |
 | FR-47 | `test/project-index.test.mjs`、`test/tools.test.mjs`、`test/api.test.mjs` | 五表 schema、JS/TS/OpenAPI/GraphQL/generic/ctags、增量/删除/sha 漂移、search/context/impact、monorepo、1,000 文件性能 |
+| FR-48 | `test/http-security.test.mjs`、`test/http-lifecycle.test.mjs`、`test/remediation-4.6.1.test.mjs`、`test/project-index.test.mjs`、`test/daily-sync-cli.test.mjs` | 伪造 Host 读 `/export`/`/search`/`/status` 403、POST `/export` 405、HTTP `/tool` 写项目层且默认搜索可见、显式 global 不可见、负数/超大/非数 limit 钳制、审计失败告警、测试钩子门 |
 | FR-38 | `test/ingest.test.mjs`、`test/capture-rules.test.mjs` | ingest 候选、接受/拒绝、隔离、去重、hook 解析 |
 | FR-39 | `test/consolidation.test.mjs` | dry-run、apply、supersede、来源链、scope 隔离 |
 | FR-40 | `test/rerank.test.mjs`、`test/prompt.test.mjs` | rerank 开关、远程评分顺序、分层画像预算 |

@@ -52,6 +52,9 @@ export async function boot(options = {}) {
   let lastSessionId = 'session-test';
 
   const ctx = {
+    agent: { id: lastSessionId },
+    session: { id: lastSessionId, cwd: process.cwd() },
+    scope: { id: lastSessionId },
     tools: {
       register(definition) {
         tools.set(definition.name, definition);
@@ -157,12 +160,13 @@ export function fakeRes() {
 }
 
 export function fakeReq(url, address = '127.0.0.1') {
-  return { method: 'GET', url, socket: { remoteAddress: address } };
+  return { method: 'GET', url, headers: { host: '127.0.0.1' }, socket: { remoteAddress: address } };
 }
 
 /** Minimal POST request with a JSON body; emits data/end on next microtask. */
 export function fakePost(body, address = '127.0.0.1', url = '/omni-memory/forget') {
   const handlers = new Map();
+  const headers = { host: '127.0.0.1' };
   const req = {
     method: 'POST',
     url,
@@ -173,6 +177,10 @@ export function fakePost(body, address = '127.0.0.1', url = '/omni-memory/forget
       return req;
     },
   };
+  Object.defineProperty(req, 'headers', {
+    get: () => headers,
+    set: value => { Object.assign(headers, value ?? {}); },
+  });
   queueMicrotask(() => {
     const payload = JSON.stringify(body ?? {});
     for (const handler of handlers.get('data') ?? []) handler(payload);
@@ -191,6 +199,7 @@ export function fakePostConsumed(url, address = '127.0.0.1') {
     url,
     complete: true,
     readable: false,
+    headers: { host: '127.0.0.1' },
     socket: { remoteAddress: address },
     on() { return this; },
   };

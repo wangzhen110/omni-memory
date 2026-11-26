@@ -824,9 +824,6 @@ try {
   case 'index':
     await commandIndex();
     break;
-  case 'index':
-    await commandIndex();
-    break;
   case 'kb-migrate':
     await commandKbMigrate();
     break;

@@ -2,6 +2,33 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.1] — 2026-11-26
+
+### 安全
+- **只读 HTTP 路由补 Host 校验**：`/omni-memory/*` 所有只读路由在 loopback 之外增加 Host 校验，伪造 Host 读 `/export`、`/search`、`/status` 返回带 `error` 的 403；`/export` 限定 GET，POST 返回 405。
+- **共享信任守卫**：`isLoopback`、可信 Host、Host 解析、同源与写操作判定收拢到 `hosts/shared/http-guard.mjs`，`index.js`、`hosts/http/server.mjs`、`lib/read-routes.mjs` 共用；服务级守卫拒绝缺失 Host，路由层拒绝存在但不可信的值。
+- **HTTP `/tool` 落层**：省略 `arguments.scope` 时使用服务启动时解析出的项目/会话 scope，不再默认落 global；显式 `scope` 仍优先。
+- **参数边界**：`project_search` 及四个项目查询函数把 `limit` 钳到 1..上限的有限整数，负数/0/非数回退默认，超大值钳到上限。
+- **可观测性**：跨 scope 审计失败写 stderr，只记错误消息，不打印查询正文；写入不因审计失败回滚。
+- **测试钩子门**：`OMNI_TEST_GIT_FETCH_URL`、`OMNI_TEST_KEY_FILE` 等仅在 `OMNI_TEST_MODE=1` 时生效；生产环境遇到 `OMNI_TEST_*` 只告警并忽略。
+
+### 修复
+- `scripts/install.mjs` 的 `--key=value` 按第一个 `=` 切分，值里再含 `=` 不再丢后半段。
+- `hosts/cli.mjs` 删除重复 `case 'index'`；`scripts/verify-release.mjs` 不再把 HTTP 响应体前 160 字符拼进错误。
+- 新增 `npm run verify`（`npm test && npm run check`），作为发布前真值门。
+
+### 文档
+- `docs/HOST-ADAPTERS.md` 同步 4.6.1 / 30 工具 / 26 路由 / OpenAPI 15 path；修正“五通道同一份文本”为“三条读取通道共享 RULES_TEXT，instructions 为接入摘要”。
+- README、DESIGN（FR-48、§6.15）、REFERENCE、CHANGELOG 同步 4.6.1；`docs/REMEDIATION-BACKLOG.md` 固化延后与不采纳项。
+- 不改 schema（仍为 20）。
+
+### 测试
+- 新增 `test/remediation-4.6.1.test.mjs` 3 项：Host 守卫、loopback 判定、审计失败告警。
+- 扩展 `test/http-security.test.mjs` 2 项：伪造 Host 读 `/export`/`/search`/`/status` 403、POST `/export` 405。
+- 扩展 `test/http-lifecycle.test.mjs` 1 项：HTTP `/tool` 写项目层、默认搜索可见、显式 global 不可见。
+- 扩展 `test/project-index.test.mjs` 1 项：负数/超大/非数 limit 钳制。
+- 完整 `npm test` **483/483** 通过（原 476 + 新增 7）。
+
 ## [4.6.0] — 2026-11-26
 
 ### 变更

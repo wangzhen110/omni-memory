@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { bootHost } from '../shared/boot.mjs';
+import { hostHeaderAllowed, isLoopback, sameOrigin } from '../shared/http-guard.mjs';
 import { createProtocol, RULES_URI } from '../mcp/server.mjs';
 import { RULES_TEXT } from '../shared/rules.mjs';
 
@@ -62,55 +63,6 @@ function sendJson(res, status, body) {
   res.end(payload);
 }
 
-/** The same socket-only loopback check used by the REST routes. */
-function isLoopback(req) {
-  const address = req.socket?.remoteAddress ?? '';
-  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
-}
-
-/** Host names this process is willing to answer for (see index.js sameOrigin). */
-function trustedHostNames() {
-  const names = new Set(['127.0.0.1', 'localhost', '::1']);
-  const add = raw => {
-    const value = String(raw ?? '').trim().toLowerCase();
-    if (!value || value === '0.0.0.0' || value === '::' || value === '*') return;
-    const hostname = value.startsWith('[')
-      ? value.slice(1, value.indexOf(']'))
-      : value.split(':')[0];
-    if (hostname) names.add(hostname);
-  };
-  for (const item of String(process.env.OMNI_TRUSTED_HOSTS ?? '').split(',')) add(item);
-  add(process.env.OMNI_HTTP_BIND);
-  return names;
-}
-
-function requestHostName(req) {
-  const raw = String(req.headers?.host ?? '').trim().toLowerCase();
-  if (!raw) return null;
-  try {
-    return new URL(`http://${raw}`).hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  } catch {
-    return null;
-  }
-}
-
-function originAllowed(req) {
-  if (String(req.headers?.['sec-fetch-site'] ?? '').trim().toLowerCase() === 'cross-site') return false;
-  const origin = String(req.headers?.origin ?? '').trim();
-  if (!origin) return true;
-  const name = requestHostName(req);
-  if (!name || !trustedHostNames().has(name)) return false;
-  let parsed;
-  try {
-    parsed = new URL(origin);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
-  if (parsed.username || parsed.password) return false;
-  return parsed.host.toLowerCase() === String(req.headers?.host ?? '').trim().toLowerCase();
-}
-
 /**
  * Mutating MCP requests need the same protection as REST writes.
  *
@@ -119,7 +71,7 @@ function originAllowed(req) {
  * an attacker who controls a DNS name cannot make its Host header trusted.
  */
 function mcpMutationAllowed(req) {
-  if (!originAllowed(req)) return false;
+  if (!sameOrigin(req)) return false;
   if (String(req.headers?.['x-omni-csrf'] ?? '') === '1') return true;
   const type = String(req.headers?.['content-type'] ?? '').split(';')[0].trim().toLowerCase();
   return type === 'application/json';
@@ -274,6 +226,14 @@ export async function startHttpServer({
     const pathname = url.pathname;
 
     try {
+      // Every local surface, not just mutating routes, must name a trusted
+      // Host. A loopback socket can also be a DNS-rebinding page; the Host
+      // header is the field that page cannot choose.
+      if (!isLoopback(req) || !hostHeaderAllowed(req)) {
+        sendJson(res, 403, { ok: false, error: 'forbidden' });
+        return;
+      }
+
       // Health/rules/static are read surfaces too. When the adapter is explicitly
       // bound to 0.0.0.0 they must not become an unauthenticated metadata leak.
       if ((pathname === '/health' || pathname === '/rules' || pathname === '/metrics' || pathname === '/') && !isLoopback(req)) {

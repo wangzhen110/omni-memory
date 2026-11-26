@@ -324,6 +324,21 @@ test('search filters API by method and route', () => {
   assert.ok(value.apis.some(api => api.route === '/api/login'));
 });
 
+test('search clamps negative and non-numeric limits before SQL', () => {
+  const root = fixture();
+  const store = db();
+  indexProject(store, root, { scope: 'proj:fixture', ctags: false });
+  const negative = projectSearch(store, '', { scope: 'proj:fixture', root, limit: -1 });
+  assert.ok(negative.symbols.length <= 1, 'limit=-1 must behave as one row, not an unbounded scan');
+  assert.ok(negative.files.length <= 1);
+  const huge = projectSearch(store, '', { scope: 'proj:fixture', root, limit: 999999 });
+  assert.ok(huge.symbols.length <= 80);
+  assert.ok(huge.files.length <= 48);
+  const nonsense = projectSearch(store, '', { scope: 'proj:fixture', root, limit: 'abc' });
+  assert.equal(nonsense.ok, true);
+  assert.ok(nonsense.symbols.length > 0);
+});
+
 test('context is bounded and carries sourceRef, line, sha and stale', () => {
   const root = fixture();
   const store = db();

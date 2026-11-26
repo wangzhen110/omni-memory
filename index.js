@@ -31,6 +31,7 @@ import { createBaseSchema, createFtsTables } from './lib/schema.mjs';
 import { checkForUpdate, formatUpdateNotice, readLocalVersion } from './lib/version-check.mjs';
 import { bindRouteRuntime, registerRoutes } from './lib/read-routes.mjs';
 import { bindToolRuntime, defineTools } from './lib/tool-definitions.mjs';
+import { hostHeaderAllowed, isLoopback, mutationAllowed } from './hosts/shared/http-guard.mjs';
 
 import { currentPackageVersion, DB_FILE, PROFILE_BUDGET, PROFILE_CACHE_MS, MAX_CAPTURE_CHARS, store, localToolDefinitions, HTTP_TOOL_ALLOWLIST, prepareCached, SCOPE_GLOBAL, cwdBySession, projectByAgent, projectKeyFromCwd, normalizeWorkspaceLabel, discoverWorkspaces, normalizeScopeInput, httpScope, decideScope, newScopeFlag, resolveProjectKey, ensureProjectAlias, lastJudge, pickJudgeRoute, enqueueJudge, currentProject, AUTO_RECALL_TTL_MS, lastUserByAgent, recallByAgent, lastInjection, autoRecallEnabled, now, hash, findNoteByTextIndex, openStore, hostCtx, CJK_BIGRAM, reindexBigrams, pendingVectors, vectorDropped, vectorLastDropAt, metaGet, metaSet, ensureRemoteDim, upsertVector, backfillRemoteBatch, flushPendingVectors, activeVectorDim, SEMANTIC_BATCH, SEMANTIC_MIN_COSINE, semanticState, noteSemanticFailure, clearSemanticFailure, releaseSemanticLease, dropDerivedIndexes, reindexRow, flushSemanticPending, semanticStatus, reindexSemantic, backfillVectors, transaction, acquireLease, releaseLease, forgetMemory, snapshotStore, exportBackup, importBackup, restoreMemory, insertChunk, ingestTranscript, listNoteCandidates, consolidateProblemNotes, reviewNoteCandidate, bindStoreRuntime, configureStore, setHostCtx, setLastInjection, closeStore, entityCache } from './lib/store.mjs';
 export * from './lib/store.mjs';
@@ -316,83 +317,6 @@ function registerWhenAvailable(ctx, name, register) {
   };
 }
 
-function isLoopback(req) {
-  const address = req.socket?.remoteAddress ?? '';
-  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
-}
-
-/**
- * Host names a local service may answer for.
- *
- * A browser request is not authenticated by the socket alone: a DNS-rebinding
- * page also reaches 127.0.0.1. The Host header is the one field the page cannot
- * choose, so it must be one of the loopback names, an explicitly configured
- * bind address, or an operator-supplied allowlist.
- */
-function trustedHostNames() {
-  const names = new Set(['127.0.0.1', 'localhost', '::1']);
-  const add = raw => {
-    const value = String(raw ?? '').trim().toLowerCase();
-    if (!value || value === '0.0.0.0' || value === '::' || value === '*') return;
-    const hostname = value.startsWith('[')
-      ? value.slice(1, value.indexOf(']'))
-      : value.split(':')[0];
-    if (hostname) names.add(hostname);
-  };
-  for (const item of String(process.env.OMNI_TRUSTED_HOSTS ?? '').split(',')) add(item);
-  add(process.env.OMNI_HTTP_BIND);
-  return names;
-}
-
-function requestHostName(req) {
-  const raw = String(req.headers?.host ?? '').trim().toLowerCase();
-  if (!raw) return null;
-  try {
-    const parsed = new URL(`http://${raw}`);
-    return parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  } catch {
-    return null;
-  }
-}
-
-function hostHeaderAllowed(req) {
-  const name = requestHostName(req);
-  return Boolean(name && trustedHostNames().has(name));
-}
-
-/**
- * Request-forgery guard for mutating routes.
- *
- * A browser sends Origin on cross-site POSTs; a local non-browser client may
- * omit it. An Origin is accepted only when its host is both the request Host
- * and a trusted local host name. The old check compared Origin with Host alone,
- * which let `Host: attacker.example` authenticate `Origin: attacker.example`
- * after DNS rebinding. The explicit CSRF header remains necessary because a
- * malicious page cannot send it without a CORS preflight this server never
- * grants.
- */
-function sameOrigin(req) {
-  if (String(req.headers?.['sec-fetch-site'] ?? '').trim().toLowerCase() === 'cross-site') return false;
-  const origin = String(req.headers?.origin ?? '').trim();
-  if (!origin) return true;
-  if (!hostHeaderAllowed(req)) return false;
-  let parsed;
-  try {
-    parsed = new URL(origin);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
-  if (parsed.username || parsed.password) return false;
-  const requestHost = String(req.headers?.host ?? '').trim().toLowerCase();
-  return parsed.host.toLowerCase() === requestHost;
-}
-
-function mutationAllowed(req) {
-  if (!sameOrigin(req)) return false;
-  return String(req.headers?.['x-omni-csrf'] ?? '') === '1';
-}
-
 function json(res, status, body) {
   res.statusCode = status;
   res.setHeader('content-type', 'application/json; charset=utf-8');
@@ -531,7 +455,7 @@ bindRouteRuntime({
   activeVectorDim, auditCrossScope, autoRecallEnabled, buildMemoryPacket, buildSearchResult,
   consolidateProblemNotes, currentPackageVersion, dailyBuckets, discoverWorkspaces, dreamProposals,
   dreamReplace, dreamRollback, forgetMemory, hash, httpScope, ingestTranscript, invalidateProfile,
-  isLoopback, json, listNoteCandidates, localToolDefinitions, metaSet, mutationAllowed,
+  isLoopback, hostHeaderAllowed, json, listNoteCandidates, localToolDefinitions, metaSet, mutationAllowed,
   normalizeScopeInput, normalizeWorkspaceLabel, now, openStore, personaGet, personaRefresh, personaSet,
   prepareCached, pendingVectors, projectByAgent, queryTerms, readJsonBody, resolveProjectKey, restoreMemory,
   routeState, runSearch, scopeClause, semanticStatus, serviceFrom, snapshotStore, solutionStatusOf, weeklyBuckets,
