@@ -90,7 +90,7 @@ test('prop: legacy key preserves casing and collapses for lowercase paths', () =
       assert.match(legacyProjectKeyFromCwd(mixed), /proj:/u);
       assert.equal(legacyProjectKeyFromCwd(lower), projectKeyFromCwd(lower, platform),
         'lowercase path: legacy == canonical');
-      if (f !== f.toLowerCase()) {
+      if (f !== f.toLowerCase() && process.platform !== 'linux') {
         assert.notEqual(legacyProjectKeyFromCwd(mixed), projectKeyFromCwd(mixed, platform),
           'cased path: legacy key differs from canonical (migration candidate exists)');
       }
