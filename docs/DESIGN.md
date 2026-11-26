@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.6.3 |
-| 插件版本 | 4.6.3 |
+| 文档版本 | 4.6.4 |
+| 插件版本 | 4.6.4 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-26 |
@@ -100,9 +100,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 486/486（100%，TAP 真值门） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 492/492（100%，TAP 真值门） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 486 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 492 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -509,7 +509,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - **参数边界**：`project_search` 及四个项目查询函数把 `limit` 钳到 `1..上限` 的有限整数；负数、0、非数回退默认，超大值钳到上限。REST `/search` 的 `limit` 默认 30、上限 60，越界静默钳制。
 - **可观测性**：跨 scope 审计失败写 `console.error`，只记错误消息，不打印查询正文；写路径继续成功，不因审计失败回滚。
 - **规则同文**：stdio 与 HTTP 的 `initialize.instructions`、`prompts/get`、`resources/read`、`memory_rules` 共享同一份 `RULES_TEXT`，不再维护会漂移的摘要副本。
-- **测试钩子**：`OMNI_TEST_GIT_FETCH_URL`、`OMNI_TEST_UPDATE_PUBLIC_KEY_FILE`、`OMNI_TEST_UPDATE_KEY_ID`、`OMNI_TEST_UPDATE_PUBLIC_KEY_SHA256` 只在 `OMNI_TEST_MODE=1` **且** `NODE_TEST_CONTEXT` 存在时生效；生产环境遇到 `OMNI_TEST_*` 只告警并忽略。
+- **测试钩子**：`OMNI_TEST_GIT_FETCH_URL`、`OMNI_TEST_UPDATE_PUBLIC_KEY_FILE`、`OMNI_TEST_UPDATE_KEY_ID`、`OMNI_TEST_UPDATE_PUBLIC_KEY_SHA256` 只在 `OMNI_TEST_MODE=1` **且** `NODE_TEST_CONTEXT` 为 `child` / `child-vN` 时生效；这是防误设，不是抗篡改安全边界。生产环境遇到 `OMNI_TEST_*` 只告警并忽略。
 - **测试真值**：`npm test` 同时输出 spec 与 TAP，`npm run verify` 调用 `scripts/check-test-results.mjs` 校验真实 `# pass` / `# fail` / `# cancelled`，不再用源码里的 `test(` 计数冒充运行结果。
 
 ### 6.16 测试门禁收口（v4.6.3）
@@ -519,6 +519,13 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - **防误设而非安全边界**：测试钩子仍要求 `OMNI_TEST_MODE=1`，`NODE_TEST_CONTEXT` 收紧为 Node 测试运行器实际写入的 `child` / `child-vN`。能写进程环境的主体仍可伪造，因此该门只防部署脚本误设，不承担抗篡改职责。
 - **平台条件**：scope 属性测试使用被测语义变量 `platform` 判断大小写别名差异，macOS 上不再按 Linux 语义误跑。
 - **缺文档可诊断**：`check-docs` 遇到缺失的 DESIGN/REFERENCE 等必需文件时输出明确的 `missing required doc` 并退出，不再抛出未捕获的 `ENOENT`。
+
+### 6.17 复核收口（v4.6.4）
+
+- **TAP 缺摘要 fail-closed**：`.test-results.tap` 存在但缺 `# tests` 时，`check-docs` 不再回退到声明数，直接以 `TAP summary is complete` 失败；`--tap <path>` 可指定快照，供回归测试使用。
+- **语义漂移门**：`check-docs` 校验 DESIGN 的测试钩子段落，必须写明只接受 `child` / `child-vN`、且“不是抗篡改安全边界”；旧的“存在时生效”表述会直接失败。
+- **负向回归自动化**：`test/gates-4.6.4.test.mjs` 覆盖 TAP 完整摘要、重复 `# tests`、plan 不一致、多个 plan、缺 `# tests` 与低于声明数六种路径。
+- **报告勘误**：4.6.3 完成报告的时长与 1000 文件索引改回 TAP 快照原文；全绿标注快照时间，并并列记录并发复跑的 484/486。
 
 ---
 
@@ -701,3 +708,4 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - 想省钱又怕误判：`auto`，只让模型复核规则没把握的（约三分之一写入）。
 - 完全离线/隐私敏感：`off` + `OMNI_DISABLE_VECTOR=1`，只保留词面与规则。
 - 复核太慢导致层归属"跳动"可见：把 `OMNI_SCOPE_JUDGE` 改 `auto`，或把 `OMNI_JUDGE_MODEL` 固定成更快的模型。
+

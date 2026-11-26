@@ -43,14 +43,16 @@
 
 ## 验证
 
-- `npm run verify`：486 tests / 486 pass / 0 fail / 0 cancelled / 0 skipped，约 30.2s。
-- TAP 真值门：486 passed, 0 skipped, 0 failed。
-- 文档门：version 4.6.3、15 OpenAPI paths、26 routes、30 MCP tools、32 ADRs 全部一致；新增 `TAP covers every declared test`。
+- `npm run verify`：**14:39:57 的 TAP 快照**为 486 tests / 486 pass / 0 fail / 0 cancelled / 0 skipped，`# duration_ms 30634.4866`（30.63s）。该快照是历史事实，不等于任意时刻的稳定状态：并发复跑曾出现 484/486、1 fail（ADR-020 p95 443.9ms，争用假失败）+ 1 skip。
+- TAP 真值门：上述快照为 486 passed, 0 skipped, 0 failed。
+- 文档门：version 4.6.3、15 OpenAPI paths、26 routes、30 MCP tools、32 ADRs 全部一致；新增 `TAP covers every declared test`。本次“全部一致”只覆盖计数与 RULES_TEXT，不覆盖测试钩子语义；DESIGN 的旧句已在 4.6.4 修正。
 - 负向实测：TAP 485/485 触发 5 条文档不一致，其中包含 `TAP ran 485, but 486 test declarations exist`；重复摘要与 plan 不一致均 exit 1。
-- 1000 文件索引：cold 925ms、warm 883ms、budget 2000ms。
+- 1000 文件索引：同一份 14:39:57 TAP 的原文为 `cold 9445ms、warm 6229ms、budget 18890ms`；报告初稿误写了另一台机器的 `925/883/2000`，现按 TAP 原文更正。
 
 ## 未改
 
 - 不恢复 4.6.2 tag、不改已发布 Release 资产；4.6.3 另行打 tag。
 - 不引入新的鉴权体系，不改检索权重，不降 ADR-020 的 p95 预算。
 - 不把测试钩子包装成安全边界。
+
+> 2026-11-26 复核勘误：验证段原写“约 30.2s”“cold 925ms / warm 883ms / budget 2000ms”，与 14:39:57 的 TAP 快照不一致；现按快照改为 30.63s 与 TAP 原文值。全绿只修饰该快照，不代表当前并发环境稳定复现。4.6.4 另行修正 DESIGN 的测试钩子旧句、补 TAP 缺摘要 fail-closed 与门禁自动化回归。

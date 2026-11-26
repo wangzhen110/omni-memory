@@ -10,6 +10,10 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
+const tapArg = process.argv.indexOf('--tap');
+const tapFile = tapArg > 0 && process.argv[tapArg + 1]
+  ? path.resolve(process.cwd(), process.argv[tapArg + 1])
+  : path.join(root, '.test-results.tap');
 const read = file => {
   const full = path.join(root, file);
   if (!existsSync(full)) {
@@ -56,23 +60,27 @@ const openapiPaths = [...new Set(
 // `npm run check` falls back to counting declarations, but never claims the
 // declarations actually ran.
 function readTapSummary() {
+  let tap;
   try {
-    const tap = readFileSync(path.join(root, '.test-results.tap'), 'utf8');
-    const value = label => {
-      const match = new RegExp(`^# ${label} (\\d+)$`, 'm').exec(tap);
-      return match ? Number(match[1]) : null;
-    };
-    const summary = {
-      tests: value('tests'),
-      pass: value('pass'),
-      fail: value('fail'),
-      cancelled: value('cancelled'),
-      skipped: value('skipped') ?? 0,
-    };
-    return summary.tests === null ? null : summary;
+    tap = readFileSync(tapFile, 'utf8');
   } catch {
     return null;
   }
+  const value = label => {
+    const match = new RegExp(`^# ${label} (\\d+)$`, 'm').exec(tap);
+    return match ? Number(match[1]) : null;
+  };
+  const summary = {
+    tests: value('tests'),
+    pass: value('pass'),
+    fail: value('fail'),
+    cancelled: value('cancelled'),
+    skipped: value('skipped') ?? 0,
+  };
+  // An existing but truncated TAP must not silently fall back to the
+  // declaration count: that is exactly the "test file never ran" blind spot
+  // this gate exists to catch.
+  return summary.tests === null ? { invalid: true } : summary;
 }
 
 let declaredTests = 0;
@@ -105,11 +113,13 @@ check('MCP README tool count', mcpReadme.includes(`${mcpTools} 个 MCP 工具`),
 check('MCP README route count', mcpReadme.includes(`${routes.length} 条 REST 路由`), `hosts/mcp/README.md does not say ${routes.length} 条 REST 路由`);
 check('DESIGN core tool count', design.includes(`${tools.length} 个插件工具`), `DESIGN does not say ${tools.length} 个插件工具`);
 check('CHANGELOG has current version', new RegExp(`## \\[${pkg.version.replaceAll('.', '\\.')}\\]`).test(changelog), `CHANGELOG has no ${pkg.version} entry`);
+check('TAP summary is complete', !tap?.invalid,
+  'TAP file exists but has no # tests summary; refusing to fall back to declared test count');
 
 // TAP is the truth for pass/fail, but a smaller TAP can also mean a whole test
 // file failed to load and was never seen by the runner. Keep the declaration
 // count as a lower bound so a silently smaller run cannot pass as green.
-if (tap) {
+if (tap && !tap.invalid) {
   check('TAP covers every declared test', tap.tests >= declaredTests,
     `TAP ran ${tap.tests}, but ${declaredTests} test declarations exist`);
 }
@@ -149,6 +159,12 @@ check('OpenAPI path count is consistent',
   openapiPaths.length > 0
   && [design, hostAdapters, reference].every(doc => doc.includes(`${openapiPaths.length} 条 path`)),
   `OpenAPI paths=${openapiPaths.length}; docs must all say "${openapiPaths.length} 条 path"`);
+
+check('DESIGN test hook matches child-only contract',
+  design.includes('`NODE_TEST_CONTEXT` 为 `child` / `child-vN` 时生效')
+  && !design.includes('`NODE_TEST_CONTEXT` 存在时生效')
+  && design.includes('不是抗篡改安全边界'),
+  'DESIGN must say the test hook accepts only child / child-vN and is not a security boundary');
 
 check('stdio and HTTP initialize use RULES_TEXT',
   read('hosts/mcp/bin.mjs').includes('instructions: RULES_TEXT')
