@@ -15,7 +15,7 @@
 
 ## 2026-11-26
 
-- 14:58:16 `c06676ce` — fix(gates): close the 4.6.3 review gaps (4.6.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/c06676cea265aafb310997b456d0e90a3f668604)
+- 14:58:16 `f38ef798` — fix(gates): close the 4.6.3 review gaps (4.6.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/f38ef798193e74aa09e98d6a19edbc3b119c7618)
 - 14:36:01 `f3b2077e` — 4.6.3: close the TAP coverage and duplicate-summary gaps — [提交](https://github.com/wangzhen110/omni-memory/commit/f3b2077ee9fa429642a2c48a71507b8aeda94009)
 - 13:58:29 `5547496f` — 4.6.2: add the remediation completion report — [提交](https://github.com/wangzhen110/omni-memory/commit/5547496fbc134e28e9c9487817256b603d42df67)
 - 13:55:15 `f6f21540` — 4.6.2: match the legacy-key assertion to Linux casing semantics — [提交](https://github.com/wangzhen110/omni-memory/commit/f6f21540eacdb500c35908d1133888e24b241cc7)
