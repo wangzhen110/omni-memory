@@ -15,7 +15,7 @@
 
 ## 2026-11-26
 
-- 15:56:15 `cd10df83` — test: isolate the ADR-020 p95 budget (4.6.6) — [提交](https://github.com/wangzhen110/omni-memory/commit/cd10df83e9afc0a1065124ba1313e80c8df540ac)
+- 15:56:15 `4189285d` — test: isolate the ADR-020 p95 budget (4.6.6) — [提交](https://github.com/wangzhen110/omni-memory/commit/4189285d7600bd8880529f2fe03cd301cf70e2fc)
 - 15:32:56 `9ed8f669` — fix(report): make release numbers come from TAP evidence (4.6.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/9ed8f669263437418ee547d46a34fdda7e04b32a)
 - 14:58:16 `f38ef798` — fix(gates): close the 4.6.3 review gaps (4.6.4) — [提交](https://github.com/wangzhen110/omni-memory/commit/f38ef798193e74aa09e98d6a19edbc3b119c7618)
 - 14:36:01 `f3b2077e` — 4.6.3: close the TAP coverage and duplicate-summary gaps — [提交](https://github.com/wangzhen110/omni-memory/commit/f3b2077ee9fa429642a2c48a71507b8aeda94009)
