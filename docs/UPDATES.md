@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 130 次提交；更新记录自身的提交不计入列表。
+> 共 131 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-26
 
+- 16:47:42 `9c70e1a7` — 4.6.7: cover the entry layer (body, prompt, lease, CLI, stdio) — [提交](https://github.com/wangzhen110/omni-memory/commit/9c70e1a7a04bb416737ed078ca32c287c0f79709)
 - 16:03:58 `488d05f2` — docs: record 4.6.6 publish result in completion report — [提交](https://github.com/wangzhen110/omni-memory/commit/488d05f279308f4956e5054f0fe4999703c27a18)
 - 15:56:15 `4189285d` — test: isolate the ADR-020 p95 budget (4.6.6) — [提交](https://github.com/wangzhen110/omni-memory/commit/4189285d7600bd8880529f2fe03cd301cf70e2fc)
 - 15:32:56 `9ed8f669` — fix(report): make release numbers come from TAP evidence (4.6.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/9ed8f669263437418ee547d46a34fdda7e04b32a)
