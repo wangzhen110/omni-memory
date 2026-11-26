@@ -21,7 +21,7 @@ MCP 定义的是“工具/资源/提示如何暴露”，不是“会话开始�
 node hosts/mcp/bin.mjs
 ```
 
-支持 stdio 与 HTTP `POST /mcp`。完整规则文本 `RULES_TEXT` 由 `omni-bootstrap` prompt、`memory_rules` 工具、`omni://rules` 资源三处共享；`initialize.instructions` 是短接入摘要，指向完整规则。
+支持 stdio 与 HTTP `POST /mcp`。stdio 与 HTTP 的 `initialize.instructions`、`omni-bootstrap` prompt、`memory_rules` 工具、`omni://rules` 资源**共享同一份 `RULES_TEXT`**，不再维护短摘要副本。
 
 ### 1.1 豆包工作（零配置 CLI 优先；连接器可选）
 
@@ -44,7 +44,7 @@ node hosts\cli.mjs write --dir <repo> --kind note --text "..."
 环境变量：OMNI_HOME=<用户目录>\.dsh；OMNI_PROJECT_DIR=<repo>
 ```
 
-实测：`initialize` 返回 `omni-memory 4.6.1`，`tools/list` 30 个工具。连接器只是可选增强，由豆包客户端管理；Agent 不应自动改豆包设置、配置或注册表。
+实测：`initialize` 返回 `omni-memory 4.6.2`，`tools/list` 30 个工具。连接器只是可选增强，由豆包客户端管理；Agent 不应自动改豆包设置、配置或注册表。
 
 #### 宿主瞬断（2026-11-21 实测）
 
@@ -53,7 +53,7 @@ node hosts\cli.mjs write --dir <repo> --kind note --text "..."
 - 处置：重启豆包客户端可恢复；CLI 首次失败等 2 秒重试一次，仍失败再走 `GET /omni-memory/packet?cwd=<项目>&q=<任务>` 只读兜底。不要连续重试三次，也不要改客户端配置/注册表绕过。
 - 常态化：原生 MCP 连接器由客户端托管 Node 进程，不依赖 PowerShell 临时脚本；但它仍需用户在客户端保存一次，是可选增强。
 
-### 1.2 DSH Desktop 的端口与验收（4.6.1）
+### 1.2 DSH Desktop 的端口与验收（4.6.2）
 
 DSH Desktop 的 `dsh-desktop-host` 启动 Web 应用时固定使用 `--host 127.0.0.1 --port 0`，因此 Web GUI / 插件路由端口由操作系统每次启动随机分配，重启后会变化。
 

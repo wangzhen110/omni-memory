@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { boot } from './helpers.mjs';
+import { boot, projectCwd } from './helpers.mjs';
 
-const CWD = 'C:\\work\\persisted-project';
+const CWD = projectCwd('persisted-project');
 
 test('agent to project mapping survives a plugin reload', async () => {
   const home = (await boot()).home;

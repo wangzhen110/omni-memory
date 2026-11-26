@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { boot, backupPathOf, fakeReq, fakeRes, fakePost } from './helpers.mjs';
+import { boot, backupPathOf, fakeReq, fakeRes, fakePost, projectCwd } from './helpers.mjs';
 
-const PROJECT_CWD = 'C:\\tmp\\omni-review-http-project';
+const PROJECT_CWD = projectCwd('omni-review-http-project');
 
 function jsonRoute(app, routePath, url, address = '127.0.0.1') {
   const { res, json, state } = fakeRes();
@@ -141,7 +141,7 @@ test('readJsonBody preserves UTF-8 split across chunks', async () => {
     method: 'POST',
     url: '/omni-memory/persona',
     socket: { remoteAddress: '127.0.0.1' },
-    headers: { 'x-omni-csrf': '1' },
+    headers: { host: '127.0.0.1', 'x-omni-csrf': '1' },
     on(name, handler) {
       if (!handlers.has(name)) handlers.set(name, []);
       handlers.get(name).push(handler);

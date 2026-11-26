@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { boot, fakeReq, fakeRes } from './helpers.mjs';
+import { boot, fakeReq, fakeRes, projectCwd } from './helpers.mjs';
 
 /** Open the plugin database from the test's throwaway home. */
 function openDb(home) {
@@ -16,7 +16,12 @@ function openDb(home) {
 
 /** Request stub with headers, used by the CSRF/scope routes. */
 function reqOf(method, url, headers = {}, address = '127.0.0.1') {
-  return { method, url, headers, socket: { remoteAddress: address } };
+  return {
+    method,
+    url,
+    headers: { host: '127.0.0.1:7788', ...headers },
+    socket: { remoteAddress: address },
+  };
 }
 
 test('superseded notes leave search and the profile immediately', async () => {
@@ -112,7 +117,7 @@ test('scope=all is rejected for writes', async () => {
 
 test('tool writes fall back to global without context and use the caller project with context', async () => {
   const app = await boot();
-  const cwd = 'C:\\Users\\tester\\Desktop\\demo-project';
+  const cwd = projectCwd('demo-project');
 
   // No context: fail closed to global instead of the last assembly.
   const tool = app.tools.get('memory_write');
@@ -187,8 +192,8 @@ test('a tombstoned transcript can be captured again', async () => {
 test('identical transcripts in two projects are both kept', async () => {
   const app = await boot();
   const text = '两个项目都会出现的同一句话';
-  app.fireWithCwd('C:\\work\\project-a', 'user/message', text, 1, 'session-a');
-  app.fireWithCwd('C:\\work\\project-b', 'user/message', text, 2, 'session-b');
+  app.fireWithCwd(projectCwd('project-a'), 'user/message', text, 1, 'session-a');
+  app.fireWithCwd(projectCwd('project-b'), 'user/message', text, 2, 'session-b');
 
   const db = openDb(app.home);
   const rows = db.prepare('SELECT id, scope FROM chunks WHERE text = ? AND deleted_at IS NULL').all(text);

@@ -15,7 +15,7 @@ function dbOf(home) {
 const postWithCsrf = (url, headers = {}) => ({
   method: 'POST',
   url,
-  headers: { 'x-omni-csrf': '1', ...headers },
+  headers: { host: '127.0.0.1', 'x-omni-csrf': '1', ...headers },
   socket: { remoteAddress: '127.0.0.1' },
 });
 

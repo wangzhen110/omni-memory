@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { boot } from './helpers.mjs';
+import { boot, projectCwd } from './helpers.mjs';
 
 /** Enter a session whose workspace is proj-a, and make it the current project. */
-async function enterProject(app, cwd = 'C:\\work\\proj-a', sessionId = 'session-a') {
+async function enterProject(app, cwd = projectCwd('proj-a'), sessionId = 'session-a') {
   app.fireWithCwd(cwd, 'user/message', '进入项目甲', 1, sessionId);
   app.section().text({ scope: { id: sessionId } });
   return sessionId;

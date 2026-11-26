@@ -23,6 +23,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { RULES_TEXT } from '../hosts/shared/rules.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -66,12 +67,17 @@ async function mcpInit() {
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } },
     { jsonrpc: '2.0', method: 'notifications/initialized' },
   ]) {
-    await fetch(`${base}/mcp`, {
+    const response = await fetch(`${base}/mcp`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
       signal: timed(),
     });
+    if (body.id === 1) {
+      const payload = await response.json();
+      assert.equal(payload.result.instructions, RULES_TEXT,
+        'HTTP initialize instructions must be the shared rules text');
+    }
   }
 }
 
@@ -121,7 +127,7 @@ function dechunk(text) {
  * 发原始 HTTP 请求。相对于 fetch 的好处是 target 不会被 URL 规范化，
  * 且能指定 localAddress 来伪造非 loopback 对端。
  */
-function rawRequest({ target, method = 'GET', headers = {}, body = '', localAddress }) {
+function rawRequest({ target, method = 'GET', headers = {}, body = '', localAddress, omitHost = false }) {
   return new Promise((resolve, reject) => {
     const socket = net.connect({ host: '127.0.0.1', port: ctx.port, ...(localAddress ? { localAddress } : {}) });
     const chunks = [];
@@ -147,11 +153,10 @@ function rawRequest({ target, method = 'GET', headers = {}, body = '', localAddr
       finish(null, { status: match ? Number(match[1]) : 0, body: payload });
     });
     socket.on('connect', () => {
-      const host = String(headers.host ?? `127.0.0.1:${ctx.port}`);
       const extra = Object.entries(headers).filter(([key]) => key.toLowerCase() !== 'host');
       const lines = [
         `${method} ${target} HTTP/1.1`,
-        `Host: ${host}`,
+        ...(omitHost ? [] : [`Host: ${String(headers.host ?? `127.0.0.1:${ctx.port}`)}`]),
         'Connection: close',
         ...extra.map(([key, value]) => `${key}: ${value}`),
         `Content-Length: ${Buffer.byteLength(body)}`,
@@ -183,6 +188,14 @@ test('export is a GET-only surface', async () => {
   });
   assert.equal(response.status, 405);
   assert.match(response.body, /export requires GET/);
+});
+
+test('a request without Host is rejected at the protocol or guard layer', async () => {
+  for (const target of ['/omni-memory/export', '/omni-memory/search?q=HostProbe', '/omni-memory/status']) {
+    const response = await rawRequest({ target, omitHost: true });
+    assert.ok([400, 403].includes(response.status),
+      `${target} must fail closed without a Host header, got ${response.status}`);
+  }
 });
 
 test('health, metrics, rules and static pages reject non-loopback peers', async () => {

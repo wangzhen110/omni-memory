@@ -115,7 +115,7 @@ test('persona refresh route needs POST and CSRF', async () => {
 
   const ok = fakeRes();
   await app.route('/omni-memory/persona/refresh').handler(
-    { method: 'POST', url: '/omni-memory/persona/refresh', headers: { 'x-omni-csrf': '1' }, socket: { remoteAddress: '127.0.0.1' } },
+    { method: 'POST', url: '/omni-memory/persona/refresh', headers: { host: '127.0.0.1', 'x-omni-csrf': '1' }, socket: { remoteAddress: '127.0.0.1' } },
     ok.res,
   );
   assert.equal(ok.state.statusCode, 200);

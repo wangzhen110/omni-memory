@@ -2,6 +2,26 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.2] — 2026-11-26
+
+### 安全
+- **插件侧无 Host fail-closed**：`lib/read-routes.mjs` 不再对缺失 `Host` 的请求放行；缺失或不可信 Host 一律 403，与 standalone `hosts/http/server.mjs` 对齐。所有测试请求显式注入 Host，新增插件路由与原始 HTTP 两层回归。
+- **测试钩子二道门**：`OMNI_TEST_MODE=1` 之外还要求 `NODE_TEST_CONTEXT`（仅 `node --test` 及其子进程存在），避免部署侧误设单个变量就替换签名公钥、keyId 或 git 源。
+
+### 变更
+- **规则文本统一**：stdio `hosts/mcp/bin.mjs` 与 HTTP `hosts/http/server.mjs` 的 `initialize.instructions` 改为完整 `RULES_TEXT`，与 `prompts/get`、`resources/read`、`memory_rules` 同文；不再维护摘要副本。
+- **测试真值门**：`npm test` 输出 spec + TAP，新增 `scripts/check-test-results.mjs`，`npm run verify` 校验真实 `# pass` / `# fail` / `# cancelled`，不再用源码 `test(` 计数代替运行结果；全量超时改为 120s。
+- **测试可移植性**：项目路径用例改用 `projectCwd()` 生成 OS 临时目录，消除 Linux 上合成 `C:\...` 落入仓库并误取 `.omni-project` 的问题；`schtasks` 不可用时明确 skip；1000 文件 warm sync 改为「2s 或 2×cold」的相对预算并输出诊断。
+
+### 文档
+- README 规则通道改为「五条入口共享同一份 `RULES_TEXT`」；REFERENCE 补 REST `/search` 的 `limit` 默认 30 / 上限 60 与 persona `clear` 仅 HTTP 管理面；DESIGN/CHANGELOG 修正 `OMNI_TEST_UPDATE_PUBLIC_KEY_FILE` 变量名。
+- `scripts/check-docs.mjs` 增加 HOST-ADAPTERS、REFERENCE、OpenAPI path 数、规则口径、persona 归属、REST limit 与旧变量名校验。
+- `docs/COMPLETION-4.6.2-2026-11-26.md` 记录复核结论、改动、测试证据与未采纳项。不改 schema（仍为 20）。
+
+### 测试
+- 新增插件侧缺失 Host 403、原始 HTTP 缺失 Host 拒绝、stdio/HTTP instructions 同文、测试模式二道门等用例。
+- 完整 `npm test` **486/486** 通过；TAP `# tests 486`、`# pass 486`、`# fail 0`、`# cancelled 0`。
+
 ## [4.6.1] — 2026-11-26
 
 ### 安全
@@ -10,7 +30,7 @@
 - **HTTP `/tool` 落层**：省略 `arguments.scope` 时使用服务启动时解析出的项目/会话 scope，不再默认落 global；显式 `scope` 仍优先。
 - **参数边界**：`project_search` 及四个项目查询函数把 `limit` 钳到 1..上限的有限整数，负数/0/非数回退默认，超大值钳到上限。
 - **可观测性**：跨 scope 审计失败写 stderr，只记错误消息，不打印查询正文；写入不因审计失败回滚。
-- **测试钩子门**：`OMNI_TEST_GIT_FETCH_URL`、`OMNI_TEST_KEY_FILE` 等仅在 `OMNI_TEST_MODE=1` 时生效；生产环境遇到 `OMNI_TEST_*` 只告警并忽略。
+- **测试钩子门**：`OMNI_TEST_GIT_FETCH_URL`、`OMNI_TEST_UPDATE_PUBLIC_KEY_FILE` 等仅在 `OMNI_TEST_MODE=1` 时生效；生产环境遇到 `OMNI_TEST_*` 只告警并忽略。
 
 ### 修复
 - `scripts/install.mjs` 的 `--key=value` 按第一个 `=` 切分，值里再含 `=` 不再丢后半段。
@@ -18,7 +38,7 @@
 - 新增 `npm run verify`（`npm test && npm run check`），作为发布前真值门。
 
 ### 文档
-- `docs/HOST-ADAPTERS.md` 同步 4.6.1 / 30 工具 / 26 路由 / OpenAPI 15 path；修正“五通道同一份文本”为“三条读取通道共享 RULES_TEXT，instructions 为接入摘要”。
+- `docs/HOST-ADAPTERS.md` 同步 4.6.1 / 30 工具 / 26 路由 / OpenAPI 15 path；当时把“五通道同一份文本”改为“三条读取通道共享 RULES_TEXT，instructions 为接入摘要”，4.6.2 已统一为完整同文。
 - README、DESIGN（FR-48、§6.15）、REFERENCE、CHANGELOG 同步 4.6.1；`docs/REMEDIATION-BACKLOG.md` 固化延后与不采纳项。
 - 不改 schema（仍为 20）。
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
-import { boot, fakeReq, fakeRes } from './helpers.mjs';
+import { boot, fakeReq, fakeRes, projectCwd } from './helpers.mjs';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -30,7 +30,7 @@ function noteScope(home, id) {
 }
 
 async function enterProject(app) {
-  app.fireWithCwd('C:\\work\\proj-a', 'user/message', '进入项目甲', 1, 'session-a');
+  app.fireWithCwd(projectCwd('proj-a'), 'user/message', '进入项目甲', 1, 'session-a');
   app.section().text({ scope: { id: 'session-a' } });
 }
 

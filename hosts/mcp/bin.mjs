@@ -40,19 +40,11 @@ const { host, project, sessionId, toolContext } = await bootHost({
 
 log(`store ${path.join(home, 'memory', 'omni.db')} · project ${project ?? 'global'} · ${host.tools.size()} tools · session ${sessionId}`);
 
-const instructions = [
-  '全息记忆 (Omni memory) — 本地长期记忆服务，数据全部存放在 SQLite。',
-  '开始任务前先调用 memory_context（带上用户原始请求或当前报错），拿到画像与相关记忆；',
-  '遇到报错先 memory_search 用 problemKey 查已沉淀解法，没有命中再向外部求助；',
-  '解决后用 memory_write 沉淀「症状 / 失败尝试 / 有效解法 / 前提条件」，带 problemKey 与 solutionStatus。',
-  '完整规则：prompts/get name=omni-bootstrap，或 resources/read uri=omni://rules，或调用 memory_rules。',
-].join('\n');
-
 const server = serveStdio({
   host,
   toolContext,
   serverInfo: { name: 'omni-memory', version: pkg.version },
-  instructions,
+  instructions: RULES_TEXT,
   rulesText: RULES_TEXT,
   log,
 });

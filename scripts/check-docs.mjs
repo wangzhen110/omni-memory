@@ -20,6 +20,9 @@ const readme = read('README.md');
 const design = read('docs/DESIGN.md');
 const changelog = read('docs/CHANGELOG.md');
 const mcpReadme = read('hosts/mcp/README.md');
+const hostAdapters = read('docs/HOST-ADAPTERS.md');
+const reference = read('docs/REFERENCE.md');
+const profileSource = read('lib/profile.mjs');
 const adapterSource = read('hosts/shared/context-tool.mjs') + read('hosts/shared/rules.mjs');
 
 const tools = [...new Set([...toolSource.matchAll(/name:\s*'((?:memory|project)_[a-z_]+)'/g)].map(match => match[1]))].sort();
@@ -30,10 +33,47 @@ const mcpTools = tools.length + adapterTools.length;
 const routes = [...new Set([...routeSource.matchAll(/path:\s*'\/omni-memory\/([a-z/.]+)'/g)].map(match => match[1]))].sort();
 const adrCount = readdirSync(path.join(root, 'docs', 'ADR')).filter(file => file.endsWith('.md')).length;
 
-let tests = 0;
-for (const file of readdirSync(path.join(root, 'test')).filter(name => name.endsWith('.test.mjs'))) {
-  tests += (readFileSync(path.join(root, 'test', file), 'utf8').match(/^test\(/gm) ?? []).length;
+// OpenAPI is a separate surface from the 26 REST routes: only a documented
+// subset is published to C-class hosts. Count the actual `paths` block so the
+// three docs cannot drift back to stale path counts.
+const openapiStart = profileSource.indexOf('const HOST_OPENAPI');
+const openapiEnd = profileSource.indexOf('export {', openapiStart);
+const openapiSource = openapiStart >= 0 && openapiEnd > openapiStart
+  ? profileSource.slice(openapiStart, openapiEnd)
+  : '';
+const openapiPaths = [...new Set(
+  [...openapiSource.matchAll(/'\/omni-memory\/([a-z./]+)':\s*\{/g)].map(match => match[1]),
+)].sort();
+
+// `npm test` emits TAP; when present it is the truth. A standalone
+// `npm run check` falls back to counting declarations, but never claims the
+// declarations actually ran.
+function readTapSummary() {
+  try {
+    const tap = readFileSync(path.join(root, '.test-results.tap'), 'utf8');
+    const value = label => {
+      const match = new RegExp(`^# ${label} (\\d+)$`, 'm').exec(tap);
+      return match ? Number(match[1]) : null;
+    };
+    const summary = {
+      tests: value('tests'),
+      pass: value('pass'),
+      fail: value('fail'),
+      cancelled: value('cancelled'),
+      skipped: value('skipped') ?? 0,
+    };
+    return summary.tests === null ? null : summary;
+  } catch {
+    return null;
+  }
 }
+
+let declaredTests = 0;
+for (const file of readdirSync(path.join(root, 'test')).filter(name => name.endsWith('.test.mjs'))) {
+  declaredTests += (readFileSync(path.join(root, 'test', file), 'utf8').match(/^test\(/gm) ?? []).length;
+}
+const tap = readTapSummary();
+const tests = tap?.tests ?? declaredTests;
 
 const failures = [];
 const check = (label, ok, detail) => {
@@ -59,7 +99,51 @@ check('MCP README route count', mcpReadme.includes(`${routes.length} 条 REST �
 check('DESIGN core tool count', design.includes(`${tools.length} 个插件工具`), `DESIGN does not say ${tools.length} 个插件工具`);
 check('CHANGELOG has current version', new RegExp(`## \\[${pkg.version.replaceAll('.', '\\.')}\\]`).test(changelog), `CHANGELOG has no ${pkg.version} entry`);
 
-console.log(`\n${tests} tests, ${tools.length} core tools / ${mcpTools} MCP tools, ${routes.length} routes, ${adrCount} ADRs, version ${pkg.version}`);
+// The rules text used to exist in three long-lived copies plus a summary per
+// host. Every doc must now say the same thing, or a future edit will silently
+// reintroduce the fork.
+for (const [label, doc] of [
+  ['README', readme],
+  ['HOST-ADAPTERS', hostAdapters],
+  ['REFERENCE', reference],
+  ['MCP README', mcpReadme],
+]) {
+  check(`${label} rules channels share RULES_TEXT`,
+    doc.includes('共享同一份 `RULES_TEXT`'),
+    `${label} must say all rule channels share the same RULES_TEXT`);
+}
+check('README drops the never-drift claim',
+  !readme.includes('永不漂移'),
+  'README still uses the old "永不漂移" wording instead of naming RULES_TEXT');
+
+check('REFERENCE documents REST /search limit',
+  reference.includes('默认 30，上限 60'),
+  'REFERENCE must document the /search limit default 30 and cap 60');
+check('REFERENCE assigns persona clear to HTTP only',
+  reference.includes('仅 HTTP 管理面') && reference.includes('MCP 工具不支持 clear'),
+  'REFERENCE must mark persona clear as HTTP-only and absent from MCP');
+
+check('no retired OMNI_TEST_KEY_FILE name',
+  ![readme, design, changelog, reference, hostAdapters, mcpReadme].some(doc => doc.includes('OMNI_TEST_KEY_FILE')),
+  'a doc still uses the retired OMNI_TEST_KEY_FILE variable');
+check('test public key file variable is documented',
+  design.includes('OMNI_TEST_UPDATE_PUBLIC_KEY_FILE') && changelog.includes('OMNI_TEST_UPDATE_PUBLIC_KEY_FILE'),
+  'DESIGN/CHANGELOG must name OMNI_TEST_UPDATE_PUBLIC_KEY_FILE');
+
+check('OpenAPI path count is consistent',
+  openapiPaths.length > 0
+  && [design, hostAdapters, reference].every(doc => doc.includes(`${openapiPaths.length} 条 path`)),
+  `OpenAPI paths=${openapiPaths.length}; docs must all say "${openapiPaths.length} 条 path"`);
+
+check('stdio and HTTP initialize use RULES_TEXT',
+  read('hosts/mcp/bin.mjs').includes('instructions: RULES_TEXT')
+  && read('hosts/http/server.mjs').includes('instructions: RULES_TEXT'),
+  'one host still sends a separate initialize summary');
+
+check('TAP run has no failures', !tap || tap.fail === 0,
+  `TAP reports ${tap?.fail ?? 0} failure(s)`);
+
+console.log(`\n${tests} tests${tap ? ' (TAP)' : ' (declared)'}, ${tools.length} core tools / ${mcpTools} MCP tools, ${routes.length} routes, ${openapiPaths.length} OpenAPI paths, ${adrCount} ADRs, version ${pkg.version}`);
 if (failures.length) {
   console.error(`\n${failures.length} documentation mismatch(es). Update the docs before shipping.`);
   process.exit(1);

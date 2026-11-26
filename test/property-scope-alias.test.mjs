@@ -25,20 +25,28 @@ const {
 } = app.mod;
 const RUNS = 80;
 
-const drive = fc.constantFrom('C:', 'D:', 'e:', '/home', '/Users');
+const winDrive = fc.constantFrom('C:', 'D:', 'e:');
+const posixRoot = fc.constantFrom('/home', '/Users');
 const folder = fc.stringMatching(/^[A-Za-z][A-Za-z0-9_-]{2,14}$/);
 const pathArb = fc.record({
-  drive, folder,
+  root: winDrive, folder,
   sep: fc.constantFrom('\\', '/'),
   trailing: fc.boolean(),
 });
-const makePath = ({ drive: d, folder: f, sep, trailing }) =>
+const posixPathArb = fc.record({
+  root: posixRoot, folder,
+  sep: fc.constant('/'),
+  trailing: fc.boolean(),
+});
+const makePath = ({ root: d, folder: f, sep, trailing }) =>
   `${d}${sep}${f}${trailing ? sep : ''}`;
 
 // ---------------------------------------------------------------------------
 // S1. On case-insensitive platforms, any casing of the same path maps to one
 //     canonical project key; on Linux, different casing maps to different keys.
-//     Guards the platform branch in projectKeyFromCwd.
+//     Guards the platform branch in projectKeyFromCwd. Path spellings must match
+//     the platform: a synthetic `C:\...` on Linux resolves inside the checkout
+//     and would pick up the repo's real `.omni-project` identity instead.
 // ---------------------------------------------------------------------------
 test('prop: project key is casing-correct per platform', () => {
   fc.assert(
@@ -49,12 +57,19 @@ test('prop: project key is casing-correct per platform', () => {
         assert.equal(projectKeyFromCwd(p, platform), projectKeyFromCwd(lower, platform),
           `${platform}: casing must not split a project layer`);
       }
+      assert.equal(projectKeyFromCwd(p, 'win32'), projectKeyFromCwd(p.replaceAll('\\', '/'), 'win32'),
+        'separator spelling is normalized');
+    }),
+    { numRuns: RUNS },
+  );
+  fc.assert(
+    fc.property(posixPathArb, (spec) => {
+      const p = makePath(spec);
+      const lower = p.toLowerCase();
       if (p !== lower) {
         assert.notEqual(projectKeyFromCwd(p, 'linux'), projectKeyFromCwd(lower, 'linux'),
           'linux keeps casing significant');
       }
-      assert.equal(projectKeyFromCwd(p, 'win32'), projectKeyFromCwd(p.replaceAll('\\', '/'), 'win32'),
-        'separator spelling is normalized');
     }),
     { numRuns: RUNS },
   );
@@ -68,13 +83,15 @@ test('prop: project key is casing-correct per platform', () => {
 test('prop: legacy key preserves casing and collapses for lowercase paths', () => {
   fc.assert(
     fc.property(folder, (f) => {
-      const mixed = `C:\\Work\\${f}`;
-      const lower = `c:/work/${f.toLowerCase()}`;
+      const win = process.platform === 'win32';
+      const mixed = win ? `C:\\Work\\${f}` : `/home/Work/${f}`;
+      const lower = win ? `c:/work/${f.toLowerCase()}` : `/home/work/${f.toLowerCase()}`;
+      const platform = win ? 'win32' : 'linux';
       assert.match(legacyProjectKeyFromCwd(mixed), /proj:/u);
-      assert.equal(legacyProjectKeyFromCwd(lower), projectKeyFromCwd(lower, 'win32'),
+      assert.equal(legacyProjectKeyFromCwd(lower), projectKeyFromCwd(lower, platform),
         'lowercase path: legacy == canonical');
       if (f !== f.toLowerCase()) {
-        assert.notEqual(legacyProjectKeyFromCwd(mixed), projectKeyFromCwd(mixed, 'win32'),
+        assert.notEqual(legacyProjectKeyFromCwd(mixed), projectKeyFromCwd(mixed, platform),
           'cased path: legacy key differs from canonical (migration candidate exists)');
       }
     }),

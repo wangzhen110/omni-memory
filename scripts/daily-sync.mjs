@@ -49,13 +49,25 @@ const DEFAULT_REPO = path.resolve(SCRIPT_DIR, '..');
 const TASK_NAME = process.env.OMNI_SERVICE_TASK || SERVICE_TASK;
 const HEALTH_URL = process.env.OMNI_HEALTH_URL || 'http://127.0.0.1:7788/health';
 const GITHUB_TOKEN = process.env.OMNI_GITHUB_TOKEN || process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
-const TEST_MODE = process.env.OMNI_TEST_MODE === '1';
+/**
+ * Test-only hooks are double-gated: OMNI_TEST_MODE alone is not enough, because
+ * a stray `OMNI_TEST_MODE=1` in a deployed task could swap the release key or
+ * git remote. `NODE_TEST_CONTEXT` is only set by `node --test` and inherited by
+ * its child processes.
+ */
+export function testModeEnabled(env = process.env) {
+  return env.OMNI_TEST_MODE === '1' && Boolean(env.NODE_TEST_CONTEXT);
+}
+const TEST_MODE = testModeEnabled();
 const TEST_ENV_NAMES = [
   'OMNI_TEST_GIT_FETCH_URL',
   'OMNI_TEST_UPDATE_PUBLIC_KEY_FILE',
   'OMNI_TEST_UPDATE_KEY_ID',
   'OMNI_TEST_UPDATE_PUBLIC_KEY_SHA256',
 ];
+if (process.env.OMNI_TEST_MODE === '1' && !TEST_MODE) {
+  console.error('[omni] ignoring OMNI_TEST_MODE=1: test-only hooks require the Node test runner context (NODE_TEST_CONTEXT)');
+}
 if (!TEST_MODE) {
   const injected = TEST_ENV_NAMES.filter(name => process.env[name]);
   if (injected.length) {

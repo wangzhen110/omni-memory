@@ -1,6 +1,6 @@
 # 全息记忆 · 机理与接口参考
 
-> 版本 4.6.1 · 生成日期 2026-11-26 · 依据源码与真实 schema v20 核对
+> 版本 4.6.2 · 生成日期 2026-11-26 · 依据源码与真实 schema v20 核对
 >
 > **给 AI 的用法**：这份文档按「先原理、后接口、最后剧本」组织。第一次接触时读第 1、2、9 章即可开工；要精确调用某个工具，直接跳到第 9 章对应小节。若这份文档已同步进记忆库（`omni memory:sync`），也可以先用 `memory_search` 搜"全息记忆 接口"定位。
 
@@ -295,9 +295,9 @@ MCP 的 sessionId 默认是 `host-<工作目录哈希>`，稳定可复现；同�
 
 ### 4.4 规则的五条通道
 
-MCP 无法写客户端系统提示，所以规则分五条通道送进宿主。完整正文 `RULES_TEXT` 由 `prompts/get`、`resources/read`、`memory_rules` 三条读取通道共享；`initialize.instructions` 是短接入摘要，指向完整规则；`omni rules --write` 把同一份托管区块写进项目规则文件：
+MCP 无法写客户端系统提示，所以规则分五条入口送进宿主。stdio 与 HTTP 的 `initialize.instructions` 现在也是完整 `RULES_TEXT`：它与 `prompts/get`、`resources/read`、`memory_rules` **共享同一份 `RULES_TEXT`**；`omni rules --write` 把同一份托管区块写进项目规则文件：
 
-1. `initialize.instructions`（接入摘要）
+1. `initialize.instructions`（完整 `RULES_TEXT`，stdio 与 HTTP 同文）
 2. `prompts/get` 的 `omni-bootstrap`（可带 task）
 3. `resources/read` `omni://rules`
 4. 工具 `memory_rules`
@@ -384,7 +384,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 
 ### 5.7 memory_persona
 参数：
-- `action` string，必填，`get|set|refresh`
+- `action` string，必填，`get|set|refresh`；`clear` 仅 HTTP 管理面（`POST /omni-memory/persona`）专属，MCP 工具不提供 `clear`
 - `values` object，set 专用；空值删除条目，总长 4000 字符。HTTP 侧要求非空 JSON body（或 `values` 查询参数），body 上限 64KB；清空必须显式传 `action=clear`，非法/超长 body 返回 400/413 且不改动已有画像。
 - `apply` boolean，refresh 专用，默认 true
 - `useModel` boolean，refresh 专用，默认 false（只用离线规则）
@@ -480,7 +480,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 | `/overview` | GET | `range`（`4w`/`6w`/`12w`/`26w`，默认 `12w`）`scope` | 网页概览用真实聚合：`version` / `stats` / `health` / `series` / `daily` / `projects` / `profile` / `activity` / `graph`；不返回全文 |
 | `/graph` | GET | `scope` | 星图：`nodes[]`、`links[]`（`source/target/rel`）、`scopes[]` |
 | `/node` | GET | `node` `scope` | 单实体详情与关联事实 |
-| `/persona` | GET/POST | body `values`（≤64KB），清空显式 `action=clear` | 读/写用户设定；空/非法 body 返回 400，不静默清空 |
+| `/persona` | GET/POST | body `values`（≤64KB），清空显式 `action=clear`（仅此 HTTP 管理面；MCP 工具不支持 clear） | 读/写用户设定；空/非法 body 返回 400，不静默清空 |
 | `/persona/refresh` | POST | `dryRun` `model` | 从近期全局记忆提炼 |
 | `/dream/proposals` | GET | `limit` | 待替代候选 |
 | `/dream/replace` | POST | `noteId` | 确认替代 |
@@ -488,7 +488,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 | `/export` | GET | `activeOnly` `download` | 备份；仅 GET，POST 返回 405；`download=1` 走附件下载 |
 | `/restore` | POST | `kind` `id` `scope` | 复活墓碑；同 key 已有 active 值/同文本 active 笔记时返回 `restored:false` 与 `activeId`，不制造双活 |
 | `/status` | GET | — | 运行态：`version`（来自 `package.json`）、注入统计、嵌入后端、`routes`（pending/registered/disposed、count、lastError）、`aliasRepair`、`aliasMigration`；`embedding.dropped` / `lastDropAt` 与 `semantic.gcError` / `gcFailedAt` 可观测队列丢弃和启动 GC 失败 |
-| `/search` | GET | `q` `limit` `scope` | 混合检索 |
+| `/search` | GET | `q` `limit`（默认 30，上限 60，越界静默钳制）`scope` | 混合检索 |
 | `/packet` | GET | `q` `scope` `cwd` `limit` `budget` `format` | 无 MCP 宿主的可注入记忆包；`cwd` 先走 `resolveProjectKey()`（3.10.2 起），`format=text` 直接输出纯文本；有云端新版本时 `text` 顶部带版本提醒，JSON 含 `update` |
 | `/openapi.json` | GET | — | HTTP adapter 的 OpenAPI 3.0 描述（15 条 path，含 project/*） |
 | `/tool` | POST | body `name` `arguments`；header `x-omni-csrf: 1` | 受限工具桥：write/search/solution_report/feedback/get/amend/profile/timeline；省略 `arguments.scope` 时继承服务启动的项目层，显式 `scope` 优先 |

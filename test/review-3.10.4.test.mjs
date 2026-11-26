@@ -13,7 +13,7 @@ function postRoute(app, routePath, url, body = {}, headers = { 'x-omni-csrf': '1
 function rawPost(url, text) {
   const handlers = new Map();
   const req = {
-    method: 'POST', url, headers: { 'x-omni-csrf': '1' },
+    method: 'POST', url, headers: { host: '127.0.0.1', 'x-omni-csrf': '1' },
     socket: { remoteAddress: '127.0.0.1' },
     on(name, handler) {
       if (!handlers.has(name)) handlers.set(name, []);

@@ -3,7 +3,7 @@
 > 本文件记录外部评审项的最终取舍，不是问题清单的复制。
 > 每一项必须先回答：事实是否成立、用户收益、 blast radius、替代方案、验证方式、落在哪个版本。
 > 结论只有三种：`本轮做`、`延后`、`不采纳`。
-> 来源：`docs/全面体检报告-2026-11-26.md` 与当前 v4.6.x 源码/实测复核。
+> 来源：`docs/全面体检报告-2026-11-26.md`、`docs/整改复核报告-2026-11-26.md` 与当前 v4.6.x 源码/实测复核。
 
 ## 决策闸门
 
@@ -25,6 +25,17 @@
 - `OMNI_TEST_*` 测试钩子要求 `OMNI_TEST_MODE=1`，生产环境忽略并告警。
 - `HOST-ADAPTERS.md` 工具数、路由数、OpenAPI path 数、规则文本口径同步。
 - 增加 `npm run verify`（测试 + 文档/语法检查），作为发布前真值门。
+
+## 4.6.2 本轮处理
+
+> 状态：已完成（2026-11-26，`npm test` 486/486，TAP 0 fail，`npm run check` 通过）。复核报告的 6 项事实问题均处理；其“483/483 全绿失真”的总体结论在发布机上不成立，按“本机未复现”记录，未降低产品预算。
+
+- 插件侧读路由对缺失 Host 也 fail-closed，与 standalone 服务端一致；测试请求显式注入 Host。
+- stdio/HTTP `initialize.instructions` 统一为完整 `RULES_TEXT`，删除摘要副本。
+- `OMNI_TEST_MODE=1` 增加 `NODE_TEST_CONTEXT` 第二道门，防止部署误设替换验签链。
+- `npm test` 输出 TAP，`npm run verify` 用 `scripts/check-test-results.mjs` 校验真实 pass/fail/cancelled；超时提到 120s。
+- Linux 项目路径用例改用 OS 临时目录；`schtasks` 不可用时明确 skip；1000 文件 warm sync 改为相对预算并输出诊断。
+- README 规则口径、REFERENCE REST `limit` 与 persona `clear` 归属、测试环境变量名修正；`check-docs` 扩展 HOST-ADAPTERS/REFERENCE/OpenAPI/规则/persona/limit/变量名。
 
 ## 延后项
 

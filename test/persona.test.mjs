@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { boot, fakeReq, fakeRes } from './helpers.mjs';
 
 const post = (url, headers = {}) => ({
-  method: 'POST', url, headers: { 'x-omni-csrf': '1', ...headers }, socket: { remoteAddress: '127.0.0.1' },
+  method: 'POST',
+  url,
+  headers: { host: '127.0.0.1', 'x-omni-csrf': '1', ...headers },
+  socket: { remoteAddress: '127.0.0.1' },
 });
 
 test('persona can be set and read through the tool', async () => {

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
-import { boot, fakeReq, fakeRes } from './helpers.mjs';
+import { boot, fakeReq, fakeRes, projectCwd } from './helpers.mjs';
 
 function chunkScope(home, sessionId) {
   const db = new DatabaseSync(path.join(home, 'memory', 'omni.db'));
@@ -12,7 +12,7 @@ function chunkScope(home, sessionId) {
 }
 
 async function seedTwoLayers(app) {
-  app.fireWithCwd('C:\\work\\proj-a', 'user/message', '项目甲的背景信息', 1, 'session-a');
+  app.fireWithCwd(projectCwd('proj-a'), 'user/message', '项目甲的背景信息', 1, 'session-a');
   const scopeA = chunkScope(app.home, 'session-a');
   const projectNote = await app.call('memory_write', {
     kind: 'note', text: '项目甲专属结论：构建用 vite', scope: scopeA, importance: 0.9,
@@ -25,7 +25,7 @@ async function seedTwoLayers(app) {
 
 test('FR-26 capture derives the project layer from the session workspace', async () => {
   const app = await boot();
-  app.fireWithCwd('C:\\work\\proj-a', 'user/message', '项目甲的消息', 1, 'session-a');
+  app.fireWithCwd(projectCwd('proj-a'), 'user/message', '项目甲的消息', 1, 'session-a');
   const scope = chunkScope(app.home, 'session-a');
   assert.match(scope, /^proj:proj-a#[0-9a-f]{6}$/);
 });

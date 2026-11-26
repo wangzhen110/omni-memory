@@ -30,6 +30,14 @@ test('daily-sync apply verifies, fast-forwards, gates syntax and installs the la
     t.skip('git or the launcher binary is unavailable');
     return;
   }
+  const schtasks = spawnSync('schtasks.exe', ['/Query', '/FO', 'LIST'], { encoding: 'utf8' });
+  if (schtasks.status !== 0) {
+    // Locked-down CI/sandbox images can block the Task Scheduler service. The
+    // product path is already covered by the CLI unit tests; skip the
+    // end-to-end restart assertion instead of failing inside schtasks.
+    t.skip(`schtasks unavailable: ${(schtasks.stderr || '').trim().slice(0, 160)}`);
+    return;
+  }
   const dir = mkdtempSync(path.join(tmpdir(), 'omni-daily-sync-success-'));
   const targetDir = mkdtempSync(path.join(tmpdir(), 'omni-daily-sync-target-'));
   const remote = path.join(dir, 'remote.git');

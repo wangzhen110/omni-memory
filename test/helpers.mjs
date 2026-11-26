@@ -16,6 +16,16 @@ export function backupPathOf(app, name) {
   return path.join(dir, name);
 }
 
+/**
+ * Workspace path outside the checkout. `projectKeyFromCwd()` walks up for
+ * `.omni-project`; a synthetic `C:\...` path on Linux resolves *inside* the
+ * repo and silently picks up the repo's identity. Keep test workspaces in the
+ * OS temp root so Windows and POSIX exercise the same path-derived key logic.
+ */
+export function projectCwd(name = 'proj-a') {
+  return path.join(tmpdir(), 'omni-test-projects', String(name));
+}
+
 /** Copy an exported backup between two throwaway stores (the test equivalent of a user copy). */
 export function copyBackup(sourceApp, targetApp, name) {
   const target = backupPathOf(targetApp, name);

@@ -19,6 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import { createProtocol } from '../hosts/mcp/server.mjs';
+import { RULES_TEXT } from '../hosts/shared/rules.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const entry = path.join(root, 'hosts', 'mcp', 'bin.mjs');
@@ -90,6 +91,8 @@ test('mcp adapter: handshake, tool listing, write, recall, error path', async t 
     assert.equal(init.result.serverInfo.name, 'omni-memory');
     assert.equal(init.result.protocolVersion, '2025-06-18');
     assert.deepEqual(init.result.capabilities.tools.listChanged, false);
+    assert.equal(init.result.instructions, RULES_TEXT,
+      'stdio instructions must be the same rules text as prompts/resources, not a drifting summary');
     notify('notifications/initialized');
 
     const list = await request('tools/list', {});

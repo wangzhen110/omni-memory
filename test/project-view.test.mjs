@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
-import { boot, fakeReq, fakeRes } from './helpers.mjs';
+import { boot, fakeReq, fakeRes, projectCwd } from './helpers.mjs';
 
 function chunkScope(home, sessionId) {
   const db = new DatabaseSync(path.join(home, 'memory', 'omni.db'));
@@ -12,8 +12,8 @@ function chunkScope(home, sessionId) {
 }
 
 async function twoProjects(app) {
-  app.fireWithCwd('C:\\work\\proj-a', 'user/message', '项目甲的对话内容', 1, 'session-a');
-  app.fireWithCwd('C:\\work\\proj-b', 'user/message', '项目乙的对话内容', 1, 'session-b');
+  app.fireWithCwd(projectCwd('proj-a'), 'user/message', '项目甲的对话内容', 1, 'session-a');
+  app.fireWithCwd(projectCwd('proj-b'), 'user/message', '项目乙的对话内容', 1, 'session-b');
   const scopeA = chunkScope(app.home, 'session-a');
   const scopeB = chunkScope(app.home, 'session-b');
   await app.call('memory_write', { kind: 'note', text: '项目甲的构建命令是 vite build', scope: scopeA });
@@ -56,7 +56,7 @@ test('an exact project view lists its own transcripts', async () => {
 
 test('a project with transcripts and no notes still shows up', async () => {
   const app = await boot();
-  app.fireWithCwd('C:\\work\\proj-c', 'user/message', '项目丙只有转录没有笔记', 1, 'session-c');
+  app.fireWithCwd(projectCwd('proj-c'), 'user/message', '项目丙只有转录没有笔记', 1, 'session-c');
   const scopeC = chunkScope(app.home, 'session-c');
 
   const { res, json } = fakeRes();
