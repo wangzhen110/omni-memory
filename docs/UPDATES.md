@@ -15,7 +15,7 @@
 
 ## 2026-11-26
 
-- 14:36:01 `b18b500a` — 4.6.3: close the TAP coverage and duplicate-summary gaps — [提交](https://github.com/wangzhen110/omni-memory/commit/b18b500a087105cff48697f57b93daf076c8b269)
+- 14:36:01 `f3b2077e` — 4.6.3: close the TAP coverage and duplicate-summary gaps — [提交](https://github.com/wangzhen110/omni-memory/commit/f3b2077ee9fa429642a2c48a71507b8aeda94009)
 - 13:58:29 `5547496f` — 4.6.2: add the remediation completion report — [提交](https://github.com/wangzhen110/omni-memory/commit/5547496fbc134e28e9c9487817256b603d42df67)
 - 13:55:15 `f6f21540` — 4.6.2: match the legacy-key assertion to Linux casing semantics — [提交](https://github.com/wangzhen110/omni-memory/commit/f6f21540eacdb500c35908d1133888e24b241cc7)
 - 13:41:33 `e4d9c752` — 4.6.2: close the recheck gaps with fail-closed host and TAP truth gate — [提交](https://github.com/wangzhen110/omni-memory/commit/e4d9c75294adfc74408c7fef73d509a1d2b47ae0)
