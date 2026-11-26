@@ -8,12 +8,22 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { designTestHookMatches } from '../lib/design-contract.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const tapArg = process.argv.indexOf('--tap');
-const tapFile = tapArg > 0 && process.argv[tapArg + 1]
-  ? path.resolve(process.cwd(), process.argv[tapArg + 1])
+const tapArgValue = tapArg >= 0 ? process.argv[tapArg + 1] : undefined;
+if (tapArg >= 0 && !tapArgValue) {
+  console.error('--tap requires a path');
+  process.exit(1);
+}
+const tapFile = tapArg >= 0
+  ? path.resolve(process.cwd(), tapArgValue)
   : path.join(root, '.test-results.tap');
+if (tapArg >= 0 && !existsSync(tapFile)) {
+  console.error(`TAP file missing: ${tapFile}`);
+  process.exit(1);
+}
 const read = file => {
   const full = path.join(root, file);
   if (!existsSync(full)) {
@@ -161,20 +171,36 @@ check('OpenAPI path count is consistent',
   `OpenAPI paths=${openapiPaths.length}; docs must all say "${openapiPaths.length} 条 path"`);
 
 check('DESIGN test hook matches child-only contract',
-  design.includes('`NODE_TEST_CONTEXT` 为 `child` / `child-vN` 时生效')
-  && !design.includes('`NODE_TEST_CONTEXT` 存在时生效')
-  && design.includes('不是抗篡改安全边界'),
+  designTestHookMatches(design),
   'DESIGN must say the test hook accepts only child / child-vN and is not a security boundary');
+
+// Reports used to hand-copy measurements from a different run. Once a release
+// has a tracked TAP evidence file, the completion report must quote those
+// exact lines, so a number cannot drift away from the archived artifact.
+const evidenceFile = `docs/evidence/${pkg.version}.json`;
+if (existsSync(path.join(root, evidenceFile))) {
+  const evidence = JSON.parse(read(evidenceFile));
+  const completion = readdirSync(path.join(root, 'docs'))
+    .find(name => name.startsWith(`COMPLETION-${pkg.version}-`) && name.endsWith('.md'));
+  const completionText = completion ? read(`docs/${completion}`) : '';
+  const required = [evidence.summaryLine, evidence.durationLine, ...(evidence.adrLines ?? []), evidence.indexLine]
+    .filter(Boolean);
+  check('completion report quotes archived TAP evidence',
+    Boolean(completion) && required.every(line => completionText.includes(line)),
+    `completion report must quote ${evidenceFile} exactly (${required.length} line(s))`);
+}
 
 check('stdio and HTTP initialize use RULES_TEXT',
   read('hosts/mcp/bin.mjs').includes('instructions: RULES_TEXT')
   && read('hosts/http/server.mjs').includes('instructions: RULES_TEXT'),
   'one host still sends a separate initialize summary');
 
-check('TAP run has no failures', !tap || tap.fail === 0,
-  `TAP reports ${tap?.fail ?? 0} failure(s)`);
+if (tap && !tap.invalid) {
+  check('TAP run has no failures', tap.fail === 0,
+    `TAP reports ${tap.fail} failure(s)`);
+}
 
-console.log(`\n${tests} tests${tap ? ' (TAP)' : ' (declared)'}, ${tools.length} core tools / ${mcpTools} MCP tools, ${routes.length} routes, ${openapiPaths.length} OpenAPI paths, ${adrCount} ADRs, version ${pkg.version}`);
+console.log(`\n${tests} tests${tap && !tap.invalid ? ' (TAP)' : ' (declared)'}, ${tools.length} core tools / ${mcpTools} MCP tools, ${routes.length} routes, ${openapiPaths.length} OpenAPI paths, ${adrCount} ADRs, version ${pkg.version}`);
 if (failures.length) {
   console.error(`\n${failures.length} documentation mismatch(es). Update the docs before shipping.`);
   process.exit(1);

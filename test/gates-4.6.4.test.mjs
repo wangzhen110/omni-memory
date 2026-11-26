@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { designTestHookMatches } from '../lib/design-contract.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const dir = mkdtempSync(path.join(os.tmpdir(), 'omni-gates-'));
@@ -74,4 +75,15 @@ test('check-docs refuses a TAP run below the declared test count', () => {
   const result = run('check-docs.mjs', ['--tap', tapFile(valid(1))]);
   assert.equal(result.status, 1);
   assert.match(result.stderr + result.stdout, /TAP ran 1, but \d+ test declarations exist/);
+});
+
+test('check-docs refuses an explicit --tap path that does not exist', () => {
+  const result = run('check-docs.mjs', ['--tap', path.join(dir, 'missing.tap')]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /TAP file missing:/);
+});
+
+test('DESIGN test hook contract rejects the old wording and accepts the current one', () => {
+  assert.equal(designTestHookMatches('`NODE_TEST_CONTEXT` 存在时生效'), false);
+  assert.equal(designTestHookMatches('`NODE_TEST_CONTEXT` 为 `child` / `child-vN` 时生效；这是防误设，不是抗篡改安全边界。'), true);
 });

@@ -2,6 +2,17 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.5] — 2026-11-26
+
+### 修复
+- **报告数字无出处**：新增 `scripts/tap-evidence.mjs`，把 TAP 的汇总、`# duration_ms`、ADR 诊断行、1000 文件索引和快照时间沉淀到 `docs/evidence/<version>.json`；`check-docs` 拒绝完成报告引用与证据文件不一致的手抄数字。
+- **`--tap` 回退**：显式指定 TAP 路径但文件不存在时立即报 `TAP file missing`，不再静默回退到声明数。
+- **误导诊断**：TAP 摘要不完整时只报 `TAP summary is complete`，不再附带“0 failure(s)”。
+- **语义门回归**：抽出 `lib/design-contract.mjs`，新增旧措辞拒绝、当前措辞放行的自动化断言。
+
+### 测试
+- 新增 2 条门禁回归，总数 **494**；schema 仍为 20，无数据迁移。
+
 ## [4.6.4] — 2026-11-26
 
 ### 修复

@@ -23,10 +23,11 @@
 
 ## 验证
 
-- `npm test`：492 tests / 492 pass / 0 fail / 0 cancelled / 0 skipped，`duration_ms 28820.5475`。
-- ADR-020：10k seed=5331ms p95=122ms；100k seed=5376ms p95=63ms；均低于 300ms 预算。
+- `npm test`：492 tests / 492 pass / 0 fail / 0 cancelled / 0 skipped，`duration_ms 29994.0467`（14:57:46 的 `.test-results.tap` 快照）。
+- ADR-020：10k `seed=5679ms p95=143.1ms max=147.3ms`；100k `seed=5389ms p95=89.9ms max=108.9ms`；均低于 300ms 预算。
 - `npm run check`：版本 4.6.4、492 tests（TAP）、26 routes、30 MCP tools、15 OpenAPI paths、32 ADRs 全部一致；新增 `TAP summary is complete` 与 `DESIGN test hook matches child-only contract` 均通过。
-- 新增门禁用例单跑：6/6 通过，约 0.6s。
+- 新增门禁用例单跑：6/6 通过，TAP `duration_ms 898.8903`，墙钟约 1.16s。
+- 15:07 的并发复跑为 490/492、1 fail（ADR-020 10k p95 456ms）+ 1 skip；该失败是争用假失败，不改变 300ms 预算。
 
 ## 未改
 
@@ -38,4 +39,9 @@
 ## 发布
 
 - 版本：`package.json` / `package-lock.json` 4.6.4。
-- 发布后补：commit、tag、Release 资产、生产 7788 与云主机同步结果。
+- commit `1407953f`，tag `v4.6.4`（annotated 对象 `adc9135`），Release id `459059413`，签名 manifest 已上传并通过 `verify-release`。
+- 生产 7788 已升级：`/health` 返回 `4.6.4`、30 tools；doctor 0 错误 0 警告。
+- 云主机 `/home/user/omni-memory-vm` 已快进到 `1407953f`：492 tests / 489 pass / 3 skip / 0 fail。
+- Release 正文的测试口径在 4.6.5 一并修正为带快照时间的表述。
+
+> 复核勘误：本报告初稿的 `28820.5475` 与 `5331/122、5376/63` 来自另一次未留痕运行，不是 14:57:46 的 TAP；已按该快照原文更正。4.6.5 起报告测量值必须由 `docs/evidence/<version>.json` 提供并被 `check-docs` 校验。
