@@ -15,7 +15,7 @@
 
 ## 2026-11-26
 
-- 16:47:42 `9c70e1a7` — 4.6.7: cover the entry layer (body, prompt, lease, CLI, stdio) — [提交](https://github.com/wangzhen110/omni-memory/commit/9c70e1a7a04bb416737ed078ca32c287c0f79709)
+- 16:47:42 `3562c1a6` — 4.6.7: cover the entry layer (body, prompt, lease, CLI, stdio) — [提交](https://github.com/wangzhen110/omni-memory/commit/3562c1a648719ac6b1add5e39d21827d12a37e83)
 - 16:03:58 `488d05f2` — docs: record 4.6.6 publish result in completion report — [提交](https://github.com/wangzhen110/omni-memory/commit/488d05f279308f4956e5054f0fe4999703c27a18)
 - 15:56:15 `4189285d` — test: isolate the ADR-020 p95 budget (4.6.6) — [提交](https://github.com/wangzhen110/omni-memory/commit/4189285d7600bd8880529f2fe03cd301cf70e2fc)
 - 15:32:56 `9ed8f669` — fix(report): make release numbers come from TAP evidence (4.6.5) — [提交](https://github.com/wangzhen110/omni-memory/commit/9ed8f669263437418ee547d46a34fdda7e04b32a)
