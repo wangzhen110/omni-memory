@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 154 次提交；更新记录自身的提交不计入列表。
+> 共 156 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,8 @@
 
 ## 2026-11-27
 
+- 11:52:39 `a86a588a` — docs: record 4.6.12 cloud VM rerun — [提交](https://github.com/wangzhen110/omni-memory/commit/a86a588a8a9a14057ab3cb7d821ed38f35ffefb7)
+- 11:50:32 `005bf7bc` — docs: record 4.6.12 install and live profile evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/005bf7bc8acc55c36ab788d776dac6cb48ebc5c3)
 - 11:47:37 `312cf6f5` — fix: stop one oversized global note from starving the rest of the profile budget (4.6.12) — [提交](https://github.com/wangzhen110/omni-memory/commit/312cf6f5db29517b484df0a7ecc130773a5dd2cb)
 - 11:36:05 `4ac1e43a` — docs: archive 4.6.11 cloud VM rerun — [提交](https://github.com/wangzhen110/omni-memory/commit/4ac1e43ac0ea10cda42cf3a7246a2f8f64bd9127)
 - 11:33:49 `0fa75b90` — docs: archive 4.6.11 release install output — [提交](https://github.com/wangzhen110/omni-memory/commit/0fa75b90cb1e99768acc7a537b6785d3089f1a04)
