@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 143 次提交；更新记录自身的提交不计入列表。
+> 共 144 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 10:59:59 `cbe62568` — feat(release): 安装字节绑定发布提交并区分 git 故障（4.6.10） — [提交](https://github.com/wangzhen110/omni-memory/commit/cbe62568e860d0db203c6c1b2dfe00965c6bb639)
 - 10:44:57 `04b56856` — docs: 回退 README 措辞并记录根目录文档不能随 docs-only 放行 — [提交](https://github.com/wangzhen110/omni-memory/commit/04b568565991e6a8119b2be9dabd019f919ec25c)
 - 10:43:22 `07f2aa46` — docs: 按 4.6.9 复核报告修正措辞与证据（I-1/I-2/S-1/S-2/S-3） — [提交](https://github.com/wangzhen110/omni-memory/commit/07f2aa461b40429c865b1ad517d533c5835b6c40)
 - 10:19:13 `185da7df` — docs: record the 4.6.9 vm evidence and backlog closure — [提交](https://github.com/wangzhen110/omni-memory/commit/185da7dfb911d15e9a31a3a1f9cf23dcb426b56c)
