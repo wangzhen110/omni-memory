@@ -51,6 +51,15 @@ P2-03（契约收窄）、P2-05（分隔符口径）、P2-06（`capProfileLines`
 P2-08（烟测降级）、P2-09（事实行）、P2-10（去掉无落证 838）、P2-11（NFR-12 与日期）、
 P2-12（“四条契约”与 BACKLOG 分栏措辞）、P2-13（3/598 标 4.6.12 历史口径）、P2-15（包排除）。
 
+## 6. 安装与运行态
+
+- 本机 `npm run setup`：验签 v4.6.14 · release commit `dc83bcf4`，launcher sha256 `d7ba3e76`，
+  doctor 0 错误 / 0 警告；7788 `/health` = `version 4.6.14`、30 tools；库 42.7 MiB、schema 20、2132 notes / 35 facts。
+- 安装后现场 `memory_profile(scope=global)`：`picked=6 / budgetUsed=1044 / textLen=1044 / included=4 / omitted=[]`
+  （`docs/evidence/4.6.14-install-release.txt`）。
+- 云主机 reset 到 `dc83bcf` 后复跑：561 tests / 558 pass / 0 fail / 3 skipped，98.0s；三条 `# SKIP` 行逐字留证于
+  `docs/evidence/4.6.14-vm.txt`（launcher ×2 + `attachSession` 大小写路径）。
+
 ## 7. 未纳入本轮（目标 4.7.0）
 
 P2-01/P2-02 的措辞修订随本报告落地；P2-14 的 4.6.13 原始 VM 留证不回填，改为 4.6.14 起留

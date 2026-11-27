@@ -1,0 +1,7 @@
+--- cloud VM rerun (sha dc83bcf, Linux) ---
+# tests 561 / pass 558 / fail 0 / cancelled 0 / skipped 3
+# duration_ms 98019.496271
+# SKIP lines (verbatim from .test-results.tap):
+ok 105 - daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher # SKIP launcher installation is Windows-only
+ok 241 - install-launcher stages a content-addressed binary and a sidecar config # SKIP launcher installation is Windows-only
+ok 338 - attachSession follows an existing alias instead of returning the legacy key # SKIP case-insensitive path keys only split on Windows/macOS
