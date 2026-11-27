@@ -100,12 +100,15 @@ test('release delta: renaming a doc out of docs/ is not treated as documentation
   }
 });
 
-test('release delta: missing commits are refused instead of guessed', () => {
+test('release delta: empty commit arguments are refused instead of guessed', () => {
   const repo = makeRepo();
   try {
     const base = git(repo, ['rev-parse', 'HEAD']);
-    assert.equal(describeHeadDelta(git, repo, '', base).reason, 'missing-commit');
-    assert.equal(describeHeadDelta(git, repo, base, '').reason, 'missing-commit');
+    for (const delta of [describeHeadDelta(git, repo, '', base), describeHeadDelta(git, repo, base, '')]) {
+      assert.equal(delta.allowed, false);
+      assert.equal(delta.reason, 'missing-commit');
+      assert.deepEqual(delta.files, []);
+    }
   } finally {
     cleanup(repo);
   }

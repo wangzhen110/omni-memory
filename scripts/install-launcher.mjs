@@ -156,7 +156,13 @@ export function installLauncherFromCommit(options = {}) {
   const releaseVerified = Boolean(options.releaseVerified);
   const commit = String(options.commit || run(GIT, ['rev-parse', 'HEAD'], { cwd: repo }).stdout || '').trim().toLowerCase();
   if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error(`invalid commit: ${commit}`);
-  const pkg = JSON.parse(gitShow(repo, commit, 'package.json').toString('utf8').replace(/^\uFEFF/, ''));
+  const pkgBytes = gitShow(repo, commit, 'package.json');
+  const packageHash = sha256(pkgBytes);
+  const expectedPackageHash = String(options.expectedPackageJsonSha256 || '').toLowerCase();
+  if (expectedPackageHash && packageHash !== expectedPackageHash) {
+    throw new Error(`package.json at ${commit} does not match the signed release manifest: ${packageHash} != ${expectedPackageHash}`);
+  }
+  const pkg = JSON.parse(pkgBytes.toString('utf8').replace(/^\uFEFF/, ''));
   if (pkg.name !== UPDATE_PACKAGE_NAME) throw new Error(`package.json name is ${pkg.name}`);
   const declared = String(pkg.omni?.launcher?.sha256 || '').toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(declared)) throw new Error('package.json has no valid omni.launcher.sha256');
@@ -164,6 +170,10 @@ export function installLauncherFromCommit(options = {}) {
   const bytes = gitShow(repo, commit, UPDATE_LAUNCHER_PATH);
   const actual = sha256(bytes);
   if (actual !== declared) throw new Error(`launcher hash mismatch: package ${declared}, commit ${actual}`);
+  const expectedLauncherHash = String(options.expectedLauncherSha256 || '').toLowerCase();
+  if (expectedLauncherHash && actual !== expectedLauncherHash) {
+    throw new Error(`launcher at ${commit} does not match the signed release manifest: ${actual} != ${expectedLauncherHash}`);
+  }
   const target = path.resolve(options.target || launcherTargetPath(home, actual));
   const configFile = path.join(home, 'omni-serve-7788.json');
   const config = {
@@ -199,6 +209,8 @@ export function installLauncherFromCommit(options = {}) {
       dryRun: true,
       commit,
       sha256: actual,
+      packageJsonSha256: packageHash,
+      manifestHashMatched: Boolean(expectedPackageHash && expectedLauncherHash),
       target,
       configFile,
       installed,
@@ -248,6 +260,8 @@ export function installLauncherFromCommit(options = {}) {
     dryRun: false,
     commit,
     sha256: actual,
+    packageJsonSha256: packageHash,
+    manifestHashMatched: Boolean(expectedPackageHash && expectedLauncherHash),
     target,
     configFile,
     installed: true,

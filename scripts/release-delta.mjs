@@ -50,8 +50,14 @@ export function describeHeadDelta(runGit, repo, base, head) {
   }
   try {
     runGit(repo, ['merge-base', '--is-ancestor', base, head]);
-  } catch {
-    return { allowed: false, reason: REASONS.notDescendant, commits: ahead, files: [] };
+  } catch (error) {
+    // `--is-ancestor` exits 1 for "not an ancestor", which is a legitimate
+    // answer. Anything else (128, ENOENT, corrupt object) is a git failure and
+    // must not be reported as a policy decision.
+    if (error && typeof error === 'object' && error.status === 1) {
+      return { allowed: false, reason: REASONS.notDescendant, commits: ahead, files: [] };
+    }
+    return { allowed: false, reason: REASONS.gitFailure, commits: ahead, files: [] };
   }
   let changed = '';
   try {

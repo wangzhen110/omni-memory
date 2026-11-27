@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.6.9 |
-| 插件版本 | 4.6.9 |
+| 文档版本 | 4.6.10 |
+| 插件版本 | 4.6.10 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-26 |
@@ -100,9 +100,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 545/545（100%，TAP 真值门） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 550/550（100%，TAP 真值门） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 545 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 550 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -564,15 +564,15 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - **协议错误只回固定文案**（客户端可见行为）：MCP `tools/call` 的内部异常对外固定为 `internal error`——带 id 回 `-32603`、不带 `result`、id 原样回显；**无 id 的请求不回错误帧，只记本地日志**（协议上没有可回的请求号）。堆栈与细节只进本地日志。下游若要断言报错文本，按这条固定文案写，不要按异常消息写。
 - **tag 只在代码变更时移动**（自 4.6.8 起）：docs-only 提交只更新 Release 正文与 CHANGELOG，不移动 tag、不重签 manifest、不换资产 id；发版后若只剩文档修正，保留原 tag。代价是 tag 指向的提交不含最后的文档修正，且 `npm run setup` 硬校验 HEAD 等于发布提交，升级前须先 `git checkout <tag>`。
 
-### 6.22 安装校验的文档例外（v4.6.9）
+### 6.22 安装校验的文档例外（v4.6.9 起，v4.6.10 加固）
 
 发布安装仍以签名 manifest 的 `commit` 为准；`HEAD` 与它不一致时，只有一种情况放行：
 
 - **放行条件**：发布提交是 `HEAD` 的祖先，且 `git diff --name-only --no-renames <release>..HEAD` 的每一条路径都以 `docs/` 开头。
-- **字节怎么算等价**：安装器实际从 `HEAD` 读 `package.json` 与启动器字节，并在同一次 `HEAD` 内做 SHA-256 自洽校验；它与发布提交等价，靠的是“差异只含 `docs/`”这一判定。签名 manifest 里的 `packageJsonSha256`/`launcherSha256` 校验的是发布提交对象，**不直接参与本地落盘字节比对**——等价性由 `describeHeadDelta()` 单点保证，见下条。
-- **拒绝条件**：任何非 `docs/` 路径（源码、测试、脚本、配置、workflow），以及把文档改名到 `docs/` 之外、或 `HEAD` 与发布提交没有祖先关系。报错带首个越界路径与原因码（`non-doc-change` / `not-a-descendant` / `empty-diff` / `missing-commit` / `git-failed`）。
+- **装的是谁的字节**：安装器从**发布提交**读 `package.json` 与启动器（`git show <release>:<path>`），再与 manifest 的 `packageJsonSha256`/`launcherSha256` 直比；不一致即拒绝。`HEAD` 只用来判断“放不放行”，不再决定“装哪个字节”（v4.6.10 起）。
+- **拒绝条件**：任何非 `docs/` 路径（源码、测试、脚本、配置、workflow），以及把文档改名到 `docs/` 之外、或 `HEAD` 与发布提交没有祖先关系。报错带首个越界路径与原因码（`non-doc-change` / `not-a-descendant` / `empty-diff` / `missing-commit` / `git-failed`）；`merge-base` 只在退出码 1 时算“非祖先”，其它非零退出统一记 `git-failed`。
 - **判定位置**：`scripts/release-delta.mjs` 的 `describeHeadDelta()`，安装脚本只调用，不做第二套规则；`--commit` 显式指定时仍须等于发布提交。
-- **加固方向（4.6.10）**：把安装读取改成从 `release.commit` 取对象，或把 manifest 的 `launcherSha256` 传入与落盘字节直比，让字节绑定不再依赖 diff 判定。
+- **信任边界**：`GIT_BIN` 能替换 git 可执行文件（v3.11.8 起既有），本门禁不防这一层；但即使 git 被换掉，manifest 哈希直比仍要求发布提交里的字节一致。
 
 ---
 

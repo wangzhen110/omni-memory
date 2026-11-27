@@ -2,6 +2,19 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.10] — 2026-11-27
+
+### 变更
+- **安装字节绑定到发布提交**：`install.mjs` 从签名 manifest 的 `commit` 读 `package.json` 与启动器（`git show <release>:<path>`），不再从 `HEAD` 读；读到的两份字节与 manifest 的 `packageJsonSha256`/`launcherSha256` 直比，不符即拒绝。`HEAD` 只用于「放不放行」的判定，不再决定「装哪个字节」。
+- **`merge-base` 故障不再伪装成策略结论**：`describeHeadDelta()` 只在退出码 1 记 `not-a-descendant`，其它非零退出与异常统一记 `git-failed`。
+- **输出文案纠正**：发布安装打印“安装对象仍取发布提交 `<sha8>`”与“manifest v2 Ed25519 + 发布提交对象 SHA-256（package.json 与启动器直比 manifest）”，与真实校验一致。
+- **`GIT_BIN` 信任边界写清**：DESIGN §6.22 明确该变量可替换 git 可执行文件（v3.11.8 起既有），门禁不防这一层，但 manifest 哈希直比仍要求发布提交字节一致。
+
+### 测试
+- 新增 `test/release-delta-4.6.10.test.mjs` 5 条：`merge-base` 128 记 `git-failed`、退出码 1 记 `not-a-descendant`、HEAD 领先时安装字节仍来自发布提交、启动器哈希不符拒绝、`package.json` 哈希不符拒绝。
+- `test/release-delta-4.6.9.test.mjs` 第 5 条改名为“空提交参数被拒绝”，并补 `allowed === false` 断言。
+- 测试 **550/550**。
+
 ## [4.6.9] — 2026-11-27
 
 ### 变更

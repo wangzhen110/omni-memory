@@ -137,9 +137,11 @@ function human(result) {
   if (result.release) {
     lines.push(`发布验签: ${result.release.tag} · commit ${result.release.commit} · key ${result.release.keyId}`);
     if (result.release.headDelta) {
-      lines.push(`提交谱系: HEAD 领先发布提交 ${result.release.headDelta.commits} 个 docs-only 提交，源码与发布提交一致`);
+      lines.push(`提交谱系: HEAD 领先发布提交 ${result.release.headDelta.commits} 个 docs-only 提交；安装对象仍取发布提交 ${result.release.commit.slice(0, 8)}`);
+    } else {
+      lines.push(`提交谱系: HEAD 与发布提交一致`);
     }
-    lines.push(`启动器校验: Release manifest v2 Ed25519 + 签名 commit SHA-256`);
+    lines.push('启动器校验: Release manifest v2 Ed25519 + 发布提交对象 SHA-256（package.json 与启动器直比 manifest）');
   } else {
     lines.push('启动器校验: 同提交 SHA-256（本地自洽；未验 Release 签名）');
   }
@@ -195,13 +197,19 @@ async function main() {
     }
 
     const release = requireRelease ? await verifyOfficialRelease(repo, commit) : null;
+    // Read the launcher and package.json from the signed release commit itself.
+    // The docs-only tolerance then only decides whether installing is allowed;
+    // it never decides which bytes are installed.
+    const installCommit = release ? release.commit : commit;
 
     const plan = installLauncherFromCommit({
       repo,
       home,
       port,
       task,
-      commit,
+      commit: installCommit,
+      expectedPackageJsonSha256: release?.packageJsonSha256,
+      expectedLauncherSha256: release?.launcherSha256,
       apply,
       restart: apply && start && task !== false,
       noTask: task === false,
