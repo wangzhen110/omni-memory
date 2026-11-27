@@ -1,0 +1,14 @@
+全息记忆 4.6.10 · 云主机 TAP 实测（发布提交）
+=================================================
+环境: 云主机 Linux (/home/user/omni-memory-vm)
+HEAD: 26d2dd74ab90ac8287f1350b17d48005f6a4a1fd（main，比 tag 多 3 个 docs-only 提交）
+采集时间: 2026-11-27 11:05:07 +0800（测试结束时刻，取自 /tmp/vm4610.log 的 mtime）
+命令: git fetch origin main && git reset --hard 26d2dd74 && npm test
+结果: 550 tests / 547 pass / 0 fail / 3 skipped（源码与 4.6.10 发布提交 03e952c6 相同，tag 之外的差异只含 docs/）
+
+跳过 3 条（与 4.6.9 相同）:
+- `daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher` — launcher 安装仅 Windows
+- `install-launcher stages a content-addressed binary and a sidecar config` — 同上
+- `attachSession follows an existing alias instead of returning the legacy key` — 大小写不敏感路径键只在 Windows/macOS 分裂
+
+完整输出: 该机 /tmp/vm4610.log（mtime 11:05:07 +0800；本总结落盘于 11:06）
