@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 165 次提交；更新记录自身的提交不计入列表。
+> 共 166 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 15:11:29 `5bb88eb4` — docs: add 4.6.15 VM rerun and install-release evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/5bb88eb4020260eb37e1b3ea7e95d5806d1aee34)
 - 15:07:43 `c638e911` — docs(4.6.15): correct pack counts and naming qualifiers — [提交](https://github.com/wangzhen110/omni-memory/commit/c638e9116b6a05dac00cc2d59623ed7e27e95cf1)
 - 15:06:56 `b298eb4a` — fix(4.6.15): pick cheapest row across a section, bill fact bullets, align profile schema — [提交](https://github.com/wangzhen110/omni-memory/commit/b298eb4afdfd95363fd8bf5502d1653bec192dce)
 - 14:44:42 `4ec29819` — docs(4.6.14): add install, live profile and VM skip evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/4ec2981924c496c9d1d53b65571f3d0c0e05f2d7)
