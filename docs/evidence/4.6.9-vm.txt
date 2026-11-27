@@ -1,0 +1,19 @@
+全息记忆 4.6.9 · 云主机 TAP 实测（发布提交）
+=================================================
+环境: 云主机 Linux (/home/user/omni-memory-vm)
+HEAD: 1557c18adea480eb8d783dcc43dbcb7b343626b2（= 发布提交，实测于该提交上跑）
+采集时间: 2026-11-27 10:34 +0800（本地）
+命令: git fetch origin main && git reset --hard 1557c18 && npm test
+完整输出: 该机 /tmp/vm469.log
+
+# tests 545
+# pass 542
+# fail 0
+# skipped 3
+
+3 个 skip 与 4.6.8 相同，均为平台相关（用例名取自 TAP）:
+- `daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher` — launcher installation is Windows-only
+- `install-launcher stages a content-addressed binary and a sidecar config` — launcher installation is Windows-only
+- `attachSession follows an existing alias instead of returning the legacy key` — case-insensitive path keys only split on Windows/macOS
+
+说明: Windows 本机同一提交为 545 pass / 0 skip；本文件是摘要，不是完整 TAP。
