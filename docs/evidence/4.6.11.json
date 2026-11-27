@@ -1,0 +1,20 @@
+{
+  "version": "4.6.11",
+  "tap": ".test-results.tap",
+  "capturedAt": "2026-11-27T03:16:25.000Z",
+  "summary": {
+    "tests": 556,
+    "pass": 556,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "summaryLine": "556 tests / 556 pass / 0 fail / 0 cancelled / 0 skipped",
+  "durationLine": "# duration_ms 117291.5032",
+  "adrLines": [
+    "# 10k rows: seed=650ms p95=59.1ms max=65.2ms hitTotal=200 total=1839ms",
+    "# 100k rows: seed=7271ms p95=67.2ms max=78.4ms hitTotal=200 total=8846ms"
+  ],
+  "indexLine": "# 1000-file cold 303ms · warm 265ms · budget 2000ms"
+}

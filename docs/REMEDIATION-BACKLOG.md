@@ -253,6 +253,17 @@
 | T-1 安装输出无原始文件 | 本轮补证据 | 复跑 `npm run setup` 并把控制台输出存档为 `docs/evidence/4.6.9-install.txt` | 自述变可核 | 已落地 |
 | T-2 `github.com:443` 不通属网络事实 | 不改 | 只能靠 `git ls-remote` 与 API 通道旁证 | 无法在项目内证明 | 保持叙述 |
 
+### 4.6.11 已落地（2026-11-27）：覆盖率盲区三条收口
+
+| 项 | 决定 | 事实 | 落地 |
+| --- | --- | --- | --- |
+| read-routes dream 路由 996-1038 | 本轮做 | 走真实 HTTP 适配器补 replace/rollback 往返、二次回滚`not superseded`、`note not found`、`noteId required`、GET 405×2、proposals、`scope=all`；该段全部转绿（read-routes 1118→1150/1296） | `test/read-dream-routes-4.6.11.test.mjs` |
+| doctor 分支 | 本轮做 | 直接调用 `runDoctor`：缺 package、缺数据目录、库不存在、非法端口、垃圾字节库、空库缺表、可达但版本不符、strict 判定；doctor 258→302/348 | `test/doctor-branches-4.6.11.test.mjs` |
+| dream `dispose` 清定时器断言 | 本轮做 | 替换 `setInterval/clearInterval` 后断言：默认不建定时器；`OMNI_DREAM_INTERVAL_MS=50` 建 1 个句柄，disposer 清除的正是该句柄 | `test/dream-timer-dispose-4.6.11.test.mjs` |
+| server 205→217 的口径 | 本轮定案 | 同树双跑：server 两次均 320/345、命中行集合一致；判定为 4.6.8→4.6.9 的用例差异，非运行抖动。cli 637/641 抖动如实记录 | `docs/evidence/4.6.11-coverage.txt` |
+| store 净 -6 行 | 只记事实 | 2925-2934 备份导入冲突分支未命中、2480-2481 新命中；单跑 backup 用例仍 0，说明 4.6.9 那 8 行来自偶发状态 | 不改代码凑覆盖 |
+| R-06 `client.js` DOM 测试 | 仍延后 | 需 jsdom 类新 devDependency，补丁版不接受 | 复查版本 4.7.0 |
+| R-01 / schema 21 | 仍放 4.7.0 | 事务 + 唯一约束迁移要真实并发验证 | 不变 |
 ### 证据时钟口径（自 4.6.8 起）
 
 - 判定 TAP/evidence/lcov 是否覆盖最终代码，只用「文件 mtime 顺序 + lcov 里新版行号」，**不看 `git commit` 的对象时间戳**（它只是提交元数据，不等于源码落盘时刻）。

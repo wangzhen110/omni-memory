@@ -2,6 +2,20 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.11] — 2026-11-27
+
+### 测试
+- 新增 `test/read-dream-routes-4.6.11.test.mjs`：真实 HTTP 适配器上的 dream replace/rollback 往返、二次 rollback（`not superseded`）、`note not found`、`noteId required`、GET 405 与 `scope=all`。
+- 新增 `test/doctor-branches-4.6.11.test.mjs`：缺 package/数据目录/库、非法端口、垃圾字节库、空库缺表、可达但版本不符的服务、`strict` 判定。
+- 新增 `test/dream-timer-dispose-4.6.11.test.mjs`：默认不建定时器；开启后 disposer 清除同一句柄。
+- 测试 **556/556**；`doctor.mjs` 行覆盖 258→302/348，`read-routes.mjs` 1118→1150/1296。
+
+### 证据
+- `docs/evidence/4.6.11.json`、`docs/evidence/4.6.11-coverage.txt`：同树双跑 lcov 对照，`server.mjs` 两次均为 320/345 且行集合一致；`cli.mjs` 637/641 抖动如实记录。
+
+### 说明
+- 不改 schema（仍为 20），不动检索权重与 300ms 预算，不改产品代码路径；R-01 与 schema 21 仍放 4.7.0。
+
 ## [4.6.10] — 2026-11-27
 
 ### 变更

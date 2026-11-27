@@ -1,0 +1,44 @@
+4.6.11 覆盖率双跑对照（同一工作树、同一 Node 22.23.2、--test-concurrency=1）
+生成时间：2026-11-27 11:18–11:21 +0800
+命令：node --experimental-test-coverage --test --test-concurrency=1 --test-reporter=lcov \
+  --test-reporter-destination=.coverage-4.6.11-{a,b}.lcov "test/*.test.mjs"
+
+一、双跑（A 11:18、B 11:21）逐文件结果
+hosts/http/server.mjs    A 320/345 · B 320/345 · 两次命中行集合完全相同
+hosts/shared/doctor.mjs  A 302/348 · B 302/348 · 相同
+lib/read-routes.mjs      A 1150/1296 · B 1150/1296 · 相同
+lib/store.mjs            A 3353/3529 · B 3353/3529 · 相同
+hosts/cli.mjs            A 637/863  · B 641/863  · 差异行 667-670（仅 B 命中）
+
+结论 1：server.mjs 在两次独立全量运行中都是 320/345，行集合完全一致。
+4.6.8 复核记的 205→217（同一文件两次运行不同）无法在本轮复现；
+该差值来自 4.6.8→4.6.9 之间的用例变化，而不是运行时抖动。server 的覆盖
+差异属于“提交间差异”，不应再按“运行间不可复现”处理。
+
+结论 2：cli.mjs 仍存在真实的运行间差异（637 与 641，行 667-670 时有时无）。
+这是 status/README 类的输出分支，依赖进程内先后顺序，属已知的覆盖率采样
+不稳定点；本轮不据此下结论，也不把它算作回归。
+
+二、与 4.6.9 基线（.coverage-4.6.9.lcov）对照
+hosts/shared/doctor.mjs   258/348 → 302/348（+44 行，含 repo/dsh/data-dir/
+  database/http/launcher 的错误与跳过分支）
+lib/read-routes.mjs       1118/1296 → 1150/1296（+32 行，dream 路由
+  996-1038 与 ingest 空体回退 778-779 全部命中）
+hosts/http/server.mjs     314/345 → 320/345（+6 行，287-293 health 版本比对）
+lib/store.mjs             3359/3529 → 3353/3529（净 -6 行：2925-2934 备份导入
+  事实冲突分支本次未命中，2480-2481 新命中）
+hosts/cli.mjs             641/863 → 637/863（净 -4 行，667-670 未命中）
+
+三、store.mjs 净减 6 行的复核
+单跑 test/backup*.test.mjs 时 2925 与 2928-2934 仍为 0 命中，说明这 8 行在
+4.6.9 那次全量里由其它用例的偶发状态覆盖，不是本轮新增用例挤掉的。
+按“覆盖率只报事实、不追指标”的口径记录，不计入成果，也不改代码去凑覆盖。
+
+四、本轮新增用例（6 条，全量 550 → 556）
+test/read-dream-routes-4.6.11.test.mjs  1 条（replace/rollback 往返、二次
+  rollback/not-superseded、note not found、noteId 缺失、GET 405×2、proposals、
+  scope=all）
+test/doctor-branches-4.6.11.test.mjs    4 条（缺 package/数据目录/库、非法端口、
+  垃圾字节、空库缺表、版本不符的健康服务）
+test/dream-timer-dispose-4.6.11.test.mjs 1 条（默认不建定时器；开启后 disposer
+  调用 clearInterval 且句柄与创建的一致）
