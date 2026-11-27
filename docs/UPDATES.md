@@ -15,7 +15,7 @@
 
 ## 2026-11-27
 
-- 09:30:53 `02b77612` — docs: close the 4.6.8 review loop (numbers, versions, clock rule) — [提交](https://github.com/wangzhen110/omni-memory/commit/02b776127da89d34f9aed843d54238e14a96a5b8)
+- 09:30:53 `4dd011ac` — docs: close the 4.6.8 review loop (numbers, versions, clock rule) — [提交](https://github.com/wangzhen110/omni-memory/commit/4dd011ac9fd5bc269a76ab09a44628497a55051f)
 - 09:12:32 `7215bbf6` — 4.6.8: apply the review fixes (evidence timing, manifests, error echo) — [提交](https://github.com/wangzhen110/omni-memory/commit/7215bbf6be93c0d1afa954106ee8d7730bbfb847)
 - 08:54:36 `b675e9c7` — 4.6.8: make the unwritable-target test portable across platforms — [提交](https://github.com/wangzhen110/omni-memory/commit/b675e9c7588002726ea12388a8c8976c96123a0c)
 - 08:46:48 `5944462d` — 4.6.8: update log — [提交](https://github.com/wangzhen110/omni-memory/commit/5944462dbce17bab13f7959131f93258925a5cdc)
