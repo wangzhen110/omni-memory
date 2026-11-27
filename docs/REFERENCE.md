@@ -349,7 +349,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 ### 5.3 memory_write
 参数：
 - `kind` string，必填，`note|fact|episode`
-- `text` string，note/episode 必填；fact 给了完整三元组时可省；note 上限 4000 字（超长会报错要求拆分）
+- `text` string，note/episode 必填；fact 给了完整三元组时可省；note 上限 4000 字（超长会报错要求拆分）；note/episode 至少 2 个“内容字符”（空白与标点不算），否则报 `text is too short`（4.6.17 起；facts 豁免）
 - `scope` string，可选；`all` 会被拒绝；写入未出现过的项目层会返回 `scopeNew:true` 提醒
 - `importance` number，0..1，默认 0.35；越界或非数字直接报错
 - `source` string，可选，如 `session:xxx#3` 或文件路径

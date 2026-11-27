@@ -2,6 +2,23 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.17] — 2026-11-27
+
+### 修复
+- **最小信息量门禁（常驻画像被单字符垃圾占位）**：生产画像里出现一条 `x` 笔记（note#1315，旧版本写入），按 `importance DESC, ts DESC` 拿到一个常驻槽位，把真规则挤掉。现在两层拦截：`memory_write` 的 note/episode 与 `memory_amend` 要求 ≥2 个内容字符（空白与标点不计），不足抛 `text is too short`；候选审批 `memory_candidate accept` 同一门槛。画像侧再设 ≥4 个内容字符（`profileEligibleNote` 与 `personaEvidenceEligible`），已入库的垃圾也花不掉 1200 字符预算。facts 豁免（正文可由 subject/relation/object 派生）。被挡住的记录不删除，仍可 `memory_search`。
+- 生产库复验：同一份 `~/.dsh/memory/omni.db`、同一 `omni context` 调用，`- x` 消失，槽位回到项目规则（note#2136 画像预算口径）。
+
+### 文档
+- `docs/BENCHMARKS.md` 新增第 6 节“检索质量可证性路线（4.7.0 预置）”：把现有 LoCoMo 证据召回，升级为可对外比较的分层证据（检索层 + 答题层 + 回归门），并列明口径与成本。
+- `docs/DESIGN.md` §6.24 补“最小信息量”契约；§5.1 与 `docs/REFERENCE.md` 的 `memory_write` 说明补 `text is too short`。
+- `docs/REMEDIATION-BACKLOG.md` 新增 4.6.17 段与 4.7.0 检索证据条目。
+
+### 测试
+- 测试 **568/568**：新增 `test/min-content-gate-4.6.17.test.mjs` 3 条（写入拒绝、amend 拒绝、既有垃圾不进画像但仍可搜）；`property.test.mjs` 两处夹具从 `x` 改成有意义文本，恢复它们原本要测的 importance/scope 校验意图。
+
+### 说明
+- 不改 schema（仍为 20）、预算仍 1200、写入输入形状不变（只多一种拒绝）；被拒绝的调用会收到显式错误，不再静默落库。
+
 ## [4.6.16] — 2026-11-27
 
 ### 修复

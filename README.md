@@ -2,7 +2,7 @@
 
 > **让 AI 不再失忆的本地长期记忆底稿。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
 
-[![tests](https://img.shields.io/badge/tests-565%2F565-brightgreen)](#测试与指标)
+[![tests](https://img.shields.io/badge/tests-568%2F568-brightgreen)](#测试与指标)
 [![node](https://img.shields.io/badge/node-%3E%3D22.13-8de1ff)](#本地安装开发者)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
@@ -32,7 +32,7 @@ npm run serve                  # 打开 http://127.0.0.1:7788/hub
 Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-git checkout v4.6.16
+git checkout v4.6.17
 npm ci
 npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
 npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
@@ -114,7 +114,7 @@ node hosts/cli.mjs project impact lib/project-index.mjs --dir D:\xiangmu\全息�
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 565 个用例，TAP 真值汇总
+npm test          # 568 个用例，TAP 真值汇总
 npm run check     # 语法、文档计数与模型资产完整性校验
 npm run verify    # npm test + npm run check，发布前真值门
 ```
@@ -140,8 +140,8 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.6.16
-npm run verify:release -- --tag v4.6.16 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.6.17
+npm run verify:release -- --tag v4.6.17 --launcher ./omni-serve-7788.exe
 ```
 
 第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
@@ -265,7 +265,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**565 / 565 通过**（TAP 真值汇总，`npm run verify` 拒绝失败/取消的测试）
+- 自动化用例：**568 / 568 通过**（TAP 真值汇总，`npm run verify` 拒绝失败/取消的测试）
 - 检索延迟（本机复核，**3.12.1/3.12.2 数据**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **129.8ms**（固定旧边界 226.9ms；3.12.1 自适应收紧窗口/采样，3.12.2 修正为按可召回行数判定，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 3.12.0 新增：100k 短笔记 10M 字符检索 p95 **6.9ms**；10k 长笔记 10M 字符 p95 **27.4ms**；120 条确定性质量用例 **120/120**；LoCoMo session 粒度 evidence recall@10 **0.7134**（检索层，不是官方 QA）。完整方法与边界见 [基准与质量实测](docs/BENCHMARKS.md)。
@@ -280,6 +280,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 - 4.3.0：CLI `context`/`search` 默认改为词法 + hashed 向量，不再每次冷加载 37.5 MiB 本地语义模型；`--semantic` 或 `OMNI_CLI_SEMANTIC=1` 显式开启。实测同一查询：默认 **139ms**、语义 **478ms**；`context` 默认 **144ms**、语义 **467ms**。搜索返回结构收敛到单一构造点，CLI 参数错误改为一行提示并退出 2。
 - 4.3.1：`memory_context` 读路径只读版本缓存，不再等待 GitHub 探针（TTL 强制过期时仍 **142ms**，旧路径 0.5–2.5s）；`memory_write` 校验 `kind` 白名单，非法值返回错误而不是静默落成 note；CLI 布尔 flag 可放在关键词前；HTTP 空查询回填 `scope`；`npm test` 加 `--test-timeout=60000`，避免并行挂起。
 - 4.6.0：新增项目代码索引（schema 20 五张派生表、JS/TS/OpenAPI/GraphQL/generic 适配器、增量/sha 漂移/删除清理、CLI/5 个 MCP 工具/5 条 HTTP 路由/`/project` 页面）；`memory_context` 命中项目引用时追加带 `sourceRef`、行号、`sha`、`stale` 的有预算项目包。1,001 文件冷索引 <1s、热增量 `parsed=0`、精确查询 p95 <50ms；测试 **476/476**。
+- 4.6.17：写入侧加最小信息量门禁（内容字符 < 2 的 note/episode 直接拒绝，候选审批同门；已入库的单字符垃圾不再进常驻画像，画像门槛为 4 个内容字符）；补 3 条回归。测试 **568/568**。
 - 4.6.16：循环内不再让指针抢走短行额度（写指针前先为剩余最便宜行预留，`pointer:false` 继续扫描），补 L=1151 窗口回归；`included` 口径收窄为“仅 HTTP 可验证”；包数/838 时点/VM SKIP 逐字等 10 条文档口径统一。测试 **565/565**。
 - 4.6.15：整节预检改为按全体条目取最小成本（超长首条不再带走可容纳的短条目）；facts 计 `- ` 两字符、孤立 `相关事实：` 标题不再出现；`cachedProfile` 失败记日志并保留上次文本；`memory_profile` 的 schema 补齐结构化字段（完整字段只在 HTTP `POST /omni-memory/tool` 可验证，CLI 与 MCP 仅文本；4.6.16 勘误）；烟测白名单抽成可测函数。测试 **564/564**。
 - 4.6.14：修掉 4.6.13 残留——`addSection` 早退时整节 note 静默丢失（现在逐条记 `omitted`，放不下指针也记 `pointer:false`）；`profileFactLines` 计入换行并跳过超限事实；`memory_profile` 返回 `included`；安装烟测只对路径类导入错误降级；包里排除过期内部报告（238→210 files 为 4.6.14 干净 HEAD；4.6.15 发布提交 214、最终 HEAD 216；4.6.16 干净 HEAD 218）。测试 **561/561**。

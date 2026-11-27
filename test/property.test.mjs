@@ -138,13 +138,13 @@ test('prop: arbitrary text is stored safely and invalid bounds are rejected', as
   );
 
   for (const bad of [-0.01, 1.01, Number.NaN, Number.POSITIVE_INFINITY]) {
-    await assert.rejects(() => app.call('memory_write', { kind: 'note', text: 'x', importance: bad }),
+    await assert.rejects(() => app.call('memory_write', { kind: 'note', text: '一条任意内容的观察记录', importance: bad }),
       /importance/, `importance ${bad} must be rejected`);
   }
   for (const bad of [0, 31, Number.NaN]) {
     await assert.rejects(() => app.call('memory_search', { query: 'x', limit: bad }),
       /limit/, `limit ${bad} must be rejected`);
   }
-  await assert.rejects(() => app.call('memory_write', { kind: 'note', text: 'x', scope: 'all' }),
+  await assert.rejects(() => app.call('memory_write', { kind: 'note', text: '一条任意内容的观察记录', scope: 'all' }),
     /read-only/, 'scope=all must be rejected on write');
 });

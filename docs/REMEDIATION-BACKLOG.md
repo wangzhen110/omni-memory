@@ -78,6 +78,24 @@
 - **耗时代价**：全量约 99s；`--test-concurrency=1` 是可复现性成本，不是产品降级。
 - **`--tap` 边界**：已在 4.6.5 修复并实测 exit 1；本轮无需再改。
 
+## 4.6.17 本轮处理
+
+> 状态：已完成（2026-11-27）。来源是 4.6.16 自评里当场发现的一个真实缺陷，不是外部评审项：生产常驻画像被一条单字符笔记 `x` 占位。
+
+- **事实复核**：生产库 `~/.dsh/memory/omni.db` 活行里只有 1 条 `length(trim(text)) < 12` 的笔记，即 note#1315 `x`（2026-11-25 写入）。`buildProfileText` 只按 `importance DESC, ts DESC` 取前 60 行再过滤主题，没有信息量下限，所以它能拿到常驻槽位。收益：把 1200 字符里最贵的一格还给真规则。风险：过严会让短规则写不进来——因此写入门槛取 2 个内容字符，画像门槛取 4 个，且只拦 note/episode，facts 豁免。
+- **写入侧**：`memory_write`（note/episode）与 `memory_amend` 要求 ≥2 个内容字符（空白/标点不计），不足抛 `text is too short`；`memory_candidate` 的 accept 路径（`writeCandidateNoteInTransaction`）同门槛，避免从转录候选绕进来。
+- **画像侧**：`profileEligibleNote` 与 `personaEvidenceEligible` 要求 ≥4 个内容字符，既有库里的垃圾也无法花预算；不过滤搜索，`memory_search` 仍能取回。
+- **验收**：新增 `test/min-content-gate-4.6.17.test.mjs` 3 条；生产库同一调用复验，`- x` 消失、槽位回到项目规则。
+
+## 4.7.0 检索质量可证性（预置，未实装）
+
+> 详见 `docs/BENCHMARKS.md` §6。这里只记取舍与触发条件，避免路线散落在报告里。
+
+- **做**：答题层（生成 + 规则判分 + LLM judge 双采样）与检索层分开报；固定数据集 hash、固定 top-k、三档语义分别记录；先 500 题子集（约 350 万 token）拿收敛区间，再决定全量（约 1,300–1,400 万 token）。
+- **做**：检索层进 `npm run check` 硬门（session recall@10 ≥ 0.70、turn ≥ 0.40、nDCG ≥ 0.55），答题层只记趋势。
+- **缓**：turn 粒度优化（邻句扩展 → 时间/实体重排）排在 4.7.x，先有回归证据再动权重。
+- **不做**：为分数引入 LLM 抽取型写入（改变离线属性）；把 mem0/Zep 的 J 分直接当对比结论（harness 不同）；为分数放宽 1200 预算或 top-k。
+
 ## 4.6.16 本轮处理
 
 > 状态：已完成（2026-11-27）。回应 4.6.15 复核汇编：2 条 P1（循环内饿死窗口、CLI 口径失实）+ 11 条 P2（去重后）；文档类 8 条本轮改，代码类 3 条登记 4.7.0。
