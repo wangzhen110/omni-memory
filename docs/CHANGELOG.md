@@ -2,6 +2,21 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.12] — 2026-11-27
+
+### 修复
+- **全局段不再被单条长规则饿死**：`buildProfileText` 在条目放不下时继续扫描（`continue`），短规则不再被前面的超长 note 连带丢弃；放不下的长 note 在额度内留 `- note#<id> 超长已省略（memory_search 取回）` 指针。facts 行同样改为跳过而非终止。
+- **可观测**：`memory_profile` 新增 `budgetUsed` 与 `omitted`（id/chars/pointer），可直接看到保留了哪些、省略了哪些。
+- **写入提示**：`memory_write` 在 `scope=global` 且文本 > 400 字时返回非阻断 `promptBudgetHint`，提示把细则放到 docs 或可检索 note。
+
+### 证据
+- `docs/evidence/4.6.12.json`；生产库实测旧行为全局段 1 条/292 字符，新逻辑 6 条/1150 字符（同库同排序）。
+
+### 测试
+- 新增 `test/global-budget-4.6.12.test.mjs` 2 条：超长 note 之后的最老短规则仍保留且指针存在、`budgetUsed` 不越界、`omitted` 只含该长 note；长全局 note 带提示、短 note 不带。测试 **558/558**。
+
+### 说明
+- 不改 schema（仍为 20），不调大 1200 字符预算，不截断规则正文。
 ## [4.6.11] — 2026-11-27
 
 ### 测试
