@@ -73,5 +73,6 @@
 
 ## 7 包内容
 
-- 干净 HEAD（提交前）：`npm pack --dry-run` 记录在发布汇总；4.6.17 发布提交与最终 HEAD 的数字以发布后实测为准。
+- 发布提交（`7b8c0ad`，含完成报告与 TAP 证据）：`npm pack --dry-run` **222 files / 21,318,743 B**。
+- 最终 HEAD（再含 `4.6.17-vm.txt` 与 `4.6.17-install-release.txt`）：**224 files**（两文件均为纯 docs 增量）。
 - 本轮新增/修改文件：`lib/store.mjs`、`lib/profile.mjs`、`lib/tool-definitions.mjs`、`index.js`、`test/min-content-gate-4.6.17.test.mjs`、`test/property.test.mjs`、`package.json`、`package-lock.json`、`README.md`、`docs/{CHANGELOG,DESIGN,REFERENCE,REMEDIATION-BACKLOG,BENCHMARKS}.md`、`docs/evidence/4.6.17.json`。
