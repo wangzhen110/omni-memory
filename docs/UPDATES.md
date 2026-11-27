@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 162 次提交；更新记录自身的提交不计入列表。
+> 共 163 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 14:44:42 `4ec29819` — docs(4.6.14): add install, live profile and VM skip evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/4ec2981924c496c9d1d53b65571f3d0c0e05f2d7)
 - 14:40:34 `ca3c6e67` — fix(4.6.14): report notes when a profile section cannot fit; tighten smoke fallback — [提交](https://github.com/wangzhen110/omni-memory/commit/ca3c6e67118036e0d9f5419fcd916a93bd63e1b9)
 - 14:23:47 `62c9b4ff` — docs(4.6.13): record install evidence and live profile accounting — [提交](https://github.com/wangzhen110/omni-memory/commit/62c9b4ffbccb620d08e93db5171f940429dbf169)
 - 14:19:23 `a0f249e3` — fix(4.6.13): count budget separators, report trimmed rows, harden smoke assertions — [提交](https://github.com/wangzhen110/omni-memory/commit/a0f249e3f0424990e358219811e70528af01dda1)
