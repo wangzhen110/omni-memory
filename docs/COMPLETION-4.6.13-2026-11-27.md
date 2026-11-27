@@ -44,7 +44,15 @@
 - 安装烟测：只有动态导入真失败才走 MCP 降级；`NaN`/`null` 不再放行。
 - 不改 schema、不改公开签名、不动 1200 预算与 300ms 检索预算。
 
-## 6. 未纳入本轮（4.7.0）
+## 6. 安装与运行态
+
+- 本机 `npm run setup`：验签 v4.6.13 · release commit `47091fcb`，launcher sha256 `d7ba3e76`，
+  doctor 0 错误 / 0 警告；7788 `/health` 为 `version=4.6.13`、30 tools；库 42.6 MiB、schema 20、2130 notes / 35 facts。
+- 安装后现场 `memory_profile(scope=global)`：`picked=6 / budgetUsed=1044 / textLen=1044 / omitted=[]`，
+  `budgetUsed === text.length` 成立（输出见 `docs/evidence/4.6.13-install-release.txt`）。
+- 云主机 reset 到 `47091fcb` 后复跑：559 tests / 556 pass / 0 fail / 3 skipped，98.0s（3 skip 为 launcher ×2 + `attachSession` 大小写路径）。
+
+## 7. 未纳入本轮（4.7.0）
 
 P1-01 `scope=project` 语义分裂、P1-06、P1-08 证据门禁新鲜度、失败语义
 （P1-04/P1-05）、并发阻塞（P1-10~P1-14）、发布边界（P1-07/P1-09）与全部 P2，
