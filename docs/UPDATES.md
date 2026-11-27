@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 170 次提交；更新记录自身的提交不计入列表。
+> 共 171 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 16:43:23 `34c8d88b` — docs: add 4.6.17 VM rerun and install-release evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/34c8d88b11e2e6909a0f0509a7f409e2c6a5b4e7)
 - 16:38:18 `21b01034` — fix(4.6.17): reject degenerate notes and keep junk out of the profile budget — [提交](https://github.com/wangzhen110/omni-memory/commit/21b01034b4920f7a2b4469b1f62fef326b98dbe6)
 - 15:52:43 `0c922508` — docs: add 4.6.16 VM rerun and install-release evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/0c9225080d460a848b0e423008fdd644beadcd42)
 - 15:48:33 `ced03109` — fix(4.6.16): sync package-lock version and refresh evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/ced03109129a21f6aa996b4b46e22032b3fb17d3)
