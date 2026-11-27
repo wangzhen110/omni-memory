@@ -2,6 +2,15 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.9] — 2026-11-27
+
+### 变更
+- **安装校验放行「docs-only 后代」**：`npm run setup` 过去硬要求 `HEAD == 发布提交`，文档提交一多就必须先 `git checkout <tag>`。现在只要发布提交是 HEAD 的祖先、且 `git diff --name-only <release>..HEAD` 的变更全在 `docs/` 下，就仍然按签名发布提交安装，并在输出里标出“领先 N 个 docs-only 提交”。任一非 `docs/` 路径（包括把文档移出 `docs/` 的改名）依旧拒绝，报错带首个越界路径与原因。判定逻辑抽到 `scripts/release-delta.mjs`，安装脚本只做调用。
+
+### 测试
+- 新增 `test/release-delta-4.6.9.test.mjs` 5 条：同提交放行、docs-only 放行并计数、源码改动拒绝、文档移出 `docs/` 拒绝、缺提交参数拒绝。
+- `test/entry-diagnostics-4.6.8.test.mjs` 的恒真断言（`length >= 0`）改为“prompt 必须渲染非空内容”。
+
 ## [4.6.8] — 2026-11-27
 
 ### 修复

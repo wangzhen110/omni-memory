@@ -59,7 +59,9 @@ test('routes diagnostic: pending before mount, mounted (count 1) after, and visi
   const section = host.section();
 
   assert.equal(mod.routeStateSnapshot().status, 'pending', 'no webServer yet');
-  assert.equal(section.text({}).length >= 0, true);
+  const firstPrompt = section.text({});
+  assert.equal(typeof firstPrompt, 'string', 'prompt section must render a string');
+  assert.equal(mod.lastInjection.chars, firstPrompt.length, 'the chars diagnostic must track the rendered prompt');
   assert.equal(mod.lastInjection.routes, 'pending', 'the prompt must report the real state');
 
   host.provide('webServer');

@@ -28,6 +28,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { installLauncherFromCommit } from './install-launcher.mjs';
 import { verifyRelease } from './verify-release.mjs';
+import { describeHeadDelta } from './release-delta.mjs';
 import { runDoctor, formatDoctor } from '../hosts/shared/doctor.mjs';
 
 // `omni doctor` is a user-facing command; keep node:sqlite's experimental
@@ -109,7 +110,15 @@ async function verifyOfficialRelease(repo, commit) {
   }
   const head = runGit(repo, ['rev-parse', 'HEAD']);
   if (head !== release.commit) {
-    throw new Error(`HEAD ${head} is not the signed release commit ${release.commit}; checkout the release tag first`);
+    // Docs-only descendants are tolerated: they cannot change the launcher,
+    // its hash or the package hash, so the released bytes are still what gets
+    // installed. Any non-doc path still forces a checkout of the tag.
+    const delta = describeHeadDelta(runGit, repo, release.commit, head);
+    if (!delta.allowed) {
+      const stray = delta.files.slice(0, 3).join(', ');
+      throw new Error(`HEAD ${head} is not the signed release commit ${release.commit} (${delta.reason}${stray ? `: ${stray}` : ''}); checkout the release tag first`);
+    }
+    release.headDelta = delta;
   }
   if (commit && commit !== release.commit) {
     throw new Error(`--commit ${commit} does not match the signed release commit ${release.commit}`);
@@ -127,6 +136,9 @@ function human(result) {
   lines.push(`启动器: ${result.plan?.target || '—'}`);
   if (result.release) {
     lines.push(`发布验签: ${result.release.tag} · commit ${result.release.commit} · key ${result.release.keyId}`);
+    if (result.release.headDelta) {
+      lines.push(`提交谱系: HEAD 领先发布提交 ${result.release.headDelta.commits} 个 docs-only 提交，源码与发布提交一致`);
+    }
     lines.push(`启动器校验: Release manifest v2 Ed25519 + 签名 commit SHA-256`);
   } else {
     lines.push('启动器校验: 同提交 SHA-256（本地自洽；未验 Release 签名）');
