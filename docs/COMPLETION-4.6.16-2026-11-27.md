@@ -45,14 +45,22 @@
 
 ```
 565 tests / 565 pass / 0 fail / 0 cancelled / 0 skipped
-# duration_ms 115637.1554
-# 10k rows: seed=494ms p95=64.1ms max=69.8ms hitTotal=200 total=1992ms
-# 100k rows: seed=5473ms p95=79ms max=79.4ms hitTotal=200 total=7313ms
-# 1000-file cold 285ms · warm 210ms · budget 2000ms
+# duration_ms 114498.8852
+# 10k rows: seed=493ms p95=52ms max=56.8ms hitTotal=200 total=1645ms
+# 100k rows: seed=5295ms p95=69.6ms max=71.3ms hitTotal=200 total=6898ms
+# 1000-file cold 247ms · warm 144ms · budget 2000ms
 ```
 
 单文件：`node --test test/global-budget-4.6.12.test.mjs` **8/8**（新增 L=1151 窗口用例）。
 变异核验：把预留项改回 0，该文件 7 pass / 1 fail，唯一失败即新用例。
+
+**发布前发现并修掉的一处遗漏**：首版提交只改了 `package.json`，`package-lock.json` 仍是 4.6.15，
+云主机全量复跑时 `test/open-source.test.mjs` 报 `'4.6.16' !== '4.6.15'`。已同步 lock 版本后重跑全量
+（565/565，`114498.8852`），本报告与 evidence 均为重跑后的值；tag 与 Release 随之移到修正后的提交。
+
+**云主机一条负载相关抖动**：全量并行下 `test/open-lease-wait.test.mjs`（等待旧 5s 租约窗口）偶发
+`openStore` 返回 1；单独重跑该文件 1/1 通过（6.2s）。属机器负载下的时序抖动，不归因产品逻辑，登记观察，
+未纳入本轮修复。
 
 ## 4. 判定标准
 
