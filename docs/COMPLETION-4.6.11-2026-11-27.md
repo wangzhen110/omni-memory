@@ -24,10 +24,10 @@
 
 ```
 556 tests / 556 pass / 0 fail / 0 cancelled / 0 skipped
-# duration_ms 117291.5032
-# 10k rows: seed=650ms p95=59.1ms max=65.2ms hitTotal=200 total=1839ms
-# 100k rows: seed=7271ms p95=67.2ms max=78.4ms hitTotal=200 total=8846ms
-# 1000-file cold 303ms · warm 265ms · budget 2000ms
+# duration_ms 111939.9011
+# 10k rows: seed=491ms p95=58.4ms max=59.1ms hitTotal=200 total=1789ms
+# 100k rows: seed=5309ms p95=65.8ms max=65.9ms hitTotal=200 total=6798ms
+# 1000-file cold 235ms · warm 186ms · budget 2000ms
 ```
 
 ## 4. 覆盖率双跑结论（证据：`docs/evidence/4.6.11-coverage.txt`）

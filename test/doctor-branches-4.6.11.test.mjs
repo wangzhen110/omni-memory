@@ -33,7 +33,9 @@ test('doctor: missing repo metadata, missing data dir and skipped service checks
     assert.equal(checkOf(result, 'database').status, 'warn');
     assert.equal(checkOf(result, 'semantic').status, 'warn');
     assert.equal(checkOf(result, 'http').status, 'ok');
-    assert.equal(checkOf(result, 'launcher').status, 'ok');
+    // On POSIX the launcher check returns a Windows-only warning before the
+    // task:false skip applies, so the expected status differs by platform.
+    assert.equal(checkOf(result, 'launcher').status, process.platform === 'win32' ? 'ok' : 'warn');
     assert.equal(checkOf(result, 'dsh-plugin').status, 'warn');
     assert.equal(result.counts.fail, 1);
     assert.equal(result.ok, false);
