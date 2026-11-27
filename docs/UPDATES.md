@@ -15,7 +15,7 @@
 
 ## 2026-11-27
 
-- 09:12:32 `ee297326` — 4.6.8: apply the review fixes (evidence timing, manifests, error echo) — [提交](https://github.com/wangzhen110/omni-memory/commit/ee297326c2fc116c261c08e7ee9d25cd133708d2)
+- 09:12:32 `7215bbf6` — 4.6.8: apply the review fixes (evidence timing, manifests, error echo) — [提交](https://github.com/wangzhen110/omni-memory/commit/7215bbf6be93c0d1afa954106ee8d7730bbfb847)
 - 08:54:36 `b675e9c7` — 4.6.8: make the unwritable-target test portable across platforms — [提交](https://github.com/wangzhen110/omni-memory/commit/b675e9c7588002726ea12388a8c8976c96123a0c)
 - 08:46:48 `5944462d` — 4.6.8: update log — [提交](https://github.com/wangzhen110/omni-memory/commit/5944462dbce17bab13f7959131f93258925a5cdc)
 - 08:45:21 `fdab26dc` — 4.6.8: update log — [提交](https://github.com/wangzhen110/omni-memory/commit/fdab26dcbcb82f01093fe0bb159b6f085959514a)
