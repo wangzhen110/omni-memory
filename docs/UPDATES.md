@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 172 次提交；更新记录自身的提交不计入列表。
+> 共 173 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 17:20:04 `6b7f1758` — docs: add 4.6.18 VM rerun and install-release evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/6b7f175889303ff3f2eb51804a95d838102a5b0f)
 - 17:14:04 `2f29a5f4` — fix(4.6.18): count only letters/digits, filter before truncating, validate fact tuples — [提交](https://github.com/wangzhen110/omni-memory/commit/2f29a5f4c402dfb403afb27a9527f05cf260f4f9)
 - 16:43:23 `34c8d88b` — docs: add 4.6.17 VM rerun and install-release evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/34c8d88b11e2e6909a0f0509a7f409e2c6a5b4e7)
 - 16:38:18 `21b01034` — fix(4.6.17): reject degenerate notes and keep junk out of the profile budget — [提交](https://github.com/wangzhen110/omni-memory/commit/21b01034b4920f7a2b4469b1f62fef326b98dbe6)
