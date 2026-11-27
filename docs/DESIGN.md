@@ -561,7 +561,7 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 - **诊断字段必须是真实状态，不是占位符**：`lastInjection.routes` 的取值收敛为 `pending` / `mounted` / `failed`，由挂载结果写入；对它的断言必须枚举三态，禁止再用 `!== null` 这类近似恒真断言。
 - **CLI 写盘失败是用法错误**：`project init` 在不可写目标上以退出码 2 + 一行 `无法写入 <file>：<msg>` 结束，不打栈；`--json` 必须始终返回可解析的 JSON，空库路径也不例外。
 - **验收线**：`index.js` 并集行覆盖 ≥95%，`hosts/cli.mjs` 单文件行覆盖 ≥70%；`hosts/mcp/server.mjs` 的 `serveStdio` 段必须满行覆盖（含带 id 的 dispatch 失败帧）。
-- **协议错误只回固定文案**（客户端可见行为）：MCP `tools/call` 的内部异常对外固定为 `internal error`——带 id 回 `-32603`、不带 `result`、id 原样回显；堆栈与细节只进本地日志。下游若要断言报错文本，按这条固定文案写，不要按异常消息写。
+- **协议错误只回固定文案**（客户端可见行为）：MCP `tools/call` 的内部异常对外固定为 `internal error`——带 id 回 `-32603`、不带 `result`、id 原样回显；**无 id 的请求不回错误帧，只记本地日志**（协议上没有可回的请求号）。堆栈与细节只进本地日志。下游若要断言报错文本，按这条固定文案写，不要按异常消息写。
 - **tag 只在代码变更时移动**（自 4.6.8 起）：docs-only 提交只更新 Release 正文与 CHANGELOG，不移动 tag、不重签 manifest、不换资产 id；发版后若只剩文档修正，保留原 tag。代价是 tag 指向的提交不含最后的文档修正，且 `npm run setup` 硬校验 HEAD 等于发布提交，升级前须先 `git checkout <tag>`。
 
 ---
