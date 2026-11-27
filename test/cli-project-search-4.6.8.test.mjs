@@ -84,9 +84,11 @@ test('project sync: rebuilds through the same path as index', () => {
   assert.ok(report.files >= 2);
 });
 
-test('project init: an unwritable target (drive root) exits 2 instead of crashing', () => {
+test('project init: an unwritable target exits 2 instead of crashing', () => {
   const box = sandbox();
-  const result = run(box, ['project', 'init'], { env: { OMNI_PROJECT_DIR: 'C:\\' } });
+  // Windows: the drive root. POSIX: an existing target that cannot be written.
+  const target = process.platform === 'win32' ? 'C:\\' : '/proc';
+  const result = run(box, ['project', 'init'], { env: { OMNI_PROJECT_DIR: target } });
   assert.equal(result.code, 2, `expected a usage error, got ${result.code}: ${result.out}`);
   assert.match(result.err, /无法写入/);
 });
@@ -157,3 +159,4 @@ test('write/search/ingest/candidates: the core CLI path works end to end', () =>
   assert.ok(list.total >= 1);
   assert.equal(list.candidates[0].status, 'pending');
 });
+
