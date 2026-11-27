@@ -75,12 +75,19 @@ dataSha256 79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4
 
 ## 7 包内容
 
-- 干净快照项数在发版后按同样方法实测并写进汇总；工作树数字不作为发布口径。
+- 标签提交 `a34128ae` 的干净快照（`git archive` + `npm pack --dry-run`，Linux 实测）：**227 files / 20,401,631 B**。比 4.6.17 的 222 多 5 项，全部是新增证据与完成报告（`4.6.17-context.txt`、`4.6.18.json`、两份 locomo JSON、本报告）。
+- 最终 HEAD 再加 `4.6.18-vm.txt` 与 `4.6.18-install-release.txt`，预期 229；工作树数字不作为发布口径。
 - 本轮修改：`lib/profile.mjs`、`lib/store.mjs`、`lib/tool-definitions.mjs`、`test/min-content-gate-4.6.17.test.mjs`、`package.json`、`package-lock.json`、`README.md`、`docs/{CHANGELOG,DESIGN,REFERENCE,REMEDIATION-BACKLOG,BENCHMARKS}.md`、`docs/COMPLETION-4.6.17-2026-11-27.md`、`docs/COMPLETION-4.6.18-2026-11-27.md`、`docs/evidence/4.6.17-context.txt`、`docs/evidence/locomo-retrieval-4.6.18-{session,turn}.json`、`docs/UPDATES.md`。
 
 ## 8 发布链
 
-待发版后填写：内容提交 → update-log 提交（tag 指向）→ 证据提交 → 最终 update-log（远端 main HEAD）；tag / Release / 资产 id 与 `verify-release` 结果一并记录。
+- 内容提交：`2f29a5f4c402dfb403afb27a9527f05cf260f4f9`（远端归一化后；本地 `7237e9f`）。
+- update-log 提交（tag 指向）：`a34128ae5604f50830ec9a0dd3b67ad617b9046a`。
+- tag object：`fb6bc58e5b1b376464876407bc307c09e6912144`；Release `460377138`（https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.18）。
+- 资产：`omni-update-manifest-v2.json` id `799794128`（632B）、`omni-update-manifest.json` id `799794186`（485B）。
+- `npm run verify:release -- --tag v4.6.18`：OK（签名、package.json 与 launcher hash 一致）；package.json SHA-256 `a7d5710f…602c5`、launcher `d7ba3e76…6dce4`。
+- `npm run setup`：doctor 通过（4.6.18、schema 20、2144 notes / 35 facts、HTTP 30 tools）。
+- 证据提交与最终 update-log：见远端 main HEAD（`docs/evidence/4.6.18-*` 与本节一并提交）。
 
 ## 9 未纳入
 

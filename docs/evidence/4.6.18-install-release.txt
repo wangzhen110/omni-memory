@@ -1,0 +1,51 @@
+# 4.6.18 release + install evidence (captured 2026-11-27, PC-20261022JWAL)
+# Release: https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.18
+# release-id: 460377138
+# tag-object: fb6bc58e5b1b376464876407bc307c09e6912144
+# commit (tag target, final update-log): a34128ae5604f50830ec9a0dd3b67ad617b9046a
+# assets:
+#   omni-update-manifest-v2.json  id=799794128  size=632   sha256=<see verify below>
+#   omni-update-manifest.json     id=799794186  size=485
+# verify:release -> OK (signature, package hash, launcher hash consistent)
+# package.json sha256: a7d5710fde0ada9526afb9aa093628779060e74f757d2c7c1ec0f5b7bdf602c5
+# launcher   sha256: d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4 (15360 bytes)
+#
+# live memory_profile(global) via POST http://127.0.0.1:7788/omni-memory/tool
+#   {name:"memory_profile",arguments:{scope:"global"}}
+#   -> picked=6, included=4, budgetUsed=1044, omitted=[], no "- x" bullet
+#
+# --- npm run setup (excerpt: verify + doctor) ---
+
+> @local/omni-memory@4.6.18 setup
+> node scripts/install.mjs --apply --start --require-release
+
+全息记忆安装 · 已安装
+仓库: D:\xiangmu\全息记忆
+数据根目录: undefined
+启动器: C:\Users\Administrator\.dsh\omni-serve-7788-d7ba3e76.exe
+发布验签: v4.6.18 · commit a34128ae5604f50830ec9a0dd3b67ad617b9046a · key omni-ed25519-2026-01
+提交谱系: HEAD 与发布提交一致
+启动器校验: Release manifest v2 Ed25519 + 发布提交对象 SHA-256（package.json 与启动器直比 manifest）
+计划任务: OmniMemory7788
+提交: a34128ae5604f50830ec9a0dd3b67ad617b9046a · sha256 d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4
+
+全息记忆 doctor · D:\xiangmu\全息记忆
+数据根目录: C:\Users\Administrator\.dsh
+数据库: C:\Users\Administrator\.dsh\memory\omni.db
+
+✓ node         22.22.2 (>= 22.13.0)
+✓ repo         @local/omni-memory 4.6.18 · launcher sha256 d7ba3e76
+✓ data-dir     C:\Users\Administrator\.dsh\memory readable + writable
+✓ database     42.8 MiB · integrity ok · schema 20 · 2144 notes / 35 facts
+✓ semantic     4 files · 37.4 MiB; local vector recall can load
+✓ http         http://127.0.0.1:7788 up · v4.6.18 · 30 tools
+✓ launcher     task OmniMemory7788 → omni-serve-7788-d7ba3e76.exe
+✓ dsh-plugin   DH bundle ./cordis.patch.yml + client.js present
+
+结果: 通过（0 错误，0 警告）
+
+# --- live profile summary (condensed from the same HTTP response) ---
+{"tools":30,"omitted":[],"ok":true,"xBullet":false,"budget":1200,"included":4,"textLen":1044,"healthVersion":"4.6.18","budgetUsed":1044,"picked":6}
+
+# --- health ---
+# {"ok":true,"version":"4.6.18","project":"proj:全息记忆#30534c","sessionId":"host-c59dd223","tools":30}

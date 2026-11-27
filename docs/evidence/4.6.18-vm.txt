@@ -1,0 +1,23 @@
+# 4.6.18 cloud VM rerun (Linux, /home/user/omni-memory-vm)
+# git rev-parse HEAD -> a34128ae5604f50830ec9a0dd3b67ad617b9046a
+# git log -1 --format=%s -> docs: update per-commit update log
+# node -v -> v22.23.4
+# package.json sha256 (sha256sum) -> a7d5710fde0ada9526afb9aa093628779060e74f757d2c7c1ec0f5b7bdf602c5
+# command: git fetch origin && git reset --hard <sha> && npm test (TAP at .test-results.tap)
+# note (P2-13): the previous 4.6.17 capture did not record rev-parse HEAD; this one does,
+#   and the reset target is the same commit the tag points at, so docs-only drift no
+#   longer needs to be inferred.
+
+# tests 572
+# pass 569
+# fail 0
+# cancelled 0
+# skipped 3
+# duration_ms 100198.112061
+
+ok 105 - daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher # SKIP launcher installation is Windows-only
+ok 244 - install-launcher stages a content-addressed binary and a sidecar config # SKIP launcher installation is Windows-only
+ok 349 - attachSession follows an existing alias instead of returning the legacy key # SKIP case-insensitive path keys only split on Windows/macOS
+
+# the three skips are platform-gated (Windows-only launcher install ×2, Windows/macOS path keys ×1);
+# the same suite on the Windows host reports 572/572 with 0 skipped.
