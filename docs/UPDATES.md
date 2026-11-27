@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 141 次提交；更新记录自身的提交不计入列表。
+> 共 142 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 10:43:22 `07f2aa46` — docs: 按 4.6.9 复核报告修正措辞与证据（I-1/I-2/S-1/S-2/S-3） — [提交](https://github.com/wangzhen110/omni-memory/commit/07f2aa461b40429c865b1ad517d533c5835b6c40)
 - 10:19:13 `185da7df` — docs: record the 4.6.9 vm evidence and backlog closure — [提交](https://github.com/wangzhen110/omni-memory/commit/185da7dfb911d15e9a31a3a1f9cf23dcb426b56c)
 - 10:15:47 `6b78ad5f` — 4.6.9: let the install gate accept docs-only descendants — [提交](https://github.com/wangzhen110/omni-memory/commit/6b78ad5fa22cbdd21272141b334c3fbcb58277a0)
 - 09:59:28 `183b9421` — docs: finalize the fourth 4.6.8 review round (vm evidence, tag policy wording, install decision) — [提交](https://github.com/wangzhen110/omni-memory/commit/183b94214dd57314a6d41dc3e2a845d468135dd7)
