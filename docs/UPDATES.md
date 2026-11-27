@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 134 次提交；更新记录自身的提交不计入列表。
+> 共 135 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 08:54:36 `5c76ff4e` — 4.6.8: make the unwritable-target test portable across platforms — [提交](https://github.com/wangzhen110/omni-memory/commit/5c76ff4ebf4398c8794bf315a78e4b332fc11dc8)
 - 08:46:48 `5944462d` — 4.6.8: update log — [提交](https://github.com/wangzhen110/omni-memory/commit/5944462dbce17bab13f7959131f93258925a5cdc)
 - 08:45:21 `fdab26dc` — 4.6.8: update log — [提交](https://github.com/wangzhen110/omni-memory/commit/fdab26dcbcb82f01093fe0bb159b6f085959514a)
 - 08:45:15 `24bed0a5` — 4.6.8: close the coverage retest gate (diagnostics, dispatch frames, CLI entry) — [提交](https://github.com/wangzhen110/omni-memory/commit/24bed0a52093706f23efe5443226002038684bca)
