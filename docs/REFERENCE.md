@@ -349,11 +349,11 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 ### 5.3 memory_write
 参数：
 - `kind` string，必填，`note|fact|episode`
-- `text` string，note/episode 必填；fact 给了完整三元组时可省；note 上限 4000 字（超长会报错要求拆分）；note/episode 至少 2 个“内容字符”（空白与标点不算），否则报 `text is too short`（4.6.17 起；facts 豁免）
+- `text` string，note/episode 必填；fact 给了完整三元组时可省；note 上限 4000 字（超长会报错要求拆分）；note/episode 至少 2 个“内容字符”，否则报 `text is too short (n content characters)`（4.6.17 起；4.6.18 起“内容字符”只计字母与数字，空白、标点、零宽/格式字符、符号与 emoji 都不算；单数时文案为 `1 content character`）
 - `scope` string，可选；`all` 会被拒绝；写入未出现过的项目层会返回 `scopeNew:true` 提醒
 - `importance` number，0..1，默认 0.35；越界或非数字直接报错
 - `source` string，可选，如 `session:xxx#3` 或文件路径
-- fact 专用：`subject`（必填）、`relation`（默认 `is`）、`object`、`cardinality`（`single|multi`）
+- fact 专用：`subject`（必填）、`relation`（必填且至少 1 个内容字符，默认 `is`）、`object`（必填且至少 1 个内容字符，或由非空 `text` 派生）、`cardinality`（`single|multi`）。缺 `object`/`relation` 会分别报 `object is required for kind=fact` / `relation is required for kind=fact`，不会落一条渲染成 `- 实体 · is：` 的空事实（4.6.18 起）
 - note 专用：`contradicts`（number[]，旧笔记 id；无法解析的 id 会出现在 `contradictsIgnored`）、`problemKey`、`solutionStatus`（`verified|unverified|failed|expired`）、`evidence`
 
 返回：`id`、`kind`、`scope`、`scopeReason`、`deduped`、`contradictsIgnored`（如有）、`scopeNew`（如有）。

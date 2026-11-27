@@ -53,7 +53,7 @@
 
 ## 3. LoCoMo 公开检索
 
-数据：`bench/data/locomo10.json`（2,805,274B，SHA-256 `79fa87e9…98ff4`），10 个 conversation，5,882 个 dialogue turn，1,982 个有 evidence 的 QA。
+数据：`bench/data/locomo10.json`（2,805,274B，SHA-256 `79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4`，与 `bench/data/README.md` 一致），10 个 conversation，5,882 个 dialogue turn，1,982 个有 evidence 的 QA。数据集不入库，用 `node bench/fetch-public.mjs` 取；报告里一律写完整 hash，不再用截断值。
 
 运行：
 
@@ -63,10 +63,21 @@ node bench/public-retrieval.mjs --k 10
 node bench/public-retrieval.mjs --granularity turn --k 10
 ```
 
+**3.12.0 基线（2026-11-23，历史口径）**：下表两组数字产生于 3.12.0。当时脚本把结果写到 `.bench-*.log`，而该路径被 `.gitignore` 排除，原始日志没有归档；能追溯的只有版本、数据 hash 与本表数值。
+
 | 粒度 | 笔记/块 | 问题 | evidence recall@10 | any-evidence recall@10 | nDCG@10 | 耗时 |
 |---|---:|---:|---:|---:|---:|---:|
 | session（默认） | 330 | 1,982 | **0.7134** | **0.7583** | **0.5621** | 19.7s |
 | turn | 5,882 | 1,982 | 0.3483 | 0.3845 | 0.2193 | 160.6s |
+
+**4.6.18 复跑（2026-11-27，重新归档）**：同一份数据、同一命令、`k=10`、检索-only；每次运行的完整 JSON（含 `dataSha256`、分类明细、`elapsedMs`）落在 `docs/evidence/locomo-retrieval-*.json`，不再只留控制台表格。
+
+| 粒度 | 笔记/块 | 问题 | evidence recall@10 | any-evidence recall@10 | nDCG@10 | 耗时 |
+|---|---:|---:|---:|---:|---:|---:|
+| session（默认） | 330 | 1,982 | 0.7239 | 0.7699 | 0.5680 | 38.7s |
+| turn | 5,882 | 1,982 | 0.3185 | 0.3572 | 0.2107 | 241.0s |
+
+两组数不能混着引用：3.12.0 之后检索实现有改动（语义向量、重排与去重），4.6.18 的 session 召回比基线高约 1 个百分点，turn 粒度反而低了约 3 个百分点；耗时差异来自本机负载，不归因于算法。要比较版本，必须同一台机、同一命令重跑。这也说明 4.7.0 的 turn 优化目标（先做 turn 级邻句扩展，再调重排）仍成立，且不能拿 session 的高分掩盖 turn 的退步。
 
 分类型（session 粒度）：
 
@@ -95,7 +106,18 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 
 ## 6. 检索质量可证性路线（4.7.0 预置，未实装）
 
-现状是三块证据强弱不一：**检索层有数**（LoCoMo 证据召回 recall@10 0.7134 / any 0.7583 / nDCG 0.5621，turn 粒度 0.3483），**答题层没有数**（没跑答案生成与 judge，不能与 mem0 92.5、Zep 80.32 这类 J 分同桌），**回归门部分有**（中文金标 + 120 条确定性质量用例只防回退）。本节把“可证性”拆成可独立验收的三步，避免把三个口径混成一个分数。
+现状是三块证据强弱不一：**检索层有数**（LoCoMo 证据召回，4.6.18 复跑 session recall@10 0.7239 / any 0.7699 / nDCG 0.5680，turn 0.3185），**答题层没有数**（没跑答案生成与 judge，不能与厂商的 QA 准确率同桌），**回归门部分有**（中文金标 + 120 条确定性质量用例只防回退）。本节把“可证性”拆成可独立验收的三步，避免把三个口径混成一个分数。
+
+**已落地 / 待补**（本节其余内容写的是目标，不要当成现状）：
+
+- 已落地：数据 hash 全量写入报告与 `bench/data/README.md`；`k` 与粒度已可参数化（`--k` 默认 10、`--granularity session|turn`）；检索-only 与答题层分离；每次运行落完整 JSON 证据（`docs/evidence/locomo-retrieval-4.6.18-*.json`）；中文金标在 `npm run check` 的回归范围内。
+- 待补：答题层脚本与 judge；三档语义（关 / 本地 / 远端）的分档记录；检索层硬阈值进 `check`（session ≥0.70 / turn ≥0.40 / nDCG ≥0.55，当前 turn 0.3185 未达标，先改检索再上闸）；固定 seed 的 500 题子集成本账。
+
+**外部数字的出处**（只作背景，不作对比结论）：
+
+- mem0 的 LoCoMo 92.5 来自其官方博客 2026-04-01《State of AI Agent Memory 2026》与 `docs.mem0.ai/core-concepts/memory-evaluation`；口径是 April 2026 算法、单次检索、`top_200` 检索预算、平均约 6,956 token/次，配自己的 answer judge。它是**答题准确率**，不是证据召回。
+- Zep 公开的是 LongMemEval-S 分数（arXiv:2501.13956，gpt-4o 71.2% / gpt-4o-mini 63.8%），不是 LoCoMo 证据召回。此前文中“Zep 80.32”系误引第三方论文里的 Mem0 数字，4.6.18 起删除。
+- 两者与本仓库的 `evidence recall@10` 既不同数据集口径、也不同判分器，禁止跨 harness 比较；本页只报自有 harness 的绝对分。
 
 ### 6.1 口径先定（0.5 天，无 LLM 成本）
 
@@ -113,9 +135,9 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 
 ### 6.3 回归门（可持续）
 
-- 只对**检索层**设硬阈值进 `npm run check`：session recall@10 ≥ 0.70、turn ≥ 0.40、nDCG@10 ≥ 0.55，低于即失败（阈值先取当前值下沿，再随修复抬高）。
+- 只对**检索层**设硬阈值进 `npm run check`：目标 session recall@10 ≥ 0.70、turn ≥ 0.40、nDCG@10 ≥ 0.55。session 与 nDCG 当前已达标，turn 当前 0.3185 未达标，所以本闸**尚未启用**；顺序是先做 turn 级检索增强，达标后再把阈值写进 check，避免刚上闸就长期红灯。
 - 答题层因 judge 不稳定，先做趋势记录（同一模型、同一 judge 模板下比较），不设硬门，避免为了分数改 judge。
-- **turn 粒度 0.3483 是首要优化目标**：真实使用接近单轮检索，session 拼块的高分掩盖了这个问题。优化顺序：turn 级证据扩展（同 session 邻句并入候选）→ 重排特征（时间邻近 + 实体命中）→ 只在有回归证据时才动权重。
+- **turn 粒度 0.3185 是首要优化目标**：真实使用接近单轮检索，session 拼块的高分掩盖了这个问题。优化顺序：turn 级证据扩展（同 session 邻句并入候选）→ 重排特征（时间邻近 + 实体命中）→ 只在有回归证据时才动权重。
 
 ### 6.4 不做的事
 

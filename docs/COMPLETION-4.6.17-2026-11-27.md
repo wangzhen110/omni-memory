@@ -19,7 +19,9 @@
 3. **画像侧**：`profileEligibleNote` 与 `personaEvidenceEligible` 要求 ≥4 个内容字符。因此**已入库**的 note#1315 不再占常驻额度，不需要改库、不需要软删。
 4. **不删数据**：被门槛挡住的记录仍可 `memory_search` 取回；是否清理由用户显式 `memory_forget` 决定。
 
-### 2.3 生产复验（同一份库、同一命令）
+### 2.3 生产复验（口径更正见 4.6.18）
+
+> **口径更正（4.6.18，2026-11-27）**：本节当时只留了叙述，控制台输出没有归档，无法逐字复核。复核项 P1-04 因此成立。4.6.18 已补 `docs/evidence/4.6.17-context.txt`（含命令、库路径、SHA-256、全文、抓取时间），并把主张收窄为：**常驻画像没有 `- x` 条目；note#1315 仍在库中、仍可被 `memory_search` 取回**。下面这段文字保留原样，只作历史记录，不再作为证据使用。
 
 修复前 `omni context` 的「当前项目」节出现 `- x`。修复后用仓库代码直读生产库：
 
@@ -73,6 +75,6 @@
 
 ## 7 包内容
 
-- 发布提交（`7b8c0ad`，含完成报告与 TAP 证据）：`npm pack --dry-run` **222 files / 21,318,743 B**。
-- 最终 HEAD（再含 `4.6.17-vm.txt` 与 `4.6.17-install-release.txt`）：**224 files**（两文件均为纯 docs 增量）。
-- 本轮新增/修改文件：`lib/store.mjs`、`lib/profile.mjs`、`lib/tool-definitions.mjs`、`index.js`、`test/min-content-gate-4.6.17.test.mjs`、`test/property.test.mjs`、`package.json`、`package-lock.json`、`README.md`、`docs/{CHANGELOG,DESIGN,REFERENCE,REMEDIATION-BACKLOG,BENCHMARKS}.md`、`docs/evidence/4.6.17.json`。
+- 发布提交（`7b8c0ad`，含完成报告与 TAP 证据）：干净快照 `npm pack --dry-run` **220 files / 20,389,322 B**（4.6.18 用 `git archive` 复核实测；此前写的 222 实际对应最终 HEAD）。
+- 最终 HEAD `0dd49cd`（再含 `4.6.17-vm.txt` 与 `4.6.17-install-release.txt`）：**222 files / 20,389,794 B**。工作树 224 是把两个未跟踪的 `docs/web-ui-preview-2026-11-21.*` 也算进包的结果，不能当发布口径。
+- 本轮新增/修改文件：`lib/store.mjs`、`lib/profile.mjs`、`lib/tool-definitions.mjs`、`index.js`、`test/min-content-gate-4.6.17.test.mjs`、`test/property.test.mjs`、`package.json`、`package-lock.json`、`README.md`、`docs/{CHANGELOG,DESIGN,REFERENCE,REMEDIATION-BACKLOG,BENCHMARKS}.md`、`docs/evidence/{4.6.17.json,4.6.17-vm.txt,4.6.17-install-release.txt,4.6.17-context.txt}`、`docs/COMPLETION-4.6.17-2026-11-27.md`。

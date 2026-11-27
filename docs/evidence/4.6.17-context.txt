@@ -1,0 +1,29 @@
+# 4.6.17 production profile re-check (captured 2026-11-27, during 4.6.18 prep)
+# This is NOT the install-time console output: it is a post-hoc capture of the
+# same production database, recorded because the 4.6.17 claim had no artifact.
+# Replaces the earlier narrative-only claim "same db, same command, '- x' gone".
+# db: C:\Users\Administrator\.dsh\memory\omni.db
+# db-size-bytes: 44920832
+# db-sha256: d8345a28599302ad87d390770bafcbc013da4c88d562d90146559ec17e1a7da9
+# (hash read through a shared handle because the 7788 service holds the file open)
+# installed version at capture: 4.6.17 (health: {"ok":true,"version":"4.6.17",...})
+# command: node D:\xiangmu\全息记忆\hosts\cli.mjs context --dir C:\Users\Administrator\.dsh\memory --query "<see below>"
+# query: 全息记忆 4.6.17 生产复验 画像 最小信息量
+# assertion: 常驻画像 section contains no "- x" bullet; note#1315 still exists in the
+# library and stays searchable (the gate filters the profile, it does not delete).
+# --- raw stdout follows ---
+## 常驻画像
+## 全局
+- 【规则4・双机轮换 2026-11-27】白天公司电脑、晚上家里电脑、周日不走公司机。每轮开工先认机器（PC-20261022JWAL=公司机，Administrator），再三对账：1) 代码以 GitHub main 为准，开工 pull、收工 push，版本号变动必须推；2) 记忆库是本机文件 C:\Users\Administrator\.dsh\memory\omni.db，CLI 没有 export/import，跨机需要的知识必须同时落到项目 docs 或 GitHub，不能只写本机记忆；3) 两台盘符与路径不同，动手前先 Test-Path，别把 D:\xiangmu 当通用路径；另一台的服务、缓存、浏览器登录状态一律不假设。
+- 【最高规则 2026-11-27】一、禁止凭记忆作答：先查全息记忆（context/search，含踩坑与死路）、项目 docs、实测；查不到找成熟案例，能抄就抄，不能抄学做法；仍无依据就直说。二、开发优化任务先找 skill：扫已注入清单→查记忆→列三根目录→全网案例→自建；过五道闸（技术栈版本、触发场景、可验证产出、docs 优先、来源新鲜）再适配，首落必跑最小样本。三、平台官方文档（微信小游戏等）全量入项目层记忆：问题走 查记忆→未命中查官方文档→解决→回写，卡住找你。四、结论回写记忆并附证据，不确定标 unverified。细则 note#1319、#1320、#1323。
+- 【最高规则・用户设定 2026-11-27】回答任何问题必须先有依据，绝对禁止凭记忆作答。执行顺序：1) 先检索全息记忆 context/search（含踩坑、死路、contested 标记）与项目 docs/实测数据；2) 记忆无命中时找成熟案例，能抄就直接抄，不能抄就学其做法再落地；3) 结论必须回写全息记忆（note 附证据与前提，不确定标 unverified）；4) 确实查不到依据时明确说明
+- 用户偏好（跨项目通用）：要一步到位的直接结论，不喜欢反复确认；涉及全息记忆的工作全部落在 D:\xiangmu\全息记忆；希望助手主动把结果打开或起好服务，而不是让他自己动手。
+相关事实：
+- 开发电脑 · 家里机：未登记，首次在家里电脑开工时补主机名与盘符
+- 开发电脑 · 公司机：PC-20261022JWAL（Windows 11，用户 Administrator，盘 D:\xiangmu、E:\项目）
+
+## 与当前任务相关
+- [note#2124] 【规则4・双机轮换 2026-11-27】白天公司电脑、晚上家里电脑、周日不走公司机。每轮开工先认机器（PC-20261022JWAL=公司机，Administrator），再三对账：1) 代码以 GitHub main 为准，开工 pull、收工 push，版本号变动必须推；2) 记忆库是本机文件 C:\Users\Administrator\.dsh\memory\omni.db，CLI 没有 export/import，跨机需要的 · verified
+- [note#1324] 【最高规则 2026-11-27】一、禁止凭记忆作答：先查全息记忆（context/search，含踩坑与死路）、项目 docs、实测；查不到找成熟案例，能抄就抄，不能抄学做法；仍无依据就直说。二、开发优化任务先找 skill：扫已注入清单→查记忆→列三根目录→全网案例→自建；过五道闸（技术栈版本、触发场景、可验证产出、docs 优先、来源新鲜）再适配，首落必跑最小样本。三、平台官方文档（微信小游戏等）全量入项目层记忆：问题走 查记忆→ · verified
+- [note#1323] 【规则3・官方文档入记忆库 2026-11-27】适用：微信小游戏（当前《萌宠打工记》），后续任何平台项目照此复制。一、入库范围（P0 先做）：小游戏 API 目录全量（生命周期、应用级事件、性能、TCP/UDP、渲染 Canvas、音频、开放接口、开放数据域、广告、虚拟支付、游戏服务）；框架与配置（game.json、project.config.json）；云开发 CloudBase（登录态、数据库、存储、云函数）；审核合规与类目； · verifi
+

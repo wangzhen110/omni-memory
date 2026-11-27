@@ -1,0 +1,55 @@
+{
+  "dataset": "LoCoMo",
+  "dataPath": "D:\\xiangmu\\全息记忆\\bench\\data\\locomo10.json",
+  "dataSha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+  "samples": 10,
+  "turns": 5882,
+  "notes": 330,
+  "granularity": "session",
+  "questions": 1982,
+  "limit": null,
+  "k": 10,
+  "mode": "retrieval-only",
+  "metrics": {
+    "evidenceRecall": 0.7239,
+    "anyEvidenceRecall": 0.7699,
+    "ndcg": 0.568
+  },
+  "byCategory": {
+    "1": {
+      "questions": 282,
+      "evidenceRecall": 0.4809,
+      "anyEvidenceRecall": 0.7482,
+      "ndcg": 0.378
+    },
+    "2": {
+      "questions": 321,
+      "evidenceRecall": 0.6952,
+      "anyEvidenceRecall": 0.7072,
+      "ndcg": 0.5021
+    },
+    "3": {
+      "questions": 92,
+      "evidenceRecall": 0.3969,
+      "anyEvidenceRecall": 0.5217,
+      "ndcg": 0.2578
+    },
+    "4": {
+      "questions": 841,
+      "evidenceRecall": 0.8115,
+      "anyEvidenceRecall": 0.8121,
+      "ndcg": 0.6465
+    },
+    "5": {
+      "questions": 446,
+      "evidenceRecall": 0.8004,
+      "anyEvidenceRecall": 0.8004,
+      "ndcg": 0.6516
+    }
+  },
+  "elapsedMs": 38664,
+  "codeVersion": "4.6.18",
+  "capturedAt": "2026-11-27T09:11:52.6092416Z",
+  "machine": "PC-20261022JWAL / Windows 11 / Node 22.22.2-6",
+  "note": "LoCoMo public retrieval, retrieval-only, k=10, granularity=session; archived by 4.6.18 (previously the raw log was gitignored)."
+}

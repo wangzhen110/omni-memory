@@ -2,11 +2,33 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.18] — 2026-11-27
+
+### 修复
+- **内容字符只认字母与数字（P1-01）**：4.6.17 的 `contentCharCount` 只剥 `\s\p{P}\p{Z}`，零宽空格、ZWJ、emoji、`★★★★`、`￥￥￥￥` 这类 `Cf`/`So`/`Sc`/`Mn` 字符照样过门槛；生产探针把纯符号串植入后，画像前四行全是垃圾。现在只计 `[\p{L}\p{N}]`：`e` 加组合符算一个字母，`👨‍👩‍👧` 算零个。
+- **门槛前移到取候选之前（P1-02）**：画像原先是 SQL `LIMIT 60` 取前 60 行、再在 JS 里过滤；60 条内容字符为 3 的 legacy 行（过写入门槛 2、过不了画像门槛 4）就能填满全部槽位，让真规则彻底消失（复核探针 `E02_REPRODUCED`）。现在改为分页扫描（每页 60、沿用 `importance DESC, ts DESC` 排序），逐页做 scope 可见性与 `profileEligibleNote` 过滤，凑够 60 条合格候选才进预算分配；persona 证据的 notes 同样分页到 40 条合格行。多读的不是整表，只是必要的页。
+- **facts 三元组校验（P1-03）**：facts 豁免文字门槛的前提不成立——原实现只校验 subject，`relation` 默认 `is`、`object` 可以为空，于是渲染出 `- 空值实体 · is：` 并占预算。`memory_write` 的 fact 分支现在要求 `subject`/`relation`/`object` 都带内容字符；`profileFactLines` 对空 subject、空 object 或三元组总计不足 4 个内容字符的 legacy 行跳过渲染（老库不删数据，只是不进画像）。
+- **错误文案单复数（P2-08）**：先算 `shortCount` 再拼串，避免同一行重复调用计数；`1 content character` 与 `n content characters` 分开，候选审批那条同样处理。
+
+### 文档
+- **生产复验落证（P1-04）**：不再只凭叙述。新增 `docs/evidence/4.6.17-context.txt`，含 `omni context` 全文、执行命令、生产库路径与 SHA-256、抓取时间；同时把 4.6.17 条目的表述收窄为“常驻画像没有 `- x` 条目；该 note 仍在库中、仍可被 `memory_search` 检索”，不再声称“同一命令前后对照”。
+- **包数口径（P1-05 / P2-11 / P2-12）**：干净快照实测，4.6.17 发布提交 `7b8c0ad` 为 **220** 项、最终 HEAD `0dd49cd` 为 **222** 项；工作树 224 是多了两份未跟踪的 `docs/web-ui-preview-2026-11-21.*`（`npm pack` 会把未跟踪文件算进去）。`f9a2945c…` 明确为 `package.json` 的 SHA-256，不是“包哈希”；`171` 是 update-log 覆盖的提交数，与 `git rev-list --count HEAD` 是两个口径。
+- **基准可证性（P2-03/04/05/06）**：`docs/BENCHMARKS.md` 的 LoCoMo 数字标明来自 3.12.0 基线并给归档 hash；`locomo10.json` 补完整 64 位 SHA-256；mem0/Zep 数字标注来源与日期，并写明不可跨 harness 比较；§6 拆成“已落地/待补”两栏。
+- `docs/DESIGN.md` 版本行对齐 4.6.18，§6.24 补 P1-01/02/03 后的口径；`docs/REFERENCE.md` 的 `memory_write` 补 fact 必填与字符计数口径；`docs/COMPLETION-4.6.17-2026-11-27.md` 修正包数与证据文件清单；`docs/REMEDIATION-BACKLOG.md` 增 4.6.18 段。
+
+### 测试
+- 测试 **572/572**，本机全量 112.48s。新增 4 条回归：零宽/符号/emoji/组合符不计信息；60 条亚门槛行不挤掉真规则（复核 E-02 的正面复现）；fact 空 object/relation 拒绝且 legacy 空 object 行不渲染；候选 accept 拒绝短文本且候选不被标记完成。
+
+### 说明
+- schema 仍为 20，预算仍 1200，权重与排序不变；写入形状只多“拒绝”分支，没有新增字段。
+- 复核中降级的两条（E-03 补候选采纳层回归、QA-03 云主机 reset 落证）按裁决处理：E-03 的 accept 拒绝用例本轮已补；QA-03 在 4.6.18 的 VM 证据里补 `git rev-parse HEAD`。
+- 仍排 4.7.0 的代码类 P2：门禁规则三处复制（收拢到 `assertMinContent`）、TAP→evidence 的生成侧绑定与门禁重验。
+
 ## [4.6.17] — 2026-11-27
 
 ### 修复
 - **最小信息量门禁（常驻画像被单字符垃圾占位）**：生产画像里出现一条 `x` 笔记（note#1315，旧版本写入），按 `importance DESC, ts DESC` 拿到一个常驻槽位，把真规则挤掉。现在两层拦截：`memory_write` 的 note/episode 与 `memory_amend` 要求 ≥2 个内容字符（空白与标点不计），不足抛 `text is too short`；候选审批 `memory_candidate accept` 同一门槛。画像侧再设 ≥4 个内容字符（`profileEligibleNote` 与 `personaEvidenceEligible`），已入库的垃圾也花不掉 1200 字符预算。facts 豁免（正文可由 subject/relation/object 派生）。被挡住的记录不删除，仍可 `memory_search`。
-- 生产库复验：同一份 `~/.dsh/memory/omni.db`、同一 `omni context` 调用，`- x` 消失，槽位回到项目规则（note#2136 画像预算口径）。
+- 生产库复验（口径收窄，4.6.18 落证）：生产常驻画像里不再出现 `- x` 条目，预算回到真实规则（note#2136 画像预算口径）；note#1315 本身仍在库中，仍可被 `memory_search` 检索。逐字证据见 `docs/evidence/4.6.17-context.txt`（4.6.18 追加，非安装当时的原始输出）。
 
 ### 文档
 - `docs/BENCHMARKS.md` 新增第 6 节“检索质量可证性路线（4.7.0 预置）”：把现有 LoCoMo 证据召回，升级为可对外比较的分层证据（检索层 + 答题层 + 回归门），并列明口径与成本。
