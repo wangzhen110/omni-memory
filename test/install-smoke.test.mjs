@@ -21,6 +21,21 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+const PATH_LIKE_IMPORT_CODES = [
+  'ERR_MODULE_NOT_FOUND',
+  'MODULE_NOT_FOUND',
+  'ERR_UNSUPPORTED_DIR_IMPORT',
+  'ERR_INVALID_MODULE_SPECIFIER',
+  'ERR_UNSUPPORTED_ESM_URL_SCHEME',
+];
+
+/** Only path/resolution failures may fall back to the MCP path. */
+function isPathLikeImportError(error) {
+  const code = error?.code ?? '';
+  return PATH_LIKE_IMPORT_CODES.includes(code)
+    || /Cannot find (module|package)|Failed to resolve/i.test(error?.message ?? '');
+}
 // Invoke npm through its JS entry so we never depend on a shell / npm.cmd shim.
 // The install layout differs by runtime manager (nvm/fnm put npm under ../lib,
 // Windows keeps it under node_modules); npm_execpath is set whenever this test
@@ -258,15 +273,7 @@ test('installed package works outside the repository layout', { timeout: 300_000
       // 5. Fallback only for path/resolution problems (the artifact layout can
       // differ on some platforms). Any other import error is a real packaging
       // defect and must fail the test instead of passing through the MCP path.
-      const code = importErr?.code ?? '';
-      const pathLike = [
-        'ERR_MODULE_NOT_FOUND',
-        'MODULE_NOT_FOUND',
-        'ERR_UNSUPPORTED_DIR_IMPORT',
-        'ERR_INVALID_MODULE_SPECIFIER',
-        'ERR_UNSUPPORTED_ESM_URL_SCHEME',
-      ].includes(code) || /Cannot find (module|package)|Failed to resolve/i.test(importErr?.message ?? '');
-      if (!pathLike) throw importErr;
+      if (!isPathLikeImportError(importErr)) throw importErr;
       t.diagnostic(`dynamic import failed (${importErr.message}); falling back to MCP handshake`);
       result = await runViaMcp({
         bin: path.join(pkgRoot, 'hosts', 'mcp', 'bin.mjs'),
@@ -309,4 +316,13 @@ test('installed package works outside the repository layout', { timeout: 300_000
     await rm(consumerDir);
     await rm(isoHome);
   }
+});
+
+test('install smoke: only path-like import errors fall back to MCP', () => {
+  for (const code of PATH_LIKE_IMPORT_CODES) {
+    assert.equal(isPathLikeImportError(Object.assign(new Error('x'), { code })), true, `${code} must be treated as path-like`);
+  }
+  assert.equal(isPathLikeImportError(Object.assign(new Error('Cannot find package "a"'), { code: '' })), true);
+  assert.equal(isPathLikeImportError(new TypeError('apply is not a function')), false, 'a real defect must not fall back');
+  assert.equal(isPathLikeImportError(Object.assign(new Error('boom'), { code: 'ERR_INVALID_ARG_TYPE' })), false);
 });

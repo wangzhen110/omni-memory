@@ -115,6 +115,52 @@ test('global budget: a newest oversized note no longer drops the whole section',
   assert.ok(profile.value.budgetUsed <= 1200);
 });
 
+test('global budget: a short row survives beside an oversized first row when only the short row fits', async () => {
+  const app = await boot();
+  // Global anchor takes the budget up to 1166. The "other projects" section
+  // then has just 26 chars left: the 2005-char first row cannot even hold a
+  // pointer (34 chars), but the 12-char second row fits. Using only items[0]
+  // for the pre-check dropped the section, so the short row never rendered.
+  const anchor = '长规则丙：' + '辛'.repeat(1152);
+  await app.call('memory_write', { kind: 'note', text: anchor, scope: 'global', importance: 1 });
+  await sleep(8);
+  const huge = '长规则丁：' + '壬'.repeat(1997);
+  const hugeId = (await app.call('memory_write', { kind: 'note', text: huge, scope: 'proj:other', importance: 1 })).value.id;
+  await sleep(8);
+  const short = '短规则己：' + '癸'.repeat(6);
+  const shortId = (await app.call('memory_write', { kind: 'note', text: short, scope: 'proj:other', importance: 1 })).value.id;
+
+  const profile = await app.call('memory_profile', { scope: 'all' });
+  const text = profile.value.text;
+  assert.ok(text.includes('短规则己'), 'the short row still fits and must render');
+  assert.ok(!text.includes(`note#${hugeId}`), 'no pointer fits for the oversized row');
+  assert.deepEqual(profile.value.omitted.map(item => item.id), [hugeId], 'the oversized row is reported');
+  assert.equal(profile.value.omitted[0].pointer, false);
+  assert.ok(profile.value.included.includes(shortId), 'included lists the rendered short row');
+  assert.equal(profile.value.picked, 2, 'anchor + short row');
+  assert.equal(profile.value.budgetUsed, text.length);
+  assert.ok(profile.value.budgetUsed <= 1200);
+});
+
+test('global budget: a section that cannot open still reports every note', async () => {
+  const app = await boot();
+  // The anchor leaves 34 chars. The project section needs a 7-char heading and
+  // a 34-char pointer, which does not fit: the early branch must still report
+  // every note (pointer:false) instead of dropping them with omitted=[].
+  const anchor = '长规则戊：' + '子'.repeat(1158);
+  await app.call('memory_write', { kind: 'note', text: anchor, scope: 'global', importance: 1 });
+  await sleep(8);
+  const huge = '长规则己：' + '丑'.repeat(1997);
+  const hugeId = (await app.call('memory_write', { kind: 'note', text: huge, scope: 'proj:other', importance: 1 })).value.id;
+
+  const profile = await app.call('memory_profile', { scope: 'all' });
+  assert.ok(profile.value.text.includes('长规则戊'), 'the global anchor still renders');
+  assert.deepEqual(profile.value.omitted.map(item => item.id), [hugeId], 'the whole section is reported, not silently dropped');
+  assert.equal(profile.value.omitted[0].pointer, false);
+  assert.equal(profile.value.omitted[0].chars, huge.length);
+  assert.equal(profile.value.budgetUsed, profile.value.text.length);
+});
+
 test('capProfileLines trims the tail, strips a stranded heading, and reports owners', async () => {
   const { capProfileLines } = await import('../lib/profile.mjs');
   const owners = [null, { id: 21, chars: 1200, pointer: false }];

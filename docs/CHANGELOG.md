@@ -2,6 +2,25 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.15] — 2026-11-27
+
+### 修复
+- **早退预检只看首条（P1-01）**：`addSection` 的整节预检改为对**全体条目**取最小成本（`min(正文, 指针)`），超长首条不再连带丢掉本可容纳的短条目；补“超长首条 + 可容纳短次条”与“整节连标题都打不开”两条回归用例。
+- **facts 漏计 `- `（P2-03）**：`profileFactLines` 成本改为 `正文 + 3`（`- ` 两字符 + 分隔符），并在 `buildProfileText` 里预检“标题 + 第一条事实”，不再出现孤立 `相关事实：` 标题；`capProfileLines` 也会剥掉该孤立标题。
+- **画像构建失败不静默（P2-07）**：`cachedProfile` 的 `catch` 记 `projectKey` 与错误到 stderr，并保留上一次可用文本，不再缓存空串。
+- **`included` 声明对齐（P1-02）**：`output.schema` 补 `picked/budget/budgetUsed/included/omitted`；文档明确完整字段只在 HTTP `/omni-memory/tool` 与 CLI `--json` 返回，MCP `tools/call` 仅渲染文本。
+- **烟测白名单可测（P2-04）**：抽出 `isPathLikeImportError()` 并加表驱动测试（5 个路径类错误码 + `Cannot find` 文案 + `TypeError` 不降级）。
+
+### 证据
+- `docs/evidence/4.6.15.json`；单文件 profiile 用例 7/7、install-smoke 2/2（主路径 + 白名单断言）。
+
+### 测试
+- 测试 **564/564**；本机全量 113.96s。
+
+### 说明
+- 不改 schema（仍为 20）、预算仍 1200、输入签名不变；`memory_profile` **输出**新增 `included` 是本版唯一的公开形状变化。
+- 包内容：`238 → 210`（4.6.14 干净 HEAD 实测；工作树含未跟踪报告时为 212）。
+
 ## [4.6.14] — 2026-11-27
 
 ### 修复
@@ -9,7 +28,7 @@
 - **facts 行同源问题（ENG-05）**：`profileFactLines` 改为计换行分隔符，超限改 `continue`，不再 `break` 掉后面的短事实。
 - **`included` 可验证（ENG-03）**：`memory_profile` 返回 `included`（仍在屏幕上的 note id），与 `omitted` 对称。
 - **烟测降级收窄（ENG-04）**：安装烟测只对路径/解析类导入错误（`ERR_MODULE_NOT_FOUND` 等）降级到 MCP；其它导入异常直接抛出，打包缺陷不再假绿。
-- **包内容（Q4）**：`package.json` 排除 `复核报告-*`、`整改复核报告-*`、`全面体检报告-*`、`AUDIT-*`、`WEB-UI-*`、`RECHECK-*` 等过期内部报告；`npm pack` 238 → 208 files。
+- **包内容（Q4）**：`package.json` 排除 `复核报告-*`、`整改复核报告-*`、`全面体检报告-*`、`AUDIT-*`、`WEB-UI-*`、`RECHECK-*` 等过期内部报告；`npm pack` 238 → 210 files（4.6.14 干净 HEAD 实测；工作树含未跟踪报告时 212）。
 
 ### 证据
 - `docs/evidence/4.6.14.json`；边界用例按“标题 + 两条 396 字规则 + 指针行”分段断言 `budgetUsed`，不再依赖 id 位数写死 838。
@@ -18,8 +37,8 @@
 - `test/global-budget-4.6.12.test.mjs` 增“最新超长笔记不再丢整节”与 `capProfileLines` 直接单测（裁剪回调可达、孤立标题被剥离）；测试 **561/561**。
 
 ### 说明
-- 不改 schema（仍为 20）、不调大 1200、不动检索权重；`omitted` 契约收窄为“被裁的 note 条目”（facts/标题无 id，不入 `omitted`）。
-- 4.6.13 的 `budgetUsed=838` 为该用例在 4 位 id 下的定值，4.6.14 起改为按分段求和断言。
+- 不改 schema（仍为 20）、不调大 1200、不动检索权重、输入签名不变（`memory_profile` 输出新增 `included`）；`omitted` 契约收窄为“被裁的 note 条目”（facts/标题无 id，不入 `omitted`）。
+- 4.6.13 的 `budgetUsed=838` 属历史无落证值（4.6.13 测试与 evidence 均无该数），已自 4.6.14 起撤销并改为分段求和断言。
 
 ## [4.6.13] — 2026-11-27
 
@@ -29,7 +48,7 @@
 - **安装烟测不再吞断言**：`try` 只包动态导入，`mod` 断言在 `try` 外执行，数值检查改用 `Number.isFinite`，避免 `typeof NaN === 'number'` 放行。
 
 ### 证据
-- `docs/evidence/4.6.13.json`；4.6.13 边界用例：3 条各 396 字的不同规则 → 渲染 2 条 + 1 指针，`budgetUsed=838`，`omitted` 恰含最老一条且 `pointer:true`。
+- `docs/evidence/4.6.13.json`；4.6.13 边界用例：3 条各 396 字的不同规则 → 渲染 2 条 + 1 指针，`omitted` 恰含最老一条且 `pointer:true`（该用例的 `budgetUsed` 随后续 id 位数变化，4.6.13 时的 838 无法复现）。
 
 ### 测试
 - `test/global-budget-4.6.12.test.mjs` 增 1 条边界用例（换行计费 + `omitted` 上报），并把 `picked` 断言改为定值（包含指针行）；`test/install-smoke.test.mjs` 断言结构收紧。测试 **559/559**。
