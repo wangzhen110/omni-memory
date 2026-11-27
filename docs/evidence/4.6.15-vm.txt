@@ -2,7 +2,7 @@
 --- cloud VM rerun (sha d1f9bd4, Linux) ---
 # tests 564 / pass 561 / fail 0 / cancelled 0 / skipped 3
 # duration_ms 100077.439087
-# SKIP lines (verbatim from .test-results.tap):
+# SKIP lines (verbatim from /home/user/omni-memory-vm/.test-results.tap after `git reset --hard d1f9bd4`):
 ok 105 - daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher # SKIP launcher installation is Windows-only
 ok 243 - install-launcher stages a content-addressed binary and a sidecar config # SKIP launcher installation is Windows-only
 ok 341 - attachSession follows an existing alias instead of returning the legacy key # SKIP case-insensitive path keys only split on Windows/macOS

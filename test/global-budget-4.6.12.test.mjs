@@ -117,10 +117,13 @@ test('global budget: a newest oversized note no longer drops the whole section',
 
 test('global budget: a short row survives beside an oversized first row when only the short row fits', async () => {
   const app = await boot();
-  // Global anchor takes the budget up to 1166. The "other projects" section
-  // then has just 26 chars left: the 2005-char first row cannot even hold a
-  // pointer (34 chars), but the 12-char second row fits. Using only items[0]
-  // for the pre-check dropped the section, so the short row never rendered.
+  // Cost ledger, so the constants below are checkable instead of guessed:
+  //   anchor 1157 chars → global lines 5 ("## 全局") + 1 '\n' + 2 "- " + 1157 = 1165 used,
+  //   leaving 35; the "other projects" heading needs 7 + 1 = 8, so 27 remain;
+  //   the 2005-char row's pointer is 32 + 1 = 33 (> 27, rejected), while the
+  //   11-char second row needs 2 + 11 + 1 = 14 and fits.
+  // Using only items[0] for the pre-check dropped the section, so the short row
+  // never rendered.
   const anchor = '长规则丙：' + '辛'.repeat(1152);
   await app.call('memory_write', { kind: 'note', text: anchor, scope: 'global', importance: 1 });
   await sleep(8);
@@ -144,9 +147,11 @@ test('global budget: a short row survives beside an oversized first row when onl
 
 test('global budget: a section that cannot open still reports every note', async () => {
   const app = await boot();
-  // The anchor leaves 34 chars. The project section needs a 7-char heading and
-  // a 34-char pointer, which does not fit: the early branch must still report
-  // every note (pointer:false) instead of dropping them with omitted=[].
+  // Anchor 1163 → global lines 5 + 1 + 2 + 1163 = 1171 used, 29 left. The
+  // project section needs a 7-char heading plus 1 separator = 8, and its
+  // cheapest row is the 32 + 1 = 33-char pointer, so 1171 + 8 + 33 > 1200: the
+  // early branch must still report every note (pointer:false) instead of
+  // dropping them with omitted=[].
   const anchor = '长规则戊：' + '子'.repeat(1158);
   await app.call('memory_write', { kind: 'note', text: anchor, scope: 'global', importance: 1 });
   await sleep(8);
@@ -159,6 +164,39 @@ test('global budget: a section that cannot open still reports every note', async
   assert.equal(profile.value.omitted[0].pointer, false);
   assert.equal(profile.value.omitted[0].chars, huge.length);
   assert.equal(profile.value.budgetUsed, profile.value.text.length);
+});
+
+test('global budget: a pointer cannot take the room a pending short row needs', async () => {
+  const app = await boot();
+  // Starvation window inside the loop (4.6.16): heading pre-check passes, the
+  // oversized row is visited first, its 32-char pointer fits, and the short row
+  // behind it is then pushed out with pointer:false. Reproduced for L = 1146..1159
+  // before the reserve check; pick 1151 in the middle.
+  //   anchor 1143 → global lines 5 + 1 + 2 + 1143 = 1151 used, 49 left;
+  //   "other projects" heading 7 + 1 = 8 → 41 left;
+  //   32-char pointer + 1 = 33 fits, leaving 8, but the pending 11-char row
+  //   costs 2 + 11 + 1 = 14 → the pointer must yield;
+  //   keeping the short row costs 1151 + 8 + 14 = 1173.
+  const anchor = '长规则庚：' + '寅'.repeat(1138);
+  await app.call('memory_write', { kind: 'note', text: anchor, scope: 'global', importance: 1 });
+  await sleep(8);
+  // Written first, so it is older and sits *behind* the huge row in ts DESC order.
+  const short = '短规则辛：' + '辰'.repeat(6);
+  const shortId = (await app.call('memory_write', { kind: 'note', text: short, scope: 'proj:other', importance: 1 })).value.id;
+  await sleep(8);
+  const huge = '长规则辛：' + '卯'.repeat(1997);
+  const hugeId = (await app.call('memory_write', { kind: 'note', text: huge, scope: 'proj:other', importance: 1 })).value.id;
+
+  const profile = await app.call('memory_profile', { scope: 'all' });
+  const text = profile.value.text;
+  assert.ok(text.includes('短规则辛'), 'the pending short row must render instead of being starved by the pointer');
+  assert.ok(!text.includes(`note#${hugeId}`), 'the pointer must yield once its own row is the only pending one it would crowd');
+  assert.deepEqual(profile.value.omitted.map(item => item.id), [hugeId], 'exactly the oversized row is reported');
+  assert.equal(profile.value.omitted[0].pointer, false);
+  assert.ok(profile.value.included.includes(shortId), 'included lists the rendered short row');
+  assert.equal(profile.value.picked, 2, 'anchor + short row');
+  assert.equal(profile.value.budgetUsed, 1173, 'anchor 1151 + heading 8 + short row 14');
+  assert.equal(profile.value.budgetUsed, text.length);
 });
 
 test('capProfileLines trims the tail, strips a stranded heading, and reports owners', async () => {

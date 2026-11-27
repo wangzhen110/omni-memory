@@ -2,8 +2,8 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | 4.6.15 |
-| 插件版本 | 4.6.15 |
+| 文档版本 | 4.6.16 |
+| 插件版本 | 4.6.16 |
 | 状态 | 已评审（本文为开发与验收的**唯一依据**） |
 | 目标平台 | DSH 0.2.2-rc.3 原生插件（Desktop，Windows 11，Node 22.23.2，`engines >=22.13`）；MCP / HTTP / OpenAPI / CLI 宿主通用 |
 | 最后更新 | 2026-11-27 |
@@ -100,9 +100,9 @@
 | NFR-07 | 失败隔离 | 任一子系统（FTS/路由/注入）失效不得导致会话不可用 | 满足（全部 try/catch + 可选降级） |
 | NFR-08 | 隐私 | 所有数据仅存本机 `$DSH_HOME/memory/omni.db`；HTTP 仅 loopback，且浏览器跨站写请求被 Origin 校验拦截；默认不上传 | 部分满足：数据库未加密，loopback HTTP 仍依赖本机进程边界，未做进程级鉴权（ADR-017）。内置本地语义在进程内推理，不联网；显式配置 `OMNI_EMBED_URL`/远程 `OMNI_EMBED_PROVIDER` 会外发嵌入文本，配置 `OMNI_RERANK_*` 会外发查询与候选正文，均需用户自行选择可信端点 |
 | NFR-09 | 可卸载 | 卸载插件后不残留运行中的监听；数据文件保留由用户决定 | 满足（3.11.8 起提供 `install-launcher.mjs` / `uninstall-launcher.mjs`，卸载任务与监听，默认保留数据） |
-| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 564/564（100%，TAP 真值门） |
+| NFR-10 | 测试可靠性 | 自动化测试通过率 ≥95% | 565/565（100%，TAP 真值门） |
 | NFR-11 | 界面本地化 | 中英词典注册，切换语言无需重载插件 | 已实现（词典 + 订阅重渲染） |
-| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 564 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
+| NFR-12 | 多进程并发 | 同机 N 个宿主进程共用一个库，同时读写不丢数据、不报锁错 | 565 个用例含 6 进程并发用例；写入等待上限 5s（ADR-028） |
 
 ### 1.3 约束
 
@@ -279,7 +279,7 @@ chunks_fts / notes_fts / facts_fts  -- FTS5，trigram 优先
 | `memory_feedback` | `kind`(note/fact), `id`, `rating`(useful/misleading), 可选 `scope`(all) | `{id, kind, usefulCount, misleadingCount, feedbackCount, lastFeedbackAt, quality}` | 默认仅当前项目+global；跨项目需显式 `scope=all` |
 | `memory_get` | `items[{kind,id}]`（最多 20），可选 `scope` | `{items[], missing[]}` | 超过 20 条报错 |
 | `memory_amend` | `id`, `text`, 可选 `reason`/`scope`(all) | `{id, revision, superseded, scope}` | 仅支持 note；默认仅当前项目+global；原文与新文相同会拒绝 |
-| `memory_profile` | 无 | `{text, stats, picked, budget}` | 无 |
+| `memory_profile` | 无 | `{text, stats, picked, budget, budgetUsed, included, omitted}`（完整字段仅 HTTP `/tool` 返回，MCP 只回文本） | 无 |
 | `memory_timeline` | `entity` | `{entries[]}` | 无 |
 | `memory_forget` | `kind`(note/fact/chunk), `id` | `{forgotten}` | `kind must be note, fact or chunk` |
 | `memory_dream` | `apply`(默认 false), `commit`(默认 false，需 apply) | `{scanned, applied, actions[]}` | 无；`apply` 只标记，`commit` 才批量替代 |
@@ -587,14 +587,14 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 
 ---
 
-### 6.24 全局段预算分配（v4.6.12 起，4.6.13–4.6.15 收紧边界）
+### 6.24 全局段预算分配（v4.6.12 起，4.6.13–4.6.16 收紧边界）
 
 常驻画像只讲一件事：在 1200 字符里先放什么。
 
-- **不饿死**：条目超过剩余额度时跳过并继续扫描，`continue` 不是 `break`。单条 1077 字的长规则可以让出位置，但不得把其后的 200 字短规则一起带走（4.6.15 起，整节预检也按全体条目的最小成本判断，不再只看第一条）。
+- **不饿死**：条目超过剩余额度时跳过并继续扫描，`continue` 不是 `break`。单条 1077 字的长规则可以让出位置，但不得把其后的 200 字短规则一起带走（4.6.15 起，整节预检也按全体条目的最小成本判断，不再只看第一条；4.6.16 起，循环内写指针前还要为“剩余最便宜行”预留额度，指针不得抢占后面短行的位置）。
 - **留指针**：放不下的长 note 在额度内写 `- note#<id> 超长已省略（memory_search 取回）`，指针也计入预算；不截断正文，避免半句规则被当成完整规则。
 - **可观测**：`memory_profile` 返回 `budgetUsed`、`included`（仍在屏幕上的 **note id 数字数组**）与 `omitted[{id,chars,pointer}]`（对象数组）；同库同排序模拟对照：旧行为 1 条/292 字符，新逻辑 6 条/1150 字符（4.6.12 安装后生产实测为 `picked=3 / budgetUsed=598`，4.6.13 现场为 `picked=6 / budgetUsed=1044`，均为历史口径，随库内容变化）。
-- **字段可见范围（4.6.15 收窄）**：`memory_profile` 的完整返回（`picked/budget/budgetUsed/included/omitted`）可在 HTTP `POST /omni-memory/tool` 与 CLI `--json` 取到；MCP `tools/call` 目前只回渲染文本，不承诺结构化字段（扩张 MCP 契约排在 4.7.0）。
+- **字段可见范围（4.6.16 收窄）**：`memory_profile` 的完整返回（`picked/budget/budgetUsed/included/omitted`）只在 HTTP `POST /omni-memory/tool` 可验证；CLI 没有 `memory_profile` 命令，`omni context --json` 序列化的是 `memory_context`（只含 `text/hits/project/update`），MCP `tools/call` 只回渲染文本。要给 CLI 透传这五个字段属于扩 `memory_context` 公开形状，与 MCP `structuredContent` 一并排 4.7.0。
 - **按拼接后的总长计（4.6.13）**：预算以 `join('\n')` 后的文本长度为准；首行不付分隔符，**之后的每行计 1 个 `\n`（n 行共 n−1 个）**；`budgetUsed === text.length`。facts 行按 `正文 + 3`（`- ` 两字符 + 分隔符）计费，放不下时跳过，且只有在第一条事实可容纳时才写 `相关事实：` 标题。
 - **`omitted` 契约（4.6.14 收窄）**：任何被裁的 **note 条目**都必须出现在 `omitted`，不许静默消失；facts 与标题没有 note id，不进 `omitted`。整节连“标题 + 一条指针”都放不下时，逐条记 `{pointer:false}`，不得整节静默丢弃（4.6.14 修复 `addSection` 早退路径）。
 - **`picked` 口径（4.6.13）**：`picked` = 渲染文本里 `- ` 开头的行数，**含指针行**，不等于“入选规则数”；测试按固定值断言，不复读实现表达式。

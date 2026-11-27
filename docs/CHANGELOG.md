@@ -2,17 +2,41 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.16] — 2026-11-27
+
+### 修复
+- **循环内指针抢占短行额度（复核项 P1-01 / ENG-09）**：`addSection` 的预检在 4.6.15 已按全体条目取 min，但循环里仍按原序写 32 字指针，排在后面的短行被 `pointer:false` 淘汰（复现窗口 L=1146..1159，连续取值确定性复现）。现在写指针前先算“`used + 指针成本 + 剩余最便宜行成本 ≤ 1200`”，不满足就记 `pointer:false` 继续扫描；补 L=1151 窗口回归（有修复 8/8、去掉预留只此条失败）。
+
+### 修正
+- **`included` 可验证范围（复核项 P1-02）**：4.6.15 写成“HTTP 与 CLI `--json` 可验证”，实际 CLI 命令表没有 `memory_profile`，`omni context --json` 序列化的是 `memory_context`（只含 `text/hits/project/update`）。文档统一收窄为“完整字段只在 HTTP `POST /omni-memory/tool` 可验证；CLI 与 MCP 仅文本”，共 7 处；给 CLI 透传五字段属于扩 `memory_context` 公开形状，排 4.7.0。
+- **包数口径**：4.6.14 完成报告里的 `238 → 208` 属误记，正确为 `238 → 210`（干净 HEAD）；4.6.15 发布提交为 214、最终 HEAD（含两份证据）为 216；4.6.16 干净 HEAD 为 218。README、CHANGELOG、两份完成报告与汇总统一加“干净 HEAD / 工作树”限定。
+- **838 撤销时点**：统一为“自 4.6.14 起撤销”，4.6.15 报告不再写“4.6.15 撤销”。
+- **VM SKIP 逐字**：4.6.15 汇总与完成报告用 `...` 省略了三行标题，改为完整原始行；`4.6.15-vm.txt` 的表头改标云主机路径与 reset commit `d1f9bd4`，不再误称“本机 TAP”。
+- **4.6.14 快照勘误**：双 `## 6`、“四条契约”、`BACKLOG` 自述已改与文件不符，统一在该报告顶部加勘误段（不改历史快照正文）。
+- **测试注释可核算**：两条回归注释里的 1166/26/34 与实测 1165/27/32 不符，改成按“标题 + 分隔符 + 正文”逐项列出的成本账。
+- **DESIGN §5.1**：`memory_profile` 出参补 `picked/budgetUsed/included/omitted`，与 §6.24 和 `output.schema` 一致。
+
+### 证据
+- `docs/evidence/4.6.16.json`；单文件 `test/global-budget-4.6.12.test.mjs` 8/8。
+
+### 测试
+- 测试 **565/565**；本机全量 115.64s。
+
+### 说明
+- 不改 schema（仍为 20）、预算仍 1200、输入签名不变；本轮无公开形状变化。
+- 登记 4.7.0：`cachedProfile` 失败退避与 stack（ENG-11）、`omitted.items` 子字段声明（ENG-12）、烟测白名单显式 `SyntaxError → false` 断言（ENG-14）、MCP `structuredContent` 与 CLI 透传。
+
 ## [4.6.15] — 2026-11-27
 
 ### 修复
 - **早退预检只看首条（P1-01）**：`addSection` 的整节预检改为对**全体条目**取最小成本（`min(正文, 指针)`），超长首条不再连带丢掉本可容纳的短条目；补“超长首条 + 可容纳短次条”与“整节连标题都打不开”两条回归用例。
 - **facts 漏计 `- `（P2-03）**：`profileFactLines` 成本改为 `正文 + 3`（`- ` 两字符 + 分隔符），并在 `buildProfileText` 里预检“标题 + 第一条事实”，不再出现孤立 `相关事实：` 标题；`capProfileLines` 也会剥掉该孤立标题。
 - **画像构建失败不静默（P2-07）**：`cachedProfile` 的 `catch` 记 `projectKey` 与错误到 stderr，并保留上一次可用文本，不再缓存空串。
-- **`included` 声明对齐（P1-02）**：`output.schema` 补 `picked/budget/budgetUsed/included/omitted`；文档明确完整字段只在 HTTP `/omni-memory/tool` 与 CLI `--json` 返回，MCP `tools/call` 仅渲染文本。
+- **`included` 声明对齐（P1-02）**：`output.schema` 补 `picked/budget/budgetUsed/included/omitted`；文档明确完整字段只在 HTTP `/omni-memory/tool` 可验证，CLI 与 MCP `tools/call` 仅文本（4.6.16 勘误：CLI 无 `memory_profile` 命令）。
 - **烟测白名单可测（P2-04）**：抽出 `isPathLikeImportError()` 并加表驱动测试（5 个路径类错误码 + `Cannot find` 文案 + `TypeError` 不降级）。
 
 ### 证据
-- `docs/evidence/4.6.15.json`；单文件 profiile 用例 7/7、install-smoke 2/2（主路径 + 白名单断言）。
+- `docs/evidence/4.6.15.json`；单文件 profile 用例 7/7、install-smoke 2/2（主路径 + 白名单断言）。
 
 ### 测试
 - 测试 **564/564**；本机全量 113.96s。
