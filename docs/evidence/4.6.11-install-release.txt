@@ -1,0 +1,28 @@
+
+> @local/omni-memory@4.6.11 setup
+> node scripts/install.mjs --apply --start --require-release
+
+全息记忆安装 · 已安装
+仓库: D:\xiangmu\全息记忆
+数据根目录: undefined
+启动器: C:\Users\Administrator\.dsh\omni-serve-7788-d7ba3e76.exe
+发布验签: v4.6.11 · commit 1158e7b76b9a9ffe44688d300320972f2b57fdd8 · key omni-ed25519-2026-01
+提交谱系: HEAD 与发布提交一致
+启动器校验: Release manifest v2 Ed25519 + 发布提交对象 SHA-256（package.json 与启动器直比 manifest）
+计划任务: OmniMemory7788
+提交: 1158e7b76b9a9ffe44688d300320972f2b57fdd8 · sha256 d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4
+
+全息记忆 doctor · D:\xiangmu\全息记忆
+数据根目录: C:\Users\Administrator\.dsh
+数据库: C:\Users\Administrator\.dsh\memory\omni.db
+
+✓ node         22.23.2 (>= 22.13.0)
+✓ repo         @local/omni-memory 4.6.11 · launcher sha256 d7ba3e76
+✓ data-dir     C:\Users\Administrator\.dsh\memory readable + writable
+✓ database     28.5 MiB · integrity ok · schema 20 · 1321 notes / 32 facts
+✓ semantic     4 files · 37.4 MiB; local vector recall can load
+✓ http         http://127.0.0.1:7788 up · v4.6.11 · 30 tools
+✓ launcher     task OmniMemory7788 → omni-serve-7788-d7ba3e76.exe
+✓ dsh-plugin   DH bundle ./cordis.patch.yml + client.js present
+
+结果: 通过（0 错误，0 警告）
