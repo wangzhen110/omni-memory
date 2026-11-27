@@ -188,10 +188,10 @@
 | P0-5 CLI `rules` 写盘 | 本轮做 | 218-272 写盘/预览/marker 分支无覆盖 | 会把文本写进用户仓库文件 | 同文件：预览不改盘、重复写字节一致、marker 不成对时跳过 |
 | P0-6 MCP stdio 主链路 | 本轮做 | 180-226 47 行连续零覆盖 | 客户端协议故障直接表现为“服务不可用” | `test/mcp-stdio-4.6.7.test.mjs` 跨进程断言帧、错误码、chain、SIGINT |
 | P0-7 `bin.mjs` 未测量 | 本轮做 | 从未被 import，无覆盖率数据 | 独立进程入口最容易漏测且最容易泄漏 stderr | 同文件 spawn 冒烟：exit 0、无 ExperimentalWarning、tools/list 非空 |
-| P0-8 `memory_write` raced 分支 | 延后（P1） | 分支要求“另一宿主先写入”，单进程内事务串行不可达 | 造双进程并发才能稳定复现；现在写会造成 flaky | 触发条件：引入多进程写入回归时补；复查版本 4.6.8 |
-| 重要：store force/restore | 延后（P1） | 区间确认存在，但属数据一致性深路径 | 与 schema 无关但需要构造迁移态库，排在 4.6.8 | 复查版本 4.6.8 |
-| 重要：read-routes dream 路由 | 延后（P1） | 996-1038 未覆盖 | 需要 bridge 注入口跑真实路由，改动面比补测大 | 复查版本 4.6.8 |
-| 重要：doctor 分支 / schema 分支 | 延后（P1） | doctor 35.96%、schema 50.00% 分支 | 低风险但收益小，排在 P0 之后 | 复查版本 4.6.8 |
+| P0-8 `memory_write` raced 分支 | 延后（P1） | 分支要求“另一宿主先写入”，单进程内事务串行不可达 | 造双进程并发才能稳定复现；现在写会造成 flaky | 触发条件：引入多进程写入回归时补；复查版本 4.6.9 |
+| 重要：store force/restore | 延后（P1） | 区间确认存在，但属数据一致性深路径 | 与 schema 无关但需要构造迁移态库 | 复查版本 4.6.9（4.6.8 未做） |
+| 重要：read-routes dream 路由 | 延后（P1） | 996-1038 未覆盖 | 需要 bridge 注入口跑真实路由，改动面比补测大 | 复查版本 4.6.9（4.6.8 未做） |
+| 重要：doctor 分支 / schema 分支 | 延后（P1） | doctor 35.96%、schema 50.00% 分支 | 低风险但收益小 | 复查版本 4.6.9（4.6.8 未做） |
 | 覆盖率盲区（前端 JS / 12 个脚本） | 不采纳“标 0%” | 这些文件不进 Node 测试进程，本来就没有覆盖率数据 | 给它们记 0% 是错误结论；替代：单独做前端与脚本冒烟，不进源码分母 | 已在 DESIGN §6.20 记录 |
 
 ### 完成报告里的 commit 号口径（自 4.6.7 起）
@@ -224,3 +224,10 @@
 - `routeState` 的 `failed` 分支：代码写 `failed` 并 rethrow，但 `registerWhenAvailable` 会按宿主隔离原则吞掉异常，测试只能用「快照状态」观测；本轮构造失败挂载未成功（`registerRoutes` 的抛点不在 `webServer.register` 首次调用），**断言留 4.6.9**。
 - `sign-release` 默认只写 v2，导致 v1 资产残留 4.6.7；已改为发版时显式跑 `--schema v1` 与 `--schema v2` 两次。此约定对本版本及以后生效。
 - TAP 证据必须晚于本版最后一次代码提交：docs-only 提交可以晚于 TAP，但任何改代码的提交之后必须重跑 `npm test` 并重生成 evidence。
+
+
+### 证据时钟口径（自 4.6.8 起）
+
+- 判定 TAP/evidence/lcov 是否覆盖最终代码，只用「文件 mtime 顺序 + lcov 里新版行号」，**不看 `git commit` 的对象时间戳**（它只是提交元数据，不等于源码落盘时刻）。
+- docs-only 提交允许晚于 TAP；任何改代码的提交之后必须重跑 `npm test` 并重生成 evidence。
+- `verify-release` 只读 v2 manifest，v1 错配是既有盲区；发版时必须显式签 v1 并单独核对远端资产内容。

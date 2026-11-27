@@ -3,7 +3,7 @@
 ## 1. 触发与依据
 
 - 用户下发 `docs/覆盖率重测报告-4.6.7-2026-11-27.md`（只读重测，基线 `v4.6.7`）。
-- 结论：4.6.6 报告的 `index.js 47.84%`、`all files 53.25%` 都是 Node 22 文本表“单条代表记录”口径的产物；真实并集行覆盖 `97.18%`（586/603），P0-1 三段并集 100% 命中。
+- 结论：4.6.6 报告的 `index.js 47.84%`、`all files 52.83%` 都是 Node 22 文本表“单条代表记录”口径的产物；真实并集行覆盖 `97.18%`（586/603），P0-1 三段并集 100% 命中。
 - 立刻项：①补 `hosts/mcp/server.mjs` 207-208（带 id 的 dispatch 失败回帧）；②`hosts/cli.mjs` 行覆盖达 70%。
 - 补测建议：租约分支、prompt 弱断言（`at`/`auto` 漏断、`routes` 恒真）、4.6.6 报告加口径限制说明。
 
@@ -63,8 +63,8 @@
 
 ## 6.5 复核整改（`docs/复核报告-4.6.8-2026-11-27.md`）
 
-- **TAP 与最终提交对齐**：本轮 TAP `capturedAt` 为 `2026-11-27T01:09:21.327Z`，晚于代码提交 `db7a491`（`00:54:36Z`）；TAP 里的跨平台用例已是新名「an unwritable target」，不再包含 `(drive root)` 的旧逻辑。
-- **两个 manifest 都按 `db7a491` 重签**：此前 `sign-release` 默认只写 v2，v1 资产是 4.6.7 残留；本次分别执行 `--schema v2` 与 `--schema v1`。
+- **TAP 与最终提交对齐**：本轮 TAP `capturedAt` 为 `2026-11-27T01:09:21.327Z`；判定口径用「文件 mtime + lcov 行号」：`server.mjs` 落盘 09:06:46、TAP 09:09:21、lcov `DA` max=228，均证明证据覆盖最终代码（不用 commit 时间戳）；TAP 里的跨平台用例已是新名「an unwritable target」，不再包含 `(drive root)` 的旧逻辑。
+- **两个 manifest 都按最终发布提交重签**：此前 `sign-release` 默认只写 v2，v1 资产是 4.6.7 残留；本次分别执行 `--schema v2` 与 `--schema v1`。
 - **MCP 错误回显改为固定文案**：dispatch 失败只回 `internal error`，内部错误文本仅写本地日志，避免把内部路径带回 stdio 客户端。
 - **server 覆盖率数字纠正**：并集 205/228 = 89.91%，`serveStdio` 段 180-228 49/49；旧稿的 216/226 是口径错误。
 
@@ -78,5 +78,6 @@ node --test --experimental-test-coverage --test-concurrency=1 \
 node scripts/tap-evidence.mjs
 node scripts/check-docs.mjs
 ```
+
 
 

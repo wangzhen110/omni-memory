@@ -1,0 +1,14 @@
+全息记忆 4.6.8 · 云主机 TAP 摘要（原始摘录）
+=================================================
+环境: 云主机 Linux (/home/user/omni-memory-vm)
+HEAD: 7de35397cda342744a3d11e7e7d529776da9ea95
+采集时间: 2026-11-27（本地 +0800）
+来源: 该机 `npm test` 生成的 .test-results.tap，仅摘录汇总行
+
+# tests 540
+# pass 537
+# fail 0
+# skipped 3
+
+说明: 3 个 skip 为平台相关用例（Windows 本机同一提交为 540 pass / 0 skip）。
+本文件只是摘要摘录，不是完整 TAP；完整 TAP 保留在云主机 /tmp/vm-4.6.8.tap。
