@@ -255,7 +255,18 @@ test('installed package works outside the repository layout', { timeout: 300_000
       const entry = `${pathToFileURL(path.join(pkgRoot, 'index.js')).href}?install-smoke=${Date.now()}`;
       mod = await import(entry);
     } catch (importErr) {
-      // 5. Fallback: path/dependency problems importing the module — use the real MCP transport.
+      // 5. Fallback only for path/resolution problems (the artifact layout can
+      // differ on some platforms). Any other import error is a real packaging
+      // defect and must fail the test instead of passing through the MCP path.
+      const code = importErr?.code ?? '';
+      const pathLike = [
+        'ERR_MODULE_NOT_FOUND',
+        'MODULE_NOT_FOUND',
+        'ERR_UNSUPPORTED_DIR_IMPORT',
+        'ERR_INVALID_MODULE_SPECIFIER',
+        'ERR_UNSUPPORTED_ESM_URL_SCHEME',
+      ].includes(code) || /Cannot find (module|package)|Failed to resolve/i.test(importErr?.message ?? '');
+      if (!pathLike) throw importErr;
       t.diagnostic(`dynamic import failed (${importErr.message}); falling back to MCP handshake`);
       result = await runViaMcp({
         bin: path.join(pkgRoot, 'hosts', 'mcp', 'bin.mjs'),

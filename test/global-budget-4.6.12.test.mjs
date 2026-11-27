@@ -81,6 +81,50 @@ test('global budget: separators count, and trimmed rows are reported as omitted'
   assert.ok(text.includes(`note#${ids[0]}`), 'the trimmed rule leaves a pointer');
   // Two rules + one pointer line.
   assert.equal(profile.value.picked, 3, 'picked must count the two rules and the pointer line');
+  // Pin the rendered length from parts: heading, two 396-char rules with "- ",
+  // separators, and the pointer line built from this note's id.
+  const pointerLine = `- note#${ids[0]} 超长已省略（memory_search 取回）`;
+  assert.equal(profile.value.budgetUsed, 5 + 1 + 398 + 1 + 398 + 1 + pointerLine.length, 'budgetUsed must equal the joined length of the kept lines');
+});
+
+test('global budget: a newest oversized note no longer drops the whole section', async () => {
+  const app = await boot();
+  // Oldest first, then a 2005-char note as the newest row: it becomes items[0]
+  // of the section. The old heading guard returned before the loop and dropped
+  // all three notes with `omitted: []`.
+  const oldA = '短规则丁：' + '戊'.repeat(150);
+  const oldB = '短规则戊：' + '己'.repeat(150);
+  const huge = '长规则乙：' + '庚'.repeat(1995);
+  const shortIds = [];
+  for (const text of [oldA, oldB]) {
+    const value = await app.call('memory_write', { kind: 'note', text, scope: 'global', importance: 1 });
+    shortIds.push(value.value.id);
+    await sleep(8);
+  }
+  const longId = (await app.call('memory_write', { kind: 'note', text: huge, scope: 'global', importance: 1 })).value.id;
+
+  const profile = await app.call('memory_profile', { scope: 'global' });
+  const text = profile.value.text;
+  assert.ok(text.includes('短规则丁') && text.includes('短规则戊'), 'the older short rules must still render');
+  assert.ok(text.includes(`note#${longId}`), 'the oversized newest note leaves a pointer');
+  assert.deepEqual(profile.value.omitted.map(item => item.id), [longId], 'exactly the oversized note is reported');
+  assert.equal(profile.value.omitted[0].pointer, true);
+  assert.ok(profile.value.included.includes(shortIds[0]) && profile.value.included.includes(shortIds[1]), 'included must list the rendered note ids');
+  assert.equal(profile.value.picked, 3, 'picked must count two rules plus the pointer');
+  assert.equal(profile.value.budgetUsed, text.length, 'budgetUsed must equal the rendered length');
+  assert.ok(profile.value.budgetUsed <= 1200);
+});
+
+test('capProfileLines trims the tail, strips a stranded heading, and reports owners', async () => {
+  const { capProfileLines } = await import('../lib/profile.mjs');
+  const owners = [null, { id: 21, chars: 1200, pointer: false }];
+  const lines = ['## 当前项目', '- ' + '甲'.repeat(1200)];
+  const trimmed = [];
+  const text = capProfileLines(lines, owners, (owner, line) => trimmed.push({ owner, line }));
+  assert.equal(trimmed.length, 1, 'exactly the oversized row is trimmed');
+  assert.equal(trimmed[0].owner.id, 21, 'the callback receives the owner of the trimmed line');
+  assert.equal(text, '', 'a heading with no rows beneath it is removed too');
+  assert.equal(owners.length, 0, 'owners are popped alongside lines');
 });
 
 test('memory_write hints when a global note is long enough to crowd others out', async () => {

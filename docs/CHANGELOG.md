@@ -2,6 +2,25 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.14] — 2026-11-27
+
+### 修复
+- **整节不再静默丢弃（P1-01）**：`addSection` 的早退分支原先在“标题 + 首条正文”放不下时直接 `return`，整节 note 消失且 `omitted` 为空。现在按“标题 + 首条正文或指针”的较小成本预检：能放下标题就进正常循环（超长条留指针、记 `omitted`）；连指针都放不下时，逐条写 `{id,chars,pointer:false}` 再返回。补“最新超长笔记 + 两条短规则”回归用例。
+- **facts 行同源问题（ENG-05）**：`profileFactLines` 改为计换行分隔符，超限改 `continue`，不再 `break` 掉后面的短事实。
+- **`included` 可验证（ENG-03）**：`memory_profile` 返回 `included`（仍在屏幕上的 note id），与 `omitted` 对称。
+- **烟测降级收窄（ENG-04）**：安装烟测只对路径/解析类导入错误（`ERR_MODULE_NOT_FOUND` 等）降级到 MCP；其它导入异常直接抛出，打包缺陷不再假绿。
+- **包内容（Q4）**：`package.json` 排除 `复核报告-*`、`整改复核报告-*`、`全面体检报告-*`、`AUDIT-*`、`WEB-UI-*`、`RECHECK-*` 等过期内部报告；`npm pack` 238 → 208 files。
+
+### 证据
+- `docs/evidence/4.6.14.json`；边界用例按“标题 + 两条 396 字规则 + 指针行”分段断言 `budgetUsed`，不再依赖 id 位数写死 838。
+
+### 测试
+- `test/global-budget-4.6.12.test.mjs` 增“最新超长笔记不再丢整节”与 `capProfileLines` 直接单测（裁剪回调可达、孤立标题被剥离）；测试 **561/561**。
+
+### 说明
+- 不改 schema（仍为 20）、不调大 1200、不动检索权重；`omitted` 契约收窄为“被裁的 note 条目”（facts/标题无 id，不入 `omitted`）。
+- 4.6.13 的 `budgetUsed=838` 为该用例在 4 位 id 下的定值，4.6.14 起改为按分段求和断言。
+
 ## [4.6.13] — 2026-11-27
 
 ### 修复

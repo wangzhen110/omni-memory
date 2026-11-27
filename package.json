@@ -1,6 +1,6 @@
 {
   "name": "@local/omni-memory",
-  "version": "4.6.13",
+  "version": "4.6.14",
   "private": true,
   "type": "module",
   "description": "Omni Memory for any AI host: append-only transcripts, bi-temporal facts, self-verifying notes, hybrid retrieval, zero-config local semantic recall, project scoping and an interactive star map. Native DSH plugin, with MCP, HTTP, OpenAPI and CLI adapters.",
@@ -90,7 +90,17 @@
     "!docs/GAP-REVIEW-*.md",
     "!docs/INTEGRATION-PROBE-*.md",
     "!docs/RECHECK-3.9.2-*.md",
-    "!docs/RECHECK-3.9.3-*.md"
+    "!docs/RECHECK-3.9.3-*.md",
+    "!docs/RECHECK-*.md",
+    "!docs/复核报告-*.md",
+    "!docs/整改复核报告-*.md",
+    "!docs/全面体检报告-*.md",
+    "!docs/AUDIT-*.md",
+    "!docs/WEB-UI-*.md",
+    "!docs/PRODUCTION-READINESS-*.md",
+    "!docs/EXTERNAL-ENV-DEPENDENCIES-*.md",
+    "!docs/OPTIMIZATION-BACKLOG-*.md",
+    "!docs/GOAL-*.md"
   ],
   "dsh": {
     "bundle": {
