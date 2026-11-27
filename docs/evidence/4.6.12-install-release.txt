@@ -29,3 +29,7 @@
 
 --- live memory_profile (scope=global) after install ---
 {"ok":true,"picked":3,"budget":1200,"budgetUsed":598,"omitted":[]}
+
+--- cloud VM rerun (sha 005bf7bc, Linux) ---
+# tests 558 / pass 555 / fail 0 / cancelled 0 / skipped 3
+# duration_ms 98240.86183
