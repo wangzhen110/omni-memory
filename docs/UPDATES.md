@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 138 次提交；更新记录自身的提交不计入列表。
+> 共 139 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 09:59:28 `183b9421` — docs: finalize the fourth 4.6.8 review round (vm evidence, tag policy wording, install decision) — [提交](https://github.com/wangzhen110/omni-memory/commit/183b94214dd57314a6d41dc3e2a845d468135dd7)
 - 09:50:09 `f13e009f` — docs: close the third 4.6.8 review round (baseline numbers, tag policy, vm evidence) — [提交](https://github.com/wangzhen110/omni-memory/commit/f13e009f6d0671363ffd3569386989093022743e)
 - 09:30:53 `4dd011ac` — docs: close the 4.6.8 review loop (numbers, versions, clock rule) — [提交](https://github.com/wangzhen110/omni-memory/commit/4dd011ac9fd5bc269a76ab09a44628497a55051f)
 - 09:12:32 `7215bbf6` — 4.6.8: apply the review fixes (evidence timing, manifests, error echo) — [提交](https://github.com/wangzhen110/omni-memory/commit/7215bbf6be93c0d1afa954106ee8d7730bbfb847)
