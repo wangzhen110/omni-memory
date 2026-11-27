@@ -49,6 +49,25 @@
 
 单文件：`node --test test/global-budget-4.6.12.test.mjs` 7/7；`node --test test/install-smoke.test.mjs` 2/2。
 
+### 3.1 云主机复跑与安装实录
+
+`docs/evidence/4.6.15-vm.txt`（reset 到 `d1f9bd4`，Linux）：
+
+```
+# tests 564 / pass 561 / fail 0 / cancelled 0 / skipped 3
+# duration_ms 100077.439087
+ok 105 - daily-sync apply ... # SKIP launcher installation is Windows-only
+ok 243 - install-launcher ... # SKIP launcher installation is Windows-only
+ok 341 - attachSession ... # SKIP case-insensitive path keys only split on Windows/macOS
+```
+
+`docs/evidence/4.6.15-install-release.txt`（本机 `npm run setup` 全量输出）：发布验签 `v4.6.15 · commit d1f9bd44 · key omni-ed25519-2026-01`，
+提交谱系一致，doctor 8 项通过（schema 20 · 2135 notes / 35 facts · 30 tools），随后现场调用：
+
+```
+{"ok":true,"version":"4.6.15","picked":6,"budget":1200,"budgetUsed":1044,"textLen":1044,"included":4,"omitted":[]}
+```
+
 ## 4. 判定标准
 
 - 超长首条 + 可容纳短次条：短条目必须渲染，超长条进 `omitted{pointer:false}`，`picked` 计实测行数。
