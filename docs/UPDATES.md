@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 132 次提交；更新记录自身的提交不计入列表。
+> 共 133 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,7 +15,8 @@
 
 ## 2026-11-27
 
-- 08:45:15 `0ac53af1` — 4.6.8: close the coverage retest gate (diagnostics, dispatch frames, CLI entry) — [提交](https://github.com/wangzhen110/omni-memory/commit/0ac53af1e4162c57d1cae7366c6b89b2a6519a01)
+- 08:45:21 `fdab26dc` — 4.6.8: update log — [提交](https://github.com/wangzhen110/omni-memory/commit/fdab26dcbcb82f01093fe0bb159b6f085959514a)
+- 08:45:15 `24bed0a5` — 4.6.8: close the coverage retest gate (diagnostics, dispatch frames, CLI entry) — [提交](https://github.com/wangzhen110/omni-memory/commit/24bed0a52093706f23efe5443226002038684bca)
 
 ## 2026-11-26
 
