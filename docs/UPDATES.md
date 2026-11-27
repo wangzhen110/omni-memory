@@ -15,7 +15,7 @@
 
 ## 2026-11-27
 
-- 08:54:36 `5c76ff4e` — 4.6.8: make the unwritable-target test portable across platforms — [提交](https://github.com/wangzhen110/omni-memory/commit/5c76ff4ebf4398c8794bf315a78e4b332fc11dc8)
+- 08:54:36 `b675e9c7` — 4.6.8: make the unwritable-target test portable across platforms — [提交](https://github.com/wangzhen110/omni-memory/commit/b675e9c7588002726ea12388a8c8976c96123a0c)
 - 08:46:48 `5944462d` — 4.6.8: update log — [提交](https://github.com/wangzhen110/omni-memory/commit/5944462dbce17bab13f7959131f93258925a5cdc)
 - 08:45:21 `fdab26dc` — 4.6.8: update log — [提交](https://github.com/wangzhen110/omni-memory/commit/fdab26dcbcb82f01093fe0bb159b6f085959514a)
 - 08:45:15 `24bed0a5` — 4.6.8: close the coverage retest gate (diagnostics, dispatch frames, CLI entry) — [提交](https://github.com/wangzhen110/omni-memory/commit/24bed0a52093706f23efe5443226002038684bca)
@@ -180,3 +180,5 @@
 - 22:12:10 `60a10140` — chore(license): 许可证标题置顶，便于平台识别 — [提交](https://github.com/wangzhen110/omni-memory/commit/60a10140e0d0de5ba494f94c5d0a78d71b925769)
 - 22:11:37 `718eb3c1` — chore(license): 切换为 CC BY-NC 4.0 并明确署名要求 — [提交](https://github.com/wangzhen110/omni-memory/commit/718eb3c1adc6ca21eaa0158862d9d772cb1c6c1c)
 - 22:01:49 `878dfab4` — feat: 全息记忆 v2.3.0 — DSH 长期记忆插件（个人自用许可） — [提交](https://github.com/wangzhen110/omni-memory/commit/878dfab4c7cdf996d28e921a5d168fc0e28e3c22)
+
+

@@ -204,7 +204,9 @@ export function serveStdio({ host, toolContext = {}, serverInfo, instructions = 
     chain = chain.then(() => dispatch(message)).catch(err => {
       log(`dispatch failed: ${err?.message ?? err}`);
       if (message && Object.prototype.hasOwnProperty.call(message, 'id') && message.id !== undefined) {
-        write({ jsonrpc: '2.0', id: message.id, error: { code: RPC.internal, message: String(err?.message ?? err) } });
+        // Never echo the internal failure text to the client: the detail is in
+        // the local log above, and a protocol client only needs the code.
+        write({ jsonrpc: '2.0', id: message.id, error: { code: RPC.internal, message: 'internal error' } });
       }
     });
   });

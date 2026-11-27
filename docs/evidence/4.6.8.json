@@ -1,7 +1,7 @@
 {
   "version": "4.6.8",
   "tap": ".test-results.tap",
-  "capturedAt": "2026-11-27T00:43:05.869Z",
+  "capturedAt": "2026-11-27T01:09:21.327Z",
   "summary": {
     "tests": 540,
     "pass": 540,
@@ -11,10 +11,10 @@
     "todo": 0
   },
   "summaryLine": "540 tests / 540 pass / 0 fail / 0 cancelled / 0 skipped",
-  "durationLine": "# duration_ms 94636.2898",
+  "durationLine": "# duration_ms 93308.4259",
   "adrLines": [
-    "# 10k rows: seed=496ms p95=32.5ms max=32.7ms hitTotal=200 total=1217ms",
-    "# 100k rows: seed=5408ms p95=48.1ms max=50.7ms hitTotal=200 total=6550ms"
+    "# 10k rows: seed=489ms p95=31.5ms max=32.5ms hitTotal=200 total=1208ms",
+    "# 100k rows: seed=5289ms p95=39.9ms max=40.7ms hitTotal=200 total=6280ms"
   ],
-  "indexLine": "# 1000-file cold 174ms · warm 131ms · budget 2000ms"
+  "indexLine": "# 1000-file cold 177ms · warm 124ms · budget 2000ms"
 }

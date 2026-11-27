@@ -43,7 +43,7 @@ test('stdio: a dispatch failure on a frame WITH id answers -32603 and keeps the 
   assert.ok(failed, 'the failed request must still get a reply');
   assert.equal(failed.jsonrpc, '2.0');
   assert.equal(failed.error.code, -32603, 'dispatch failure maps to RPC.internal');
-  assert.match(failed.error.message, /tool registry exploded/);
+  assert.equal(failed.error.message, 'internal error', 'clients get a fixed message, not internal text');
   assert.equal('result' in failed, false, 'an error frame must not carry a result');
   assert.equal(frames.at(-1).id, 42, 'the chain continues after the error reply');
   assert.match(h.err(), /dispatch failed/);

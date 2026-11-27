@@ -217,3 +217,10 @@
 
 结论：报告两条“立刻”门槛均达成——`server.mjs` 180-226 47/47、`hosts/cli.mjs` 74.28% ≥ 70%。未达成项与理由如上，均带复查版本。
 
+
+### 4.6.8 复核结论（`docs/复核报告-4.6.8-2026-11-27.md`）
+
+- 三项 4.6.8 复查项（`store` force/restore、`read-routes` dream 路由、`doctor` 分支）**本轮未做**，复查版本顺延 `4.6.9`；理由不变：需要构造迁移态库或 bridge 注入口，收益低于本轮两条覆盖率门槛。
+- `routeState` 的 `failed` 分支：代码写 `failed` 并 rethrow，但 `registerWhenAvailable` 会按宿主隔离原则吞掉异常，测试只能用「快照状态」观测；本轮构造失败挂载未成功（`registerRoutes` 的抛点不在 `webServer.register` 首次调用），**断言留 4.6.9**。
+- `sign-release` 默认只写 v2，导致 v1 资产残留 4.6.7；已改为发版时显式跑 `--schema v1` 与 `--schema v2` 两次。此约定对本版本及以后生效。
+- TAP 证据必须晚于本版最后一次代码提交：docs-only 提交可以晚于 TAP，但任何改代码的提交之后必须重跑 `npm test` 并重生成 evidence。

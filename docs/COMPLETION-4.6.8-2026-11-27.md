@@ -26,18 +26,18 @@
 
 ```
 540 tests / 540 pass / 0 fail / 0 cancelled / 0 skipped
-# duration_ms 94636.2898
-# 10k rows: seed=496ms p95=32.5ms max=32.7ms hitTotal=200 total=1217ms
-# 100k rows: seed=5408ms p95=48.1ms max=50.7ms hitTotal=200 total=6550ms
-# 1000-file cold 174ms · warm 131ms · budget 2000ms
+# duration_ms 93308.4259
+# 10k rows: seed=489ms p95=31.5ms max=32.5ms hitTotal=200 total=1208ms
+# 100k rows: seed=5289ms p95=39.9ms max=40.7ms hitTotal=200 total=6280ms
+# 1000-file cold 177ms · warm 124ms · budget 2000ms
 ```
 
 覆盖率（本地 lcov，`--test-concurrency=1` 全量，并集口径）：
 
 - `index.js`：599/624 = **95.99%**（448 条记录并集）
 - `hosts/cli.mjs`：641/863 = **74.28%**（单记录），较 4.6.7 的 61.31% 提升 12.97pp
-- `hosts/mcp/server.mjs`：216/226 = 95.58%；`serveStdio` 段 180-226 **47/47**
-- 门槛判定：`cli.mjs` ≥70% **达成**；`server.mjs` 207-208 **达成**
+- `hosts/mcp/server.mjs`：205/228 = **89.91%**（并集）；`serveStdio` 段 180-228 **49/49**（含本轮把错误回显改为固定文案后新增的 2 行）
+- 门槛判定：`cli.mjs` ≥70% **达成**；`server.mjs` 的 `serveStdio` 段满行 **达成**（207-208 有测试断言，源码逻辑 4.6.7 已存在）
 
 ## 4. 设计约定（已写入 DESIGN §6.21）
 
@@ -61,6 +61,13 @@
 - 生产 7788 升级到 4.6.8；云主机 ff-only 到同一 tag 并跑 `npm run verify`。
 - 发布后核对：`/health` 版本与工具数、Release 资产大小、`verify-release --tag v4.6.8` 结果见合并汇总。
 
+## 6.5 复核整改（`docs/复核报告-4.6.8-2026-11-27.md`）
+
+- **TAP 与最终提交对齐**：本轮 TAP `capturedAt` 为 `2026-11-27T01:09:21.327Z`，晚于代码提交 `db7a491`（`00:54:36Z`）；TAP 里的跨平台用例已是新名「an unwritable target」，不再包含 `(drive root)` 的旧逻辑。
+- **两个 manifest 都按 `db7a491` 重签**：此前 `sign-release` 默认只写 v2，v1 资产是 4.6.7 残留；本次分别执行 `--schema v2` 与 `--schema v1`。
+- **MCP 错误回显改为固定文案**：dispatch 失败只回 `internal error`，内部错误文本仅写本地日志，避免把内部路径带回 stdio 客户端。
+- **server 覆盖率数字纠正**：并集 205/228 = 89.91%，`serveStdio` 段 180-228 49/49；旧稿的 216/226 是口径错误。
+
 ## 7. 复现
 
 ```bash
@@ -71,3 +78,5 @@ node --test --experimental-test-coverage --test-concurrency=1 \
 node scripts/tap-evidence.mjs
 node scripts/check-docs.mjs
 ```
+
+

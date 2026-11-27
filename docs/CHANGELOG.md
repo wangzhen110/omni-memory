@@ -7,6 +7,7 @@
 ### 修复
 - **`routeState` 诊断恒为 `pending`**：路由挂载状态从声明后从未被更新，prompt 诊断里的 `routes` 永远报 `pending`。现在挂载成功写 `mounted`（带 `count`、`at`），失败写 `failed` 后照旧抛错；新增导出 `routeStateSnapshot()` 供测试只读观测。
 - **CLI `project init` 在只读目标上抛栈**：目标不可写（如盘根）时 `mkdirSync` 抛 `EPERM` 直接崩溃、退出 1；现在输出 `无法写入 <file>：<msg>` 并退出 2。
+- **MCP dispatch 错误回显**：失败帧只回固定 internal error，内部文本仅写本地日志，不再把内部路径带回客户端。
 - **`omni context --json` 被忽略**：空库时 `--json` 仍打印散文，脚本无法解析；现在返回工具原值 JSON。
 
 ### 新增
@@ -1488,5 +1489,6 @@ OMNI_EMBED_TIMEOUT_MS=10000
 - SQLite schema（chunks/notes/facts/entities/edges/meta）+ FTS5 trigram。
 - 5 个模型工具：write / search / profile / timeline / forget。
 - 中文二元切分与分层打分。
+
 
 
