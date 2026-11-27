@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 159 次提交；更新记录自身的提交不计入列表。
+> 共 160 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 14:19:23 `a0f249e3` — fix(4.6.13): count budget separators, report trimmed rows, harden smoke assertions — [提交](https://github.com/wangzhen110/omni-memory/commit/a0f249e3f0424990e358219811e70528af01dda1)
 - 13:29:36 `9d85b6d1` — docs: remove stray paren from 4.6.9 vm evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/9d85b6d1036498e3d887a43783a752f139790004)
 - 13:16:50 `029fb3af` — docs: drop self-reported timestamps from 4.6.9 vm evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/029fb3afa8b1494fc228e026b4bca6b8b9bbc43d)
 - 12:20:02 `0c0c1bc6` — docs: mark 4.6.9 summary as historical snapshot and fix its residual misstatements — [提交](https://github.com/wangzhen110/omni-memory/commit/0c0c1bc69e8da9a43b5af8edd3acb4fe9ed5613a)
