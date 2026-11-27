@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 148 次提交；更新记录自身的提交不计入列表。
+> 共 150 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,8 @@
 
 ## 2026-11-27
 
+- 11:31:53 `5c8a229f` — test: expect launcher warning on POSIX in doctor branches; refresh 4.6.11 evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/5c8a229f7e32c75a36b6defa7148a60e4b98edea)
+- 11:27:10 `212a3e69` — docs: archive 4.6.11 release install output — [提交](https://github.com/wangzhen110/omni-memory/commit/212a3e697d016b4d49b3a6e6fbc5dc86888479ee)
 - 11:24:47 `0e871d07` — test: close coverage blind spots for dream routes, doctor and the dream timer (4.6.11) — [提交](https://github.com/wangzhen110/omni-memory/commit/0e871d073fb11243254604bd6f77a8aff4764f24)
 - 11:05:50 `826714e6` — docs: 存档 4.6.10 云主机实测 — [提交](https://github.com/wangzhen110/omni-memory/commit/826714e6e6e222e49c6dbe16d4abb7adf5bdb9c7)
 - 11:02:31 `8c013ca8` — docs: 存档 4.6.10 在 docs-only HEAD 上的安装输出 — [提交](https://github.com/wangzhen110/omni-memory/commit/8c013ca8cbb4b2a8f0f316e17f64ba7db8159eea)
