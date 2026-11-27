@@ -62,6 +62,25 @@
 `openStore` 返回 1；单独重跑该文件 1/1 通过（6.2s）。属机器负载下的时序抖动，不归因产品逻辑，登记观察，
 未纳入本轮修复。
 
+### 3.1 云主机复跑与安装实录
+
+`docs/evidence/4.6.16-vm.txt`（reset 到 `6ebc83e`，Linux）：
+
+```
+# tests 565 / pass 562 / fail 0 / cancelled 0 / skipped 3
+# duration_ms 100157.607347
+ok 105 - daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher # SKIP launcher installation is Windows-only
+ok 244 - install-launcher stages a content-addressed binary and a sidecar config # SKIP launcher installation is Windows-only
+ok 342 - attachSession follows an existing alias instead of returning the legacy key # SKIP case-insensitive path keys only split on Windows/macOS
+```
+
+`docs/evidence/4.6.16-install-release.txt`（本机 `npm run setup` 全量输出）：发布验签 `v4.6.16 · commit 6ebc83e9 · key omni-ed25519-2026-01`，
+提交谱系一致，doctor 8 项通过（schema 20 · 2138 notes / 35 facts · 30 tools），随后现场调用：
+
+```
+{"ok":true,"version":"4.6.16","picked":6,"budget":1200,"budgetUsed":1044,"textLen":1044,"included":4,"omitted":[]}
+```
+
 ## 4. 判定标准
 
 - L=1146..1159 窗口内：短行必须渲染，超长行 `pointer:false` 且进 `omitted`。
@@ -87,4 +106,4 @@
 
 ## 7. 包内容
 
-`npm pack --dry-run` 干净 HEAD **218 files**：4.6.14 为 210、4.6.15 发布提交 214、4.6.15 最终 HEAD（含两份证据）216，本轮新增完成报告与 `4.6.16.json` 后为 218。
+`npm pack --dry-run` 最终 HEAD **220 files**：4.6.14 为 210、4.6.15 发布提交 214、4.6.15 最终 HEAD 216、4.6.16 发布提交 218，补入 `4.6.16-vm.txt` 与 `4.6.16-install-release.txt` 后为 220。
