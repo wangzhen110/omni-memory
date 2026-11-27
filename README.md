@@ -2,7 +2,7 @@
 
 > **让 AI 不再失忆的本地长期记忆底稿。** 换模型、换宿主、重启之后，记忆还在：转录留底，笔记可校验，事实会失效，星图把关系连起来。
 
-[![tests](https://img.shields.io/badge/tests-558%2F558-brightgreen)](#测试与指标)
+[![tests](https://img.shields.io/badge/tests-559%2F559-brightgreen)](#测试与指标)
 [![node](https://img.shields.io/badge/node-%3E%3D22.13-8de1ff)](#本地安装开发者)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
@@ -32,7 +32,7 @@ npm run serve                  # 打开 http://127.0.0.1:7788/hub
 Windows 官方安装（发布验签，安装计划任务并启动 7788，静默无黑框）：
 
 ```powershell
-git checkout v4.6.11
+git checkout v4.6.13
 npm ci
 npm run setup:dry:release      # 先看计划，并验证官方 Release 签名
 npm run setup                  # 验签通过才落盘；不通过不碰正在运行的服务
@@ -114,7 +114,7 @@ node hosts/cli.mjs project impact lib/project-index.mjs --dir D:\xiangmu\全息�
 
 ```bash
 cd /path/to/omni-memory
-npm test          # 558 个用例，TAP 真值汇总
+npm test          # 559 个用例，TAP 真值汇总
 npm run check     # 语法、文档计数与模型资产完整性校验
 npm run verify    # npm test + npm run check，发布前真值门
 ```
@@ -140,8 +140,8 @@ node scripts/daily-sync.mjs --apply
 ### 验证发布物
 
 ```bash
-npm run verify:release -- --tag v4.6.11
-npm run verify:release -- --tag v4.6.11 --launcher ./omni-serve-7788.exe
+npm run verify:release -- --tag v4.6.13
+npm run verify:release -- --tag v4.6.13 --launcher ./omni-serve-7788.exe
 ```
 
 第一条会下载官方 Release 的签名清单，用内置 Ed25519 公钥验签，再比对签名 commit 上的 `package.json` 与启动器 SHA-256。第二条额外验证你从镜像或第三方渠道拿到的启动器字节。它只读，不安装、不重启、不移动 HEAD；`npm run setup` 已默认走这条发布验签路径，不再使用“同提交哈希自洽”的旧边界。完整说明见 [`docs/VERIFY-RELEASE.md`](docs/VERIFY-RELEASE.md)。
@@ -265,7 +265,7 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 
 ## 测试与指标
 
-- 自动化用例：**558 / 558 通过**（TAP 真值汇总，`npm run verify` 拒绝失败/取消的测试）
+- 自动化用例：**559 / 559 通过**（TAP 真值汇总，`npm run verify` 拒绝失败/取消的测试）
 - 检索延迟（本机复核，**3.12.1/3.12.2 数据**；Node 22.23.2；标准 bench 已改为 global scope 并断言真实命中）：10,000 行 p95 ≈ **2.4ms**；100,000 行 ≈ 2.4ms；1,000,000 行 ≈ 6.0ms；1M + 5 万向量 + 100 万 bigram ≈ **129.8ms**（固定旧边界 226.9ms；3.12.1 自适应收紧窗口/采样，3.12.2 修正为按可召回行数判定，见 ADR-020）
 - 3.11.x 发布基准（`bench/release.mjs`，隔离临时库，无向量压力，5 次中位数，DSH 后台运行）：100k 写入 **4.4–4.6ms** / `/list` 96.4–99.1ms / `/overview` 187.2–193.0ms / 检索 2.8–3.2ms / 稳态打开 10.6ms；1M 写入 **4.6ms** / `/list` 966.4–976.2ms / `/overview` 2026–2136ms / 检索 2.8–2.9ms / 稳态打开 46.5ms。高负载复跑会慢 1.1–2.3 倍，文档给区间；1M 面板全库统计超出 300ms 交互预算，检索与写入不受影响。原始值、迁移与机器信息见 [发布基准](docs/BENCH-3.11.0-2026-11-22.md)
 - 3.12.0 新增：100k 短笔记 10M 字符检索 p95 **6.9ms**；10k 长笔记 10M 字符 p95 **27.4ms**；120 条确定性质量用例 **120/120**；LoCoMo session 粒度 evidence recall@10 **0.7134**（检索层，不是官方 QA）。完整方法与边界见 [基准与质量实测](docs/BENCHMARKS.md)。
@@ -280,7 +280,8 @@ node hosts/cli.mjs context --query "当前任务"   # 给 hooks 拼上下文用
 - 4.3.0：CLI `context`/`search` 默认改为词法 + hashed 向量，不再每次冷加载 37.5 MiB 本地语义模型；`--semantic` 或 `OMNI_CLI_SEMANTIC=1` 显式开启。实测同一查询：默认 **139ms**、语义 **478ms**；`context` 默认 **144ms**、语义 **467ms**。搜索返回结构收敛到单一构造点，CLI 参数错误改为一行提示并退出 2。
 - 4.3.1：`memory_context` 读路径只读版本缓存，不再等待 GitHub 探针（TTL 强制过期时仍 **142ms**，旧路径 0.5–2.5s）；`memory_write` 校验 `kind` 白名单，非法值返回错误而不是静默落成 note；CLI 布尔 flag 可放在关键词前；HTTP 空查询回填 `scope`；`npm test` 加 `--test-timeout=60000`，避免并行挂起。
 - 4.6.0：新增项目代码索引（schema 20 五张派生表、JS/TS/OpenAPI/GraphQL/generic 适配器、增量/sha 漂移/删除清理、CLI/5 个 MCP 工具/5 条 HTTP 路由/`/project` 页面）；`memory_context` 命中项目引用时追加带 `sourceRef`、行号、`sha`、`stale` 的有预算项目包。1,001 文件冷索引 <1s、热增量 `parsed=0`、精确查询 p95 <50ms；测试 **476/476**。
-- 4.6.12：修复全局段预算饿死，不改 schema（仍为 20）。`buildProfileText` 放不下时继续扫描，单条超长 note 不再连带丢弃其后的短规则，并留 `note#id 超长已省略` 指针；`memory_profile` 新增 `budgetUsed`/`omitted`，`memory_write` 对 400 字以上全局 note 返回非阻断提示。生产库实测全局段 1 条/292 字符 → 6 条/1150 字符。测试 **558/558**。
+- 4.6.13：结构评审收口三项——`capProfileLines` 预算改为按含换行分隔符的总长计（`budgetUsed === text.length`），被裁条目必进 `omitted` 并留指针；`picked` 测试改为定值断言（口径＝`- ` 行数，含指针）；安装烟测把断言移出 `try`、改用 `Number.isFinite`，只有动态导入失败才降级到 MCP 路径。不改 schema（仍为 20），预算仍 1200。测试 **559/559**。
+- 4.6.12：修复全局段预算饿死，不改 schema（仍为 20）。`buildProfileText` 放不下时继续扫描，单条超长 note 不再连带丢弃其后的短规则，并留 `note#id 超长已省略` 指针；`memory_profile` 新增 `budgetUsed`/`omitted`，`memory_write` 对 400 字以上全局 note 返回非阻断提示。同库同排序模拟对照：旧行为 1 条/292 字符 → 新逻辑 6 条/1150 字符（安装后生产实测 picked=3 / budgetUsed=598，库已新增规则）。测试 **558/558**。
 - 4.6.11：覆盖率盲区补测，不改 schema（仍为 20）。新增 dream 路由（replace/rollback/二次回滚/proposals/405/400/scope=all）、doctor 七类分支、dream 定时器 dispose 三组用例；同树双跑 lcov 证明 `server.mjs` 两次均 320/345 且命中行一致（4.6.8 的 205→217 属提交间差异），`cli.mjs` 637/641 抖动如实入证。`read-routes.mjs` 1118→1150/1296、`doctor.mjs` 258→302/348。测试 **556/556**。
 - 4.6.10：安装字节绑定发布提交，不回退 schema（仍为 20）。`install.mjs` 现在从签名 manifest 的 `commit` 读 `package.json` 与启动器（`git show <release>:<path>`），并与 manifest 的 `packageJsonSha256`/`launcherSha256` 直比——`HEAD` 只决定“放不放行”，不再决定“装哪个字节”；`describeHeadDelta()` 的 `merge-base` 失败改记 `git-failed`（仅退出码 1 算非祖先）；输出文案改为“安装对象仍取发布提交”。新增 4 条测试（安装字节来源、manifest 哈希不符拒绝、git 故障原因码×2），第 5 条测试补 `allowed === false`。测试 **550/550**。
 - 4.6.9：安装校验放行 docs-only 后代，不改 schema（仍为 20）。`install.mjs` 不再要求 HEAD 恰等于发布提交：发布提交是 HEAD 祖先、且 `git diff --name-only` 的变更全在 `docs/` 下时放行，并在输出里标出领先的文档提交数；任一非 `docs/` 路径（含把文档移出 `docs/` 的改名）仍要求 `git checkout <tag>`。新增 `scripts/release-delta.mjs` 与 5 条测试；`entry-diagnostics` 里那条恒真断言改为“prompt 必须渲染内容”。测试 **545/545**。

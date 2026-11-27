@@ -250,19 +250,10 @@ test('installed package works outside the repository layout', { timeout: 300_000
 
     // 4. Write + recall through the installed package.
     let result;
+    let mod;
     try {
       const entry = `${pathToFileURL(path.join(pkgRoot, 'index.js')).href}?install-smoke=${Date.now()}`;
-      const mod = await import(entry);
-      const { ctx, call, dispose } = makeCtx();
-      disposeInstalled = dispose;
-      mod.apply(ctx);
-      const written = await call('memory_write', { kind: 'note', text: marker });
-      assert.equal(typeof written.id, 'number', 'memory_write must return a numeric id');
-      const found = await call('memory_search', { query: marker });
-      const hit = (found.hits ?? []).find(item => item.kind === 'note' && item.id === written.id);
-      assert.ok(hit, `recall missed written note id=${written.id}: ${JSON.stringify(found.hits)}`);
-      assert.match(hit.text, new RegExp(marker), 'recalled note must contain the unique marker');
-      result = { id: written.id, matchedText: hit.text, path: 'dynamic-import' };
+      mod = await import(entry);
     } catch (importErr) {
       // 5. Fallback: path/dependency problems importing the module — use the real MCP transport.
       t.diagnostic(`dynamic import failed (${importErr.message}); falling back to MCP handshake`);
@@ -273,7 +264,23 @@ test('installed package works outside the repository layout', { timeout: 300_000
         marker,
       });
     }
+    if (mod) {
+      // Assertions stay outside the try: a broken install must fail the test
+      // instead of being swallowed as an "import failed" fallback.
+      const { ctx, call, dispose } = makeCtx();
+      disposeInstalled = dispose;
+      mod.apply(ctx);
+      const written = await call('memory_write', { kind: 'note', text: marker });
+      assert.equal(typeof written.id, 'number', 'memory_write must return a numeric id');
+      assert.ok(Number.isFinite(written.id), `memory_write id must be finite, got ${written.id}`);
+      const found = await call('memory_search', { query: marker });
+      const hit = (found.hits ?? []).find(item => item.kind === 'note' && item.id === written.id);
+      assert.ok(hit, `recall missed written note id=${written.id}: ${JSON.stringify(found.hits)}`);
+      assert.match(hit.text, new RegExp(marker), 'recalled note must contain the unique marker');
+      result = { id: written.id, matchedText: hit.text, path: 'dynamic-import' };
+    }
     assert.equal(typeof result.id, 'number', `write id must be numeric (path=${result.path})`);
+    assert.ok(Number.isFinite(result.id), `write id must be finite (path=${result.path}, id=${result.id})`);
     assert.ok(result.matchedText.includes(marker), 'recall must return the written marker');
     t.diagnostic(`write+search OK via ${result.path} (id=${result.id})`);
 

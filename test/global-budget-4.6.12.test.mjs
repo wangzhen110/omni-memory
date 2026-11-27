@@ -42,12 +42,45 @@ test('global budget: an oversized note cannot starve shorter rules', async () =>
   assert.ok(text.includes('短规则乙'), 'short rule B must survive');
   assert.ok(text.includes('短规则丙'), 'the oldest short rule must not be blocked by the long one');
   assert.ok(text.includes(`note#${ids.long}`), 'the oversized rule leaves a pointer');
-  assert.equal(profile.value.picked, text.split('\n').filter(line => line.startsWith('- ')).length);
+  // 3 short rules stay, plus one pointer line. Pin the number instead of
+  // re-deriving it from the rendered text (that made the assertion a copy of
+  // the implementation).
+  assert.equal(profile.value.picked, 4, 'picked must count 3 rules + 1 pointer line');
   assert.ok(profile.value.budgetUsed <= 1200, `budgetUsed ${profile.value.budgetUsed} must stay within 1200`);
   assert.ok(profile.value.budgetUsed >= 450, `budgetUsed ${profile.value.budgetUsed} should keep all short rules and the pointer`);
   assert.deepEqual(profile.value.omitted.map(item => item.id), [ids.long]);
   assert.equal(profile.value.omitted[0].pointer, true);
   assert.ok(profile.value.omitted[0].chars > 1000);
+});
+
+test('global budget: separators count, and trimmed rows are reported as omitted', async () => {
+  const app = await boot();
+  // Line sums: heading 5 + three rules of 396 chars (398 with "- ") = 1199,
+  // which passes an accounting that ignores newlines; the joined text is 1202,
+  // so the last rule used to be popped silently by capProfileLines.
+  const prefix = ['长假安排：', '报销流程：', '值班要求：'];
+  const filler = ['甲', '乙', '丙'];
+  const ids = [];
+  for (let i = 0; i < 3; i += 1) {
+    const text = prefix[i] + filler[i].repeat(396 - prefix[i].length);
+    const value = await app.call('memory_write', { kind: 'note', text, scope: 'global', importance: 1 });
+    assert.equal(value.value.contested, false, 'distinct rules must not be flagged as contradictions');
+    ids.push(value.value.id);
+    await sleep(5);
+  }
+
+  const profile = await app.call('memory_profile', { scope: 'global' });
+  const text = profile.value.text;
+  const rulesInText = (text.match(/^- /gm) ?? []).length;
+  assert.equal(profile.value.budgetUsed, text.length, 'budgetUsed must be the rendered length, separators included');
+  assert.ok(profile.value.budgetUsed <= 1200, `budgetUsed ${profile.value.budgetUsed} must stay within 1200`);
+  assert.equal(rulesInText + profile.value.omitted.length - (profile.value.omitted[0]?.pointer ? 1 : 0), 3, 'every rule is either rendered or reported, never silently dropped');
+  assert.equal(profile.value.omitted.length, 1, 'the rule that no longer fits must be reported');
+  assert.equal(profile.value.omitted[0].id, ids[0], 'the oldest rule is the one that no longer fits');
+  assert.equal(profile.value.omitted[0].pointer, true, 'there was still room for a compact pointer');
+  assert.ok(text.includes(`note#${ids[0]}`), 'the trimmed rule leaves a pointer');
+  // Two rules + one pointer line.
+  assert.equal(profile.value.picked, 3, 'picked must count the two rules and the pointer line');
 });
 
 test('memory_write hints when a global note is long enough to crowd others out', async () => {

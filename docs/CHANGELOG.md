@@ -2,6 +2,22 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.13] — 2026-11-27
+
+### 修复
+- **预算按含换行算**：`capProfileLines`/`addLine` 成本改为 `line.length` 加前置换行，预检与最终 `join('\n')` 的结果一致，`budgetUsed === text.length`；条文合计 1199、拼接后 1202 的情况不再绕过预检。
+- **被裁条目必上报**：`onTrim` 把每条被裁行写入 `omitted`（id/chars/pointer），`included` 按实际保留集过滤；指针放得下仍留 `note#id`，放不下则 `pointer:false`。
+- **安装烟测不再吞断言**：`try` 只包动态导入，`mod` 断言在 `try` 外执行，数值检查改用 `Number.isFinite`，避免 `typeof NaN === 'number'` 放行。
+
+### 证据
+- `docs/evidence/4.6.13.json`；4.6.13 边界用例：3 条各 396 字的不同规则 → 渲染 2 条 + 1 指针，`budgetUsed=838`，`omitted` 恰含最老一条且 `pointer:true`。
+
+### 测试
+- `test/global-budget-4.6.12.test.mjs` 增 1 条边界用例（换行计费 + `omitted` 上报），并把 `picked` 断言改为定值（包含指针行）；`test/install-smoke.test.mjs` 断言结构收紧。测试 **559/559**。
+
+### 说明
+- 不改 schema（仍为 20）、不调大 1200、不动公开工具签名；`picked` 语义仍为“`- ` 开头行数”，文档同步写明。
+
 ## [4.6.12] — 2026-11-27
 
 ### 修复
@@ -10,7 +26,7 @@
 - **写入提示**：`memory_write` 在 `scope=global` 且文本 > 400 字时返回非阻断 `promptBudgetHint`，提示把细则放到 docs 或可检索 note。
 
 ### 证据
-- `docs/evidence/4.6.12.json`；生产库实测旧行为全局段 1 条/292 字符，新逻辑 6 条/1150 字符（同库同排序）。
+- `docs/evidence/4.6.12.json`；同库同排序模拟对照：旧行为 1 条/292 字符，新逻辑 6 条/1150 字符（4.6.12 安装后生产实测 `picked=3 / budgetUsed=598`，库已新增规则）。
 
 ### 测试
 - 新增 `test/global-budget-4.6.12.test.mjs` 2 条：超长 note 之后的最老短规则仍保留且指针存在、`budgetUsed` 不越界、`omitted` 只含该长 note；长全局 note 带提示、短 note 不带。测试 **558/558**。
