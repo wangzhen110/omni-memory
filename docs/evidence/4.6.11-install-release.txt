@@ -6,11 +6,11 @@
 仓库: D:\xiangmu\全息记忆
 数据根目录: undefined
 启动器: C:\Users\Administrator\.dsh\omni-serve-7788-d7ba3e76.exe
-发布验签: v4.6.11 · commit 1158e7b76b9a9ffe44688d300320972f2b57fdd8 · key omni-ed25519-2026-01
+发布验签: v4.6.11 · commit bcdad29c9e7cbbda69a65dbd10c639cef62c5ebf · key omni-ed25519-2026-01
 提交谱系: HEAD 与发布提交一致
 启动器校验: Release manifest v2 Ed25519 + 发布提交对象 SHA-256（package.json 与启动器直比 manifest）
 计划任务: OmniMemory7788
-提交: 1158e7b76b9a9ffe44688d300320972f2b57fdd8 · sha256 d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4
+提交: bcdad29c9e7cbbda69a65dbd10c639cef62c5ebf · sha256 d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4
 
 全息记忆 doctor · D:\xiangmu\全息记忆
 数据根目录: C:\Users\Administrator\.dsh
