@@ -2,9 +2,9 @@
 =================================================
 环境: 云主机 Linux (/home/user/omni-memory-vm)
 HEAD: 1557c18adea480eb8d783dcc43dbcb7b343626b2（= 发布提交，实测于该提交上跑）
-采集时间: 2026-11-27 10:34 +0800（本地）
+采集时间: 2026-11-27 10:18:57 +0800（测试结束时刻，取自 /tmp/vm469.log 的 mtime）
 命令: git fetch origin main && git reset --hard 1557c18 && npm test
-完整输出: 该机 /tmp/vm469.log
+完整输出: 该机 /tmp/vm469.log（mtime 10:18:57 +0800；本文件 10:19:05 落盘）
 
 # tests 545
 # pass 542

@@ -568,9 +568,11 @@ score = 0.6 × 文本分 + 0.2 × 权重分 + 0.2 × 时效分 + 经验状态分
 
 发布安装仍以签名 manifest 的 `commit` 为准；`HEAD` 与它不一致时，只有一种情况放行：
 
-- **放行条件**：发布提交是 `HEAD` 的祖先，且 `git diff --name-only --no-renames <release>..HEAD` 的每一条路径都以 `docs/` 开头。安装产物、版本号、`package.json` 哈希、启动器哈希都来自发布提交，文档提交不改变这些字节；输出里会标“领先 N 个 docs-only 提交”。
-- **拒绝条件**：任何非 `docs/` 路径（源码、测试、脚本、配置、workflow），以及把文档改名到 `docs/` 之外、或 `HEAD` 与发布提交没有祖先关系。报错带首个越界路径与原因码（`non-doc-change` / `not-a-descendant` / `empty-diff` / `git-failed`）。
+- **放行条件**：发布提交是 `HEAD` 的祖先，且 `git diff --name-only --no-renames <release>..HEAD` 的每一条路径都以 `docs/` 开头。
+- **字节怎么算等价**：安装器实际从 `HEAD` 读 `package.json` 与启动器字节，并在同一次 `HEAD` 内做 SHA-256 自洽校验；它与发布提交等价，靠的是“差异只含 `docs/`”这一判定。签名 manifest 里的 `packageJsonSha256`/`launcherSha256` 校验的是发布提交对象，**不直接参与本地落盘字节比对**——等价性由 `describeHeadDelta()` 单点保证，见下条。
+- **拒绝条件**：任何非 `docs/` 路径（源码、测试、脚本、配置、workflow），以及把文档改名到 `docs/` 之外、或 `HEAD` 与发布提交没有祖先关系。报错带首个越界路径与原因码（`non-doc-change` / `not-a-descendant` / `empty-diff` / `missing-commit` / `git-failed`）。
 - **判定位置**：`scripts/release-delta.mjs` 的 `describeHeadDelta()`，安装脚本只调用，不做第二套规则；`--commit` 显式指定时仍须等于发布提交。
+- **加固方向（4.6.10）**：把安装读取改成从 `release.commit` 取对象，或把 manifest 的 `launcherSha256` 传入与落盘字节直比，让字节绑定不再依赖 diff 判定。
 
 ---
 

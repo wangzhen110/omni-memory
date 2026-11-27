@@ -4,7 +4,7 @@
 
 ## 1. 做了什么
 
-- **安装校验放行 docs-only 后代**：`scripts/install.mjs` 原来硬要求 `HEAD == 发布提交`，文档提交一多就必须先 `git checkout <tag>`。现在发布提交是 `HEAD` 的祖先、且 `git diff --name-only --no-renames <release>..HEAD` 的每条路径都以 `docs/` 开头时，按发布提交安装，输出里标“领先 N 个 docs-only 提交”。任何非 `docs/` 路径（含把文档改名移出 `docs/`）、非祖先关系、空 diff、git 失败，全部拒绝，报错带原因码与首个越界路径。
+- **安装校验放行 docs-only 后代**：`scripts/install.mjs` 原来硬要求 `HEAD == 发布提交`，文档提交一多就必须先 `git checkout <tag>`。现在发布提交是 `HEAD` 的祖先、且 `git diff --name-only --no-renames <release>..HEAD` 的每条路径都以 `docs/` 开头时放行：安装器从 `HEAD` 读字节（差异只含 `docs/`，与发布提交字节等价）并在同一提交内做 SHA-256 自洽校验，输出里标“领先 N 个 docs-only 提交”；签名 manifest 的 `packageJsonSha256`/`launcherSha256` 只校验发布提交对象，不直接与落盘字节比对。任何非 `docs/` 路径（含把文档改名移出 `docs/`）、非祖先关系、空 diff、缺提交参数、git 失败，全部拒绝，报错带原因码与首个越界路径。
 - **判定逻辑独立成模块**：`scripts/release-delta.mjs` 的 `describeHeadDelta()`，安装脚本只调用；`--commit` 显式指定时仍须等于发布提交。
 - **恒真断言真实化**：`test/entry-diagnostics-4.6.8.test.mjs` 的 `section.text({}).length >= 0` 改为校验“prompt 返回字符串，且 `lastInjection.chars` 等于渲染长度”。
 - **文档**：`DESIGN` 新增 §6.22 安装校验的文档例外；`CHANGELOG` 加 `[4.6.9]`；`README` 徽章与用例数更新为 545。
