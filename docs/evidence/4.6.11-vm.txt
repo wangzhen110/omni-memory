@@ -1,0 +1,15 @@
+云主机复跑（4.6.11）
+主机：云主机 · /home/user/omni-memory-vm
+提交：0fa75b90cb1e99768acc7a537b6785d3089f1a04（4.6.11 发布提交 bcdad29c 之 docs-only 后代）
+时间：2026-11-27 11:35:53 +0800
+命令：npm test > /tmp/vm4611.log 2>&1
+结果：tests 556 / pass 553 / fail 0 / cancelled 0 / skipped 3 / duration_ms 98923.092279
+
+跳过项（均为平台条件，与 4.6.10 相同）：
+- ok 105 - daily-sync apply ... # SKIP launcher installation is Windows-only
+- ok 236 - install-launcher stages ... # SKIP launcher installation is Windows-only
+- ok 333 - attachSession ... # SKIP case-insensitive path keys only split on Windows/macOS
+
+说明：本轮新加的 doctor 分支用例在 POSIX 上期望 launcher 为平台警告（win32 才是 ok），
+首次云主机复跑正因这条断言未区分平台而失败；修正后 Windows 556/556、云主机 553/553/3 skip，
+控制台首屏与本地一致。
