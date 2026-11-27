@@ -208,6 +208,11 @@ export const inject = ['tools'];
 /** Whether the optional HTTP route surface has been attached yet. */
 let routeState = { status: 'pending', count: 0, at: 0, error: null };
 
+/** Read-only view of the optional route surface diagnostics (used by tests). */
+export function routeStateSnapshot() {
+  return { ...routeState };
+}
+
 function serviceFrom(ctx, name) {
   if (!ctx) return undefined;
   if (typeof ctx.get === 'function') {
@@ -496,7 +501,23 @@ export function apply(ctx) {
   }, 'omni-memory: tools');
 
   ctx.effect(() => {
-    return registerWhenAvailable(ctx, 'webServer', inner => registerRoutes(inner));
+    return registerWhenAvailable(ctx, 'webServer', inner => {
+      try {
+        const dispose = registerRoutes(inner);
+        // The prompt section reports `routes` as a diagnostic; it used to stay
+        // 'pending' forever because nothing ever updated this record.
+        routeState = { status: 'mounted', count: routeState.count + 1, at: Date.now(), error: null };
+        return dispose;
+      } catch (error) {
+        routeState = {
+          status: 'failed',
+          count: routeState.count,
+          at: Date.now(),
+          error: String(error?.message ?? error),
+        };
+        throw error;
+      }
+    });
   }, 'omni-memory: routes');
 
   // Transcript capture: post-commit feed only. Reading a Session projection or

@@ -2,6 +2,25 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.8] — 2026-11-27
+
+### 修复
+- **`routeState` 诊断恒为 `pending`**：路由挂载状态从声明后从未被更新，prompt 诊断里的 `routes` 永远报 `pending`。现在挂载成功写 `mounted`（带 `count`、`at`），失败写 `failed` 后照旧抛错；新增导出 `routeStateSnapshot()` 供测试只读观测。
+- **CLI `project init` 在只读目标上抛栈**：目标不可写（如盘根）时 `mkdirSync` 抛 `EPERM` 直接崩溃、退出 1；现在输出 `无法写入 <file>：<msg>` 并退出 2。
+- **`omni context --json` 被忽略**：空库时 `--json` 仍打印散文，脚本无法解析；现在返回工具原值 JSON。
+
+### 新增
+- **测试文件**：`test/mcp-dispatch-error-4.6.8.test.mjs`（dispatch 失败帧带 id 回 `-32603`、不带 id 只记日志）、`test/entry-diagnostics-4.6.8.test.mjs`（`routes`/`at`/`chars`/`auto` 诊断与 dream 租约门）、`test/cli-project-search-4.6.8.test.mjs`（`index`/`project search`/`context`/`impact`/`sync`/`status`/`init` 与 `write`/`search`/`ingest`/`candidates` 主链路），共 13 条。
+- `test/fixtures/mcp-stdio-harness.mjs` 增加 `explode` 工具，作为唯一能到达 dispatch 失败分支的路径。
+- `test/prompt-and-dream-4.6.7.test.mjs` 的 `routes` 断言由近似恒真改为三态枚举，并补 `at`/`auto` 断言。
+
+### 变更
+- 不改 schema（仍为 20），不改检索权重，不调整 ADR-020 的 300ms 预算。
+
+### 测试
+- **540/540**，0 fail、0 skip；全量串行约 95s。
+- 覆盖率（本地 lcov）：`hosts/cli.mjs` 行 61.31% → **74.28%**（641/863）；`index.js` 并集 **95.99%**（599/624）；`hosts/mcp/server.mjs` 180-226 段 **47/47**。
+
 ## [4.6.7] — 2026-11-26
 
 ### 新增
@@ -1469,3 +1488,5 @@ OMNI_EMBED_TIMEOUT_MS=10000
 - SQLite schema（chunks/notes/facts/entities/edges/meta）+ FTS5 trigram。
 - 5 个模型工具：write / search / profile / timeline / forget。
 - 中文二元切分与分层打分。
+
+

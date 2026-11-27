@@ -23,7 +23,12 @@ const tools = new Map([
 
 const host = {
   tools: {
-    get: name => tools.get(name),
+    get: name => {
+      // A host whose tool registry throws is the only way to reach the
+      // dispatch-failure branch in serveStdio without a broken protocol handler.
+      if (name === 'explode') throw new Error('tool registry exploded');
+      return tools.get(name);
+    },
     list: () => [...tools.values()],
     size: () => tools.size,
   },

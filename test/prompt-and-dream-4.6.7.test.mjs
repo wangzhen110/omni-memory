@@ -70,7 +70,11 @@ test('prompt section: persona-only context injects and records diagnostics', () 
   assert.ok(last.chars > 0, 'setLastInjection must record the emitted size');
   assert.equal(last.project, mod.SCOPE_GLOBAL, 'no scope means the global layer');
   assert.equal(last.scopeId, null, 'a context without scope.id must be recorded as null');
-  assert.ok(typeof last.routes === 'string' || last.routes === undefined || last.routes !== null);
+  // The old assertion here was near-tautological (`!== null` covers almost every
+  // value). `routes` is a real diagnostic now, so pin the possible states.
+  assert.ok(['pending', 'mounted', 'failed'].includes(last.routes), `unexpected routes diagnostic: ${last.routes}`);
+  assert.ok(last.at > 0, 'diagnostics must carry the emit timestamp');
+  assert.equal(typeof last.auto, 'boolean', 'auto recall flag must be a boolean');
   host.disposeAll();
 });
 

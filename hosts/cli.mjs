@@ -290,7 +290,9 @@ async function commandContext() {
     if (flags.scope) args.scope = String(flags.scope);
     args.semantic = semanticRequested();
     const value = await callToolSafe(booted, 'memory_context', args);
-    process.stdout.write(value.text + '\n');
+    // `--json` used to be ignored here, so scripts got prose on the empty-store
+    // path and could never parse the same command twice.
+    process.stdout.write((flags.json === true ? JSON.stringify(value, null, 2) : value.text) + '\n');
   } finally {
     booted.host.dispose();
   }
@@ -686,8 +688,16 @@ async function commandProject() {
       return;
     }
     const name = path.basename(workdir) || 'project';
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify({ key, name }, null, 2) + '\n', 'utf8');
+    try {
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, JSON.stringify({ key, name }, null, 2) + '\n', 'utf8');
+    } catch (error) {
+      // A read-only target (for example the drive root) used to crash with a raw
+      // stack trace; report it as a usage error instead.
+      log(`无法写入 ${file}：${error?.message ?? error}`);
+      process.exitCode = 2;
+      return;
+    }
     process.stdout.write(JSON.stringify({ dir: workdir, file, key, name, created: true }) + '\n');
     return;
   }

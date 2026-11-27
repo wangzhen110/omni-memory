@@ -13,3 +13,4 @@ Thumbs.db
 .idea/
 omni-update-manifest.json
 omni-update-signing-key.pem
+.coverage-*.lcov
