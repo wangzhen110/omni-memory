@@ -1,14 +1,20 @@
-全息记忆 4.6.8 · 云主机 TAP 摘要（原始摘录）
+全息记忆 4.6.8 · 云主机 TAP 实测（最终发布提交）
 =================================================
 环境: 云主机 Linux (/home/user/omni-memory-vm)
-HEAD: 7de35397cda342744a3d11e7e7d529776da9ea95
-采集时间: 2026-11-27（本地 +0800）
-来源: 该机 `npm test` 生成的 .test-results.tap，仅摘录汇总行
+HEAD: f0679f289f0a4d65b306c96eb0a61fd532dd9456（= 发布提交，实测于该提交上重跑）
+采集时间: 2026-11-27 09:44 +0800（本地）
+命令: git fetch origin main && git reset --hard f0679f28 && npm test
+完整输出: 该机 /tmp/vm468f.log（另有前一轮 7de3539 的 /tmp/vm-4.6.8.tap 保留）
 
 # tests 540
 # pass 537
 # fail 0
 # skipped 3
+# duration_ms 95169.619
 
-说明: 3 个 skip 为平台相关用例（Windows 本机同一提交为 540 pass / 0 skip）。
-本文件只是摘要摘录，不是完整 TAP；完整 TAP 保留在云主机 /tmp/vm-4.6.8.tap。
+3 个 skip 的用例与原因（取自 TAP）:
+- `daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher` — launcher installation is Windows-only
+- `install-launcher stages a content-addressed binary and a sidecar config` — launcher installation is Windows-only
+- `attachSession follows an existing alias instead of returning the legacy key` — case-insensitive path keys only split on Windows/macOS
+
+说明: 本文件是汇总摘录，不是完整 TAP；Windows 本机同一提交为 540 pass / 0 skip。

@@ -231,3 +231,15 @@
 - 判定 TAP/evidence/lcov 是否覆盖最终代码，只用「文件 mtime 顺序 + lcov 里新版行号」，**不看 `git commit` 的对象时间戳**（它只是提交元数据，不等于源码落盘时刻）。
 - docs-only 提交允许晚于 TAP；任何改代码的提交之后必须重跑 `npm test` 并重生成 evidence。
 - `verify-release` 只读 v2 manifest，v1 错配是既有盲区；发版时必须显式签 v1 并单独核对远端资产内容。
+
+
+### 4.6.8 第三轮复核结论（`docs/复核报告-4.6.8三轮闭环-2026-11-27.md`）
+
+| 项 | 决定 | 事实依据 | 收益 / 风险 | 落地 |
+| --- | --- | --- | --- | --- |
+| 4.6.7 server 基线数字（`205/226`、`210`） | 本轮做（文档纠错） | lcov 原生字段实测：4.6.7 `LF 226 / LH 214` = 94.69%，180-228 段 45/47，207/208 未覆盖；4.6.8 `LF 228 / LH 205` = 89.91%，段 49/49，207/208 已覆盖 | 基线数字错会连带动量结论错（本轮原文还写了“段覆盖不变”，与“新增失败帧断言”自相矛盾） | 汇总 §4 与本节改按 LF/LH 直读；前一份复核报告补勘误 |
+| `entry-diagnostics-4.6.8.test.mjs:62` 恒真断言 | 延后（P2） | `assert.equal(section.text({}).length >= 0, true)` 恒真 | 收益是断言真实；改测试须重跑 TAP 并重发版，本版已发布，不值得为一条断言再移 tag | 复查版本 4.6.9 |
+| v1 盲区“已闭”表述 | 本轮做（措辞纠正） | `verify-release` 的 `manifestUrlForRelease` 仍优先取 v2，v1 错配不会让它失败 | 夸大脚本能力会让下一次发版漏检 v1 | 改为“v1 已人工回读，脚本盲区仍在” |
+| 云主机证据强度 | 本轮做（补实测） | 已在 `f0679f2` 上重跑 `npm test`：540/537/0/3，skip 为 launcher-install（Windows-only）、install-launcher（Windows-only）、attachSession（大小写路径键仅 Windows/macOS） | 由推断性证据升为实测证据 | `docs/evidence/4.6.8-vm.txt` 重写 |
+| 错误回显行为变更未入 DESIGN | 本轮做（文档） | `DESIGN.md` 要求行为变更先入本文 | 下游若断言报错文本，需要一处权威说明 | DESIGN §6.21 新增一条 |
+| docs-only 提交是否移动 tag | 本轮定策略：不移动 | 后两次移动均由 docs-only 触发，每次重签 manifest + 换资产 id，并催生 `02b77612` 无效 SHA 返工；客户端下载字节未变 | 省掉重复成本；代价是 tag 指向的 commit 不含最后文档修正，且 `npm run setup` 硬校验 HEAD 等于发布提交、升级前须 `git checkout v4.6.8` | DESIGN §6.21 + 本文件记录 |
