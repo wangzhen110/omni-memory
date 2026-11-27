@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 166 次提交；更新记录自身的提交不计入列表。
+> 共 167 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-27
 
+- 15:36:31 `cfdb5043` — fix(4.6.16): reserve budget for pending short rows; narrow included to HTTP only — [提交](https://github.com/wangzhen110/omni-memory/commit/cfdb504319f97ee764fd7b5066d8ab69fda20988)
 - 15:11:29 `5bb88eb4` — docs: add 4.6.15 VM rerun and install-release evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/5bb88eb4020260eb37e1b3ea7e95d5806d1aee34)
 - 15:07:43 `c638e911` — docs(4.6.15): correct pack counts and naming qualifiers — [提交](https://github.com/wangzhen110/omni-memory/commit/c638e9116b6a05dac00cc2d59623ed7e27e95cf1)
 - 15:06:56 `b298eb4a` — fix(4.6.15): pick cheapest row across a section, bill fact bullets, align profile schema — [提交](https://github.com/wangzhen110/omni-memory/commit/b298eb4afdfd95363fd8bf5502d1653bec192dce)
