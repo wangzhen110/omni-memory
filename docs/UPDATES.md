@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 190 次提交；更新记录自身的提交不计入列表。
+> 共 191 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-28
 
+- 16:52:12 `d7035062` — release: 4.7.0 turn retrieval + retrieval gate + QA layer — [提交](https://github.com/wangzhen110/omni-memory/commit/d703506231b46bbbd5983d27e635d00015c560ba)
 - 14:59:08 `8cb58d49` — docs: 4.6.22 review follow-up wording and transfer evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/8cb58d49836de2e0d0c4d317d11d6eb09e7f2e24)
 - 14:49:29 `afef2ead` — docs: 4.6.22 release chain and vm evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/afef2ead2411300037964a7d65959ef37c9951a1)
 - 14:44:59 `942e7428` — docs: 4.6.22 evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/942e74284faf9f0a6aa786c794cce860a1a49a00)

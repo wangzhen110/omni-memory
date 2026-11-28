@@ -1,0 +1,25 @@
+{
+  "version": "4.7.0",
+  "tap": ".test-results.tap",
+  "tapSha256": "8b0438ada4f2b6560cee7c4b2df1bb0faf60a80f71d2e45ed22696fc65cf4bf9",
+  "tapBytes": 135842,
+  "commitSha": "d703506231b46bbbd5983d27e635d00015c560ba",
+  "commitShaSource": "flag (remote sha after push)",
+  "capturedAt": "2026-11-28T08:52:01.114Z",
+  "summary": {
+    "tests": 604,
+    "pass": 604,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "summaryLine": "604 tests / 604 pass / 0 fail / 0 cancelled / 0 skipped",
+  "summaryLineNote": "derived from the # tests/# pass/# fail/# cancelled/# skipped lines; not a literal TAP line",
+  "durationLine": "# duration_ms 110621.3787",
+  "adrLines": [
+    "# 10k rows: seed=473ms p95=53.1ms max=54.1ms hitTotal=200 total=1587ms",
+    "# 100k rows: seed=5162ms p95=63.9ms max=64.4ms hitTotal=200 total=6597ms"
+  ],
+  "indexLine": "# 1000-file cold 206ms · warm 154ms · budget 2000ms"
+}
