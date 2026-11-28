@@ -1,0 +1,11 @@
+# VM rerun 4.7.0 (clean checkout, dataset absent by design)
+HEAD=f6fb21a9ef359db97d05e15795d6d0847737b9a1
+LOG=f6fb21a9ef359db97d05e15795d6d0847737b9a1 test: skip LoCoMo sampling tests when the corpus is not fetched
+STATUS=(clean before evidence files were written)
+ℹ tests 604
+ℹ pass 599
+ℹ fail 0
+ℹ skipped 5
+ℹ duration_ms 92263.293283
+TAP sha256=8652fca539f4b1bd52ffb969b850747173652dbc0094cc5afb02cc846b5dc274 bytes=133172
+sessions=5 (3 Windows-only launcher/path-key skips + 2 LoCoMo corpus-absent skips)

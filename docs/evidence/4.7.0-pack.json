@@ -1,0 +1,1326 @@
+[
+  {
+    "id": "@local/omni-memory@4.7.0",
+    "name": "@local/omni-memory",
+    "version": "4.7.0",
+    "size": 20548405,
+    "unpackedSize": 44449853,
+    "shasum": "c0c46fdb22324ac4482a1315bb7f9b5b086f3863",
+    "integrity": "sha512-D3b2mc2ogD7iUH0/LYUXfcYhYUcA7JCJslrHX/OA2+FrHbIJMEWifli0HF1TjySerL1Kwqcy6GLWwXJiFxk+jA==",
+    "filename": "local-omni-memory-4.7.0.tgz",
+    "files": [
+      {
+        "path": ".omni-project",
+        "size": 66,
+        "mode": 420
+      },
+      {
+        "path": "AGENTS.md",
+        "size": 6252,
+        "mode": 420
+      },
+      {
+        "path": "ATTRIBUTION.md",
+        "size": 1059,
+        "mode": 420
+      },
+      {
+        "path": "CODE_OF_CONDUCT.md",
+        "size": 1504,
+        "mode": 420
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "size": 2199,
+        "mode": 420
+      },
+      {
+        "path": "GOVERNANCE.md",
+        "size": 1732,
+        "mode": 420
+      },
+      {
+        "path": "LICENSE",
+        "size": 34523,
+        "mode": 420
+      },
+      {
+        "path": "LICENSING.md",
+        "size": 2044,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 38760,
+        "mode": 420
+      },
+      {
+        "path": "SECURITY.md",
+        "size": 1833,
+        "mode": 420
+      },
+      {
+        "path": "client.js",
+        "size": 67371,
+        "mode": 420
+      },
+      {
+        "path": "cordis.patch.yml",
+        "size": 65,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/001-storage.md",
+        "size": 920,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/002-no-hard-delete.md",
+        "size": 834,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/003-capture-path.md",
+        "size": 895,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/004-injection.md",
+        "size": 1009,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/005-ui-seat.md",
+        "size": 792,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/006-retrieval-order.md",
+        "size": 883,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/007-embedding-backend.md",
+        "size": 1813,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/008-pluggable-embedding.md",
+        "size": 2399,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/009-graph-and-contradiction.md",
+        "size": 2569,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/010-dreaming.md",
+        "size": 2519,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/011-retention-and-i18n.md",
+        "size": 1486,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/012-auto-recall-and-footer.md",
+        "size": 2523,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/013-scope-layers.md",
+        "size": 2638,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/014-scope-judgement.md",
+        "size": 2627,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/015-model-scope-judge.md",
+        "size": 3057,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/016-star-map.md",
+        "size": 3612,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/017-http-security-and-review-fixes.md",
+        "size": 4740,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/018-regression-guardrails.md",
+        "size": 3644,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/019-backup-restore.md",
+        "size": 5035,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/020-bounded-retrieval.md",
+        "size": 6106,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/021-dream-manual-confirmation.md",
+        "size": 3568,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/022-process-auth-and-encryption.md",
+        "size": 3630,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/023-multi-valued-relations.md",
+        "size": 3983,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/024-entity-aliases.md",
+        "size": 2775,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/025-remote-embedding-and-ann.md",
+        "size": 2655,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/026-persona-settings.md",
+        "size": 3320,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/027-problem-experience.md",
+        "size": 6332,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/028-multi-process-concurrency.md",
+        "size": 3108,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/029-bundled-semantic.md",
+        "size": 6027,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/030-semantic-lifecycle.md",
+        "size": 3514,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/031-project-scope-alias.md",
+        "size": 5036,
+        "mode": 420
+      },
+      {
+        "path": "docs/ADR/032-project-code-index.md",
+        "size": 5248,
+        "mode": 420
+      },
+      {
+        "path": "docs/architecture.png",
+        "size": 107582,
+        "mode": 420
+      },
+      {
+        "path": "docs/BENCH-3.11.0-2026-11-22.md",
+        "size": 5133,
+        "mode": 420
+      },
+      {
+        "path": "docs/BENCHMARKS.md",
+        "size": 18114,
+        "mode": 420
+      },
+      {
+        "path": "docs/CHANGELOG.md",
+        "size": 181182,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPARISON.md",
+        "size": 4499,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-3.9.1-2026-11-21.md",
+        "size": 3219,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-3.9.2-2026-11-21.md",
+        "size": 5792,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-3.9.3-2026-11-21.md",
+        "size": 3932,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-3.9.4-2026-11-21.md",
+        "size": 5136,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-3.9.5-2026-11-21.md",
+        "size": 6599,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.2-2026-11-26.md",
+        "size": 6478,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.3-2026-11-26.md",
+        "size": 4032,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.4-2026-11-26.md",
+        "size": 3864,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.5-2026-11-26.md",
+        "size": 2991,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.6-2026-11-26.md",
+        "size": 2940,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.7-2026-11-26.md",
+        "size": 3822,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.8-2026-11-27.md",
+        "size": 5532,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.9-2026-11-27.md",
+        "size": 3359,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.10-2026-11-27.md",
+        "size": 3512,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.11-2026-11-27.md",
+        "size": 3270,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.12-2026-11-27.md",
+        "size": 2926,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.13-2026-11-27.md",
+        "size": 3407,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.14-2026-11-27.md",
+        "size": 4965,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.15-2026-11-27.md",
+        "size": 7096,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.16-2026-11-27.md",
+        "size": 7659,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.17-2026-11-27.md",
+        "size": 7132,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.18-2026-11-27.md",
+        "size": 8236,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.19-2026-11-28.md",
+        "size": 9422,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.20-2026-11-28.md",
+        "size": 6701,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.21-2026-11-28.md",
+        "size": 8639,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-4.6.22-2026-11-28.md",
+        "size": 6625,
+        "mode": 420
+      },
+      {
+        "path": "docs/COMPLETION-2026-11-21.md",
+        "size": 4065,
+        "mode": 420
+      },
+      {
+        "path": "docs/COVERAGE-REVIEW-2026-11-26.md",
+        "size": 27484,
+        "mode": 420
+      },
+      {
+        "path": "docs/DESIGN.md",
+        "size": 92090,
+        "mode": 420
+      },
+      {
+        "path": "docs/DOCKER.md",
+        "size": 1285,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.5.json",
+        "size": 597,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.6.json",
+        "size": 593,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.7.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.8-vm.txt",
+        "size": 1088,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.8.json",
+        "size": 593,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.9-install.txt",
+        "size": 1384,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.9-vm.txt",
+        "size": 1162,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.9.json",
+        "size": 594,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.10-install-ahead.txt",
+        "size": 1451,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.10-install-release.txt",
+        "size": 1389,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.10-vm.txt",
+        "size": 1033,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.10.json",
+        "size": 594,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.11-coverage.txt",
+        "size": 2882,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.11-install-release.txt",
+        "size": 1389,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.11-vm.txt",
+        "size": 929,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.11.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.12-install-release.txt",
+        "size": 1644,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.12.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.13-install-release.txt",
+        "size": 1692,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.13.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.14-install-release.txt",
+        "size": 1562,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.14-vm.txt",
+        "size": 585,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.14.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.15-install-release.txt",
+        "size": 1562,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.15-vm.txt",
+        "size": 646,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.15.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.16-install-release.txt",
+        "size": 1563,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.16-vm.txt",
+        "size": 646,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.16.json",
+        "size": 593,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.17-context.txt",
+        "size": 5710,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.17-install-release.txt",
+        "size": 1923,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.17-vm.txt",
+        "size": 661,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.17.json",
+        "size": 593,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.18-install-release.txt",
+        "size": 2724,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.18-vm.txt",
+        "size": 1886,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.18.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.19-install-release.txt",
+        "size": 6396,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.19-vm.tap",
+        "size": 127990,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.19-vm.txt",
+        "size": 2502,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.19.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.20-install-release.txt",
+        "size": 1421,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.20-release-api.txt",
+        "size": 7933,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.20-vm.tap",
+        "size": 128922,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.20-vm.txt",
+        "size": 494,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.20.json",
+        "size": 595,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.21-pack.json",
+        "size": 26634,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.21-release-api.txt",
+        "size": 10942,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.21-vm.tap",
+        "size": 129125,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.21-vm.txt",
+        "size": 728,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.21.json",
+        "size": 790,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.22-install-release.txt",
+        "size": 1744,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.22-pack.json",
+        "size": 27291,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.22-release-api.txt",
+        "size": 8324,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.22-vm.tap",
+        "size": 129998,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.22-vm.txt",
+        "size": 1075,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.6.22.json",
+        "size": 927,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/4.7.0.json",
+        "size": 926,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/locomo-qa-4.7.0.json",
+        "size": 11130,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/locomo-retrieval-4.6.18-session.json",
+        "size": 1407,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/locomo-retrieval-4.6.18-turn.json",
+        "size": 1406,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/locomo-retrieval-4.6.19-session.json",
+        "size": 1175,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/locomo-retrieval-4.6.19-turn.json",
+        "size": 1174,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/locomo-retrieval-4.7.0-session.json",
+        "size": 1217,
+        "mode": 420
+      },
+      {
+        "path": "docs/evidence/locomo-retrieval-4.7.0-turn.json",
+        "size": 1214,
+        "mode": 420
+      },
+      {
+        "path": "docs/FIX-3.10.2-DSH-STARTUP-AND-SCOPE.md",
+        "size": 13908,
+        "mode": 420
+      },
+      {
+        "path": "docs/HOST-ADAPTERS.md",
+        "size": 8394,
+        "mode": 420
+      },
+      {
+        "path": "docs/images/hub-full.png",
+        "size": 295521,
+        "mode": 420
+      },
+      {
+        "path": "docs/images/hub.png",
+        "size": 172707,
+        "mode": 420
+      },
+      {
+        "path": "docs/images/mobile.png",
+        "size": 127569,
+        "mode": 420
+      },
+      {
+        "path": "docs/INSTALL-RELEASE.md",
+        "size": 2924,
+        "mode": 420
+      },
+      {
+        "path": "docs/LINUX.md",
+        "size": 2062,
+        "mode": 420
+      },
+      {
+        "path": "docs/MATURITY-ASSESSMENT-2026-11-21.md",
+        "size": 5923,
+        "mode": 420
+      },
+      {
+        "path": "docs/OPEN-GAPS.md",
+        "size": 4447,
+        "mode": 420
+      },
+      {
+        "path": "docs/OPEN-SOURCE-LAUNCH-PLAN.md",
+        "size": 4071,
+        "mode": 420
+      },
+      {
+        "path": "docs/PLAN-REMAINING-2026-11-25.md",
+        "size": 5943,
+        "mode": 420
+      },
+      {
+        "path": "docs/PROPERTY-TESTING-ROLLOUT-2026-11-21.md",
+        "size": 19391,
+        "mode": 420
+      },
+      {
+        "path": "docs/PUBLIC-QA.md",
+        "size": 2575,
+        "mode": 420
+      },
+      {
+        "path": "docs/QUICKSTART.md",
+        "size": 3204,
+        "mode": 420
+      },
+      {
+        "path": "docs/RECTIFY-CHECK-2026-11-21.md",
+        "size": 13337,
+        "mode": 420
+      },
+      {
+        "path": "docs/REFERENCE.md",
+        "size": 56538,
+        "mode": 420
+      },
+      {
+        "path": "docs/RELEASE-CHECKLIST.md",
+        "size": 4585,
+        "mode": 420
+      },
+      {
+        "path": "docs/REMEDIATION-3.11.0-2026-11-22.md",
+        "size": 7541,
+        "mode": 420
+      },
+      {
+        "path": "docs/REMEDIATION-3.11.1-2026-11-22.md",
+        "size": 3930,
+        "mode": 420
+      },
+      {
+        "path": "docs/REMEDIATION-BACKLOG.md",
+        "size": 49136,
+        "mode": 420
+      },
+      {
+        "path": "docs/REVIEW-2026-11-21-VERIFICATION.md",
+        "size": 2117,
+        "mode": 420
+      },
+      {
+        "path": "docs/REVIEW-2026-11-21.md",
+        "size": 19648,
+        "mode": 420
+      },
+      {
+        "path": "docs/SILENT-LAUNCHER.md",
+        "size": 4431,
+        "mode": 420
+      },
+      {
+        "path": "docs/THREAT-MODEL.md",
+        "size": 6777,
+        "mode": 420
+      },
+      {
+        "path": "docs/UPDATE-SIGNING.md",
+        "size": 8723,
+        "mode": 420
+      },
+      {
+        "path": "docs/UPDATES.md",
+        "size": 36963,
+        "mode": 420
+      },
+      {
+        "path": "docs/VERIFY-RELEASE.md",
+        "size": 2991,
+        "mode": 420
+      },
+      {
+        "path": "docs/web-ui-3.10.0-real.png",
+        "size": 1025489,
+        "mode": 420
+      },
+      {
+        "path": "docs/覆盖率重测报告-4.6.7-2026-11-27.md",
+        "size": 17513,
+        "mode": 420
+      },
+      {
+        "path": "hosts/cli.mjs",
+        "size": 33423,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/server.mjs",
+        "size": 11681,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/app.js",
+        "size": 6395,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/base.js",
+        "size": 1755,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/dashboard.css",
+        "size": 18105,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/dashboard.js",
+        "size": 27184,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/hub.css",
+        "size": 13193,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/hub.html",
+        "size": 7932,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/hub.js",
+        "size": 4069,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/index.html",
+        "size": 10587,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/m.html",
+        "size": 2400,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/mobile.css",
+        "size": 8215,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/mobile.js",
+        "size": 5322,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/panel.html",
+        "size": 1857,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/project.css",
+        "size": 5979,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/project.html",
+        "size": 3726,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/project.js",
+        "size": 9885,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/star-map.html",
+        "size": 613943,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/star-map.js",
+        "size": 50122,
+        "mode": 420
+      },
+      {
+        "path": "hosts/http/web/style.css",
+        "size": 3543,
+        "mode": 420
+      },
+      {
+        "path": "hosts/mcp/bin.mjs",
+        "size": 2038,
+        "mode": 420
+      },
+      {
+        "path": "hosts/mcp/README.md",
+        "size": 7183,
+        "mode": 420
+      },
+      {
+        "path": "hosts/mcp/server.mjs",
+        "size": 8213,
+        "mode": 420
+      },
+      {
+        "path": "hosts/shared/boot.mjs",
+        "size": 2630,
+        "mode": 420
+      },
+      {
+        "path": "hosts/shared/context-tool.mjs",
+        "size": 6563,
+        "mode": 420
+      },
+      {
+        "path": "hosts/shared/doctor.mjs",
+        "size": 13181,
+        "mode": 420
+      },
+      {
+        "path": "hosts/shared/headless.mjs",
+        "size": 2247,
+        "mode": 420
+      },
+      {
+        "path": "hosts/shared/http-guard.mjs",
+        "size": 3034,
+        "mode": 420
+      },
+      {
+        "path": "hosts/shared/rules.mjs",
+        "size": 5348,
+        "mode": 420
+      },
+      {
+        "path": "icon.svg",
+        "size": 516,
+        "mode": 420
+      },
+      {
+        "path": "index.js",
+        "size": 26914,
+        "mode": 420
+      },
+      {
+        "path": "lib/capture-rules.mjs",
+        "size": 2856,
+        "mode": 420
+      },
+      {
+        "path": "lib/daily-sync.mjs",
+        "size": 2944,
+        "mode": 420
+      },
+      {
+        "path": "lib/design-contract.mjs",
+        "size": 251,
+        "mode": 420
+      },
+      {
+        "path": "lib/embed-provider.mjs",
+        "size": 4211,
+        "mode": 420
+      },
+      {
+        "path": "lib/embed.mjs",
+        "size": 3183,
+        "mode": 420
+      },
+      {
+        "path": "lib/profile.mjs",
+        "size": 43769,
+        "mode": 420
+      },
+      {
+        "path": "lib/project-adapters/api.mjs",
+        "size": 11416,
+        "mode": 420
+      },
+      {
+        "path": "lib/project-adapters/generic.mjs",
+        "size": 8034,
+        "mode": 420
+      },
+      {
+        "path": "lib/project-adapters/js.mjs",
+        "size": 13439,
+        "mode": 420
+      },
+      {
+        "path": "lib/project-index.mjs",
+        "size": 43877,
+        "mode": 420
+      },
+      {
+        "path": "lib/project-schema.mjs",
+        "size": 4551,
+        "mode": 420
+      },
+      {
+        "path": "lib/read-routes.mjs",
+        "size": 63051,
+        "mode": 420
+      },
+      {
+        "path": "lib/rerank-provider.mjs",
+        "size": 2770,
+        "mode": 420
+      },
+      {
+        "path": "lib/schema.mjs",
+        "size": 3367,
+        "mode": 420
+      },
+      {
+        "path": "lib/search.mjs",
+        "size": 71576,
+        "mode": 420
+      },
+      {
+        "path": "lib/semantic-embed.mjs",
+        "size": 6777,
+        "mode": 420
+      },
+      {
+        "path": "lib/store.mjs",
+        "size": 152375,
+        "mode": 420
+      },
+      {
+        "path": "lib/tool-definitions.mjs",
+        "size": 88525,
+        "mode": 420
+      },
+      {
+        "path": "lib/update-signature.mjs",
+        "size": 6678,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/ONNXRUNTIME-LICENSE.txt",
+        "size": 1073,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/ort-wasm-simd-threaded.mjs",
+        "size": 24738,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/ort-wasm-simd-threaded.wasm",
+        "size": 14848852,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/ort.wasm.bundle.min.mjs",
+        "size": 77024,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/TOKENIZERS-LICENSE.txt",
+        "size": 11357,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/tokenizers.min.mjs",
+        "size": 36601,
+        "mode": 420
+      },
+      {
+        "path": "lib/version-check.mjs",
+        "size": 10947,
+        "mode": 420
+      },
+      {
+        "path": "locale/en.json",
+        "size": 458,
+        "mode": 420
+      },
+      {
+        "path": "locale/zh.json",
+        "size": 462,
+        "mode": 420
+      },
+      {
+        "path": "models/bge-small-zh-v1.5/config.json",
+        "size": 716,
+        "mode": 420
+      },
+      {
+        "path": "models/bge-small-zh-v1.5/model_int8.onnx",
+        "size": 23903394,
+        "mode": 420
+      },
+      {
+        "path": "models/bge-small-zh-v1.5/MODEL-CARD.md",
+        "size": 27670,
+        "mode": 420
+      },
+      {
+        "path": "models/bge-small-zh-v1.5/tokenizer_config.json",
+        "size": 367,
+        "mode": 420
+      },
+      {
+        "path": "models/bge-small-zh-v1.5/tokenizer.json",
+        "size": 439125,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 4506,
+        "mode": 420
+      },
+      {
+        "path": "scripts/build-launcher.mjs",
+        "size": 5990,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-client-hooks.mjs",
+        "size": 1618,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-client-load.mjs",
+        "size": 2241,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-docs.mjs",
+        "size": 10377,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-launcher.mjs",
+        "size": 1191,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-retrieval-gate.mjs",
+        "size": 3275,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-semantic-assets.mjs",
+        "size": 2714,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-syntax.mjs",
+        "size": 1813,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-test-results.mjs",
+        "size": 2330,
+        "mode": 420
+      },
+      {
+        "path": "scripts/check-update-log.mjs",
+        "size": 1963,
+        "mode": 420
+      },
+      {
+        "path": "scripts/daily-sync.mjs",
+        "size": 33714,
+        "mode": 420
+      },
+      {
+        "path": "scripts/demo.mjs",
+        "size": 1731,
+        "mode": 420
+      },
+      {
+        "path": "scripts/install-launcher.mjs",
+        "size": 13345,
+        "mode": 420
+      },
+      {
+        "path": "scripts/install.mjs",
+        "size": 11466,
+        "mode": 420
+      },
+      {
+        "path": "scripts/launchers/omni-serve-7788-launcher.cs",
+        "size": 15353,
+        "mode": 420
+      },
+      {
+        "path": "scripts/launchers/omni-serve-7788.exe",
+        "size": 15360,
+        "mode": 420
+      },
+      {
+        "path": "scripts/qa.mjs",
+        "size": 2071,
+        "mode": 420
+      },
+      {
+        "path": "scripts/reference-to-memory.mjs",
+        "size": 6621,
+        "mode": 420
+      },
+      {
+        "path": "scripts/release-delta.mjs",
+        "size": 3196,
+        "mode": 420
+      },
+      {
+        "path": "scripts/retrieval-gate-lib.mjs",
+        "size": 1999,
+        "mode": 420
+      },
+      {
+        "path": "scripts/sign-release.mjs",
+        "size": 8197,
+        "mode": 420
+      },
+      {
+        "path": "scripts/tap-evidence.mjs",
+        "size": 3985,
+        "mode": 420
+      },
+      {
+        "path": "scripts/uninstall-launcher.mjs",
+        "size": 5131,
+        "mode": 420
+      },
+      {
+        "path": "scripts/update-log.mjs",
+        "size": 3082,
+        "mode": 420
+      },
+      {
+        "path": "scripts/verify-release.mjs",
+        "size": 11276,
+        "mode": 420
+      }
+    ],
+    "entryCount": 262,
+    "bundled": []
+  }
+]
