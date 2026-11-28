@@ -62,6 +62,7 @@ session 粒度同轮复跑 0.7279 / any 0.7735 / nDCG 0.5612，比 4.6.19 的 0.
 - 干净包数（`git archive f6fb21a9` 后 `npm pack --dry-run --json`）：262 files / 20,548,405 B / unpacked 44,449,853 B，原始 JSON 在 `docs/evidence/4.7.0-pack.json`。
 - 云主机在 `f6fb21a9` 干净检出复跑：604 tests / 599 pass / 5 skip / 0 fail，`# duration_ms 92263.293283`，TAP sha256 `8652fca539f4b1bd52ffb969b850747173652dbc0094cc5afb02cc846b5dc274`（133,172 B）。5 条 SKIP 是 3 条 Windows-only（launcher ×2、路径键 ×1）+ 2 条数据集未取（LoCoMo 抽样）。
 - 证据回传：临时 deploy key `171393266` → 云主机推 `evidence/4.7.0` → 本机按 Contents API 取回并校验 TAP sha256 一致 → 删分支 ref（204）、删 key（204），云主机切回 main 并 `reset --hard`。
+- `npm run check` 在 `3a187962` 上 exit 0（当时 `update log covers 196 recorded commit hashes`，闸门 session 0.7424 / nDCG 0.5711、turn 0.5168）。此后 main 只追加了 docs 提交（抖动说明与 update-log），`git diff f6fb21a9..HEAD -- lib/ test/ scripts/ package.json package-lock.json` 为空。本报告不写「最终 HEAD」。
 
 ## 9 取舍与未做
 
