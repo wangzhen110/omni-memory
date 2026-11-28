@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 175 次提交；更新记录自身的提交不计入列表。
+> 共 176 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-28
 
+- 13:11:16 `6fae83c8` — docs(4.6.19): align fact error texts, count five paging sources, add VM final-HEAD proof — [提交](https://github.com/wangzhen110/omni-memory/commit/6fae83c87775a035dad068af0da19a42f6a29153)
 - 11:51:27 `ea185ee6` — docs: add 4.6.19 release, install, and cloud-host TAP evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/ea185ee6322f8d3840fb949b95ec32211529faed)
 - 11:46:06 `f95bd088` — fix(4.6.19): page facts/persona sources before filtering, gate fact subject — [提交](https://github.com/wangzhen110/omni-memory/commit/f95bd088a7e51ef72e6267a6a0a2be737d761b2f)
 
