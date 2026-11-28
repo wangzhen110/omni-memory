@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 182 次提交；更新记录自身的提交不计入列表。
+> 共 185 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,7 +15,10 @@
 
 ## 2026-11-28
 
-- 13:35:02 `bad8a995` — docs: drop moving final-head snapshot from package counts — [提交](https://github.com/wangzhen110/omni-memory/commit/bad8a995e8ddbf87f54d4feea7e6b1ef310449fe)
+- 14:00:57 `ce081b6a` — docs: bind 4.6.21 evidence to the pushed content commit — [提交](https://github.com/wangzhen110/omni-memory/commit/ce081b6a8bfde398e06819eaf9664f5e6a02dcb8)
+- 14:00:12 `2cca83a2` — docs: 4.6.21 evidence, completion report and backlog — [提交](https://github.com/wangzhen110/omni-memory/commit/2cca83a22308f91f00eaa82edb0a3056d71bbd39)
+- 13:59:34 `c7da8cfb` — test: bind TAP to commit, fix install fallback assertion, make release checklist executable (4.6.21) — [提交](https://github.com/wangzhen110/omni-memory/commit/c7da8cfb56019e1eec8ab2d67e8210c8212d58b2)
+- 13:35:02 `d0379d53` — docs: drop moving final-head snapshot from package counts — [提交](https://github.com/wangzhen110/omni-memory/commit/d0379d53f7995c68cfffdb725af9e877b22ce3b3)
 - 13:34:25 `56e8f247` — docs: record 4.6.20 clean package counts — [提交](https://github.com/wangzhen110/omni-memory/commit/56e8f247a64a558ee7cc5ab0ee41ee177b704d82)
 - 13:32:47 `19fd2b4c` — docs: state vm head and code-tree equality without a moving target — [提交](https://github.com/wangzhen110/omni-memory/commit/19fd2b4c1496287a7c26395e30fdc329a79b10ff)
 - 13:32:00 `0c34162e` — docs: record 4.6.20 release chain, install and vm evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/0c34162e469b0cbb9f96f318abbd23df170a3201)
