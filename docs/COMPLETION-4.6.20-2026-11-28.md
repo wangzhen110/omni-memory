@@ -52,6 +52,7 @@
 - 代码：`scripts/install.mjs`（导出 `human` + 直接执行守卫 + `数据根目录`/`计划任务` 回退）、`package.json`、`package-lock.json`、`README.md`。
 - 测试：`test/install-fact-contract-4.6.20.test.mjs`（新增 5 条）。
 - 文档：`docs/CHANGELOG.md`、`docs/DESIGN.md`、`docs/RELEASE-CHECKLIST.md`（新增）、本报告、`docs/evidence/4.6.20.json`、`docs/UPDATES.md`。
+- 干净包数（云主机 `git archive` + `npm pack --dry-run --json`）：tag 提交 `ed687884` = **239 files / 20,444,612 B**（比 4.6.19 的 236 多 3 项：本报告、`4.6.20.json`、发版清单）。最终 HEAD `7fc93002` = **242 files / 20,469,992 B**，多出的正是 `4.6.20-vm.txt`、`4.6.20-vm.tap`（128,922B）与 `4.6.20-install-release.txt`。工作树数字不作为发布口径。
 
 ## 8 发布链
 
