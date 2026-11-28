@@ -47,7 +47,7 @@
 # 1000-file cold 244ms · warm 191ms · budget 2000ms
 ```
 
-evidence 绑定 `commitSha 91d9b76b`（`commitShaSource: flag`）。首行是汇总行，TAP 字面为 `# tests 585` 等分列行——这也是本版新加 `summaryLineNote` 的原因。
+evidence 绑定 `commitSha c7da8cfb`（`commitShaSource: flag (remote sha after push)`）。首行是汇总行，TAP 字面为 `# tests 585` 等分列行——这也是本版新加 `summaryLineNote` 的原因。
 
 ## 8 未纳入
 
