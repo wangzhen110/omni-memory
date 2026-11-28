@@ -30,3 +30,11 @@ ok 356 - attachSession follows an existing alias instead of returning the legacy
 # HEAD=2617a5aa11fbda02601805e7c29d2714d689204b
 # LOG=2617a5aa11fbda02601805e7c29d2714d689204b docs: update per-commit update log
 # git status --porcelain -> (empty, no output)
+# --- post-doc-fix reset proof (2026-11-28, review 4.6.19 P1-1 closeout) ---
+# HEAD before this evidence update; carries every 4.6.19 doc fix (five paging sources,
+# fact error texts, note#1315 wording) on top of the tagged content commit b2e1970d.
+# command: cd /home/user/omni-memory-vm && git rev-parse HEAD && git log -1 --format='%H %s' && git status --porcelain
+# HEAD=11e2c9ec02d5c1852d533ff63e79398039190865
+# LOG=11e2c9ec02d5c1852d533ff63e79398039190865 docs: update per-commit update log
+# git status --porcelain -> (empty, no output)
+# One docs-only commit (this file) follows; the tracked content tree is unchanged.
