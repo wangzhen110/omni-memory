@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 188 次提交；更新记录自身的提交不计入列表。
+> 共 189 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-28
 
+- 14:49:29 `afef2ead` — docs: 4.6.22 release chain and vm evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/afef2ead2411300037964a7d65959ef37c9951a1)
 - 14:44:59 `942e7428` — docs: 4.6.22 evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/942e74284faf9f0a6aa786c794cce860a1a49a00)
 - 14:44:21 `725e6f06` — 4.6.22: completion report time-point phrasing, evidence commit source, tap sha — [提交](https://github.com/wangzhen110/omni-memory/commit/725e6f0633dd0dd363f1020f09f0ff12f8321d1b)
 - 14:08:48 `92b7f58b` — docs: 4.6.21 vm evidence and release chain — [提交](https://github.com/wangzhen110/omni-memory/commit/92b7f58bee8e7fe5a70ea3647e71f56daf679754)
