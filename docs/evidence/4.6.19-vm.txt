@@ -1,0 +1,23 @@
+# 4.6.19 cloud-host rerun (Linux, /home/user/omni-memory-vm)
+
+# commit under test: f95bd088a7e51ef72e6267a6a0a2be737d761b2f (content commit, pushed as remote main)
+# node v22.23.4 · npm 10.9.9
+# command: git fetch origin main && git reset --hard f95bd088 && rm -f .test-results.tap && npm test
+# working tree after reset: git status --porcelain -> (empty)
+
+# tests 579
+# pass 576
+# fail 0
+# cancelled 0
+# skipped 3
+# duration_ms 89775.762694
+
+# raw TAP archived next to this file as 4.6.19-vm.tap (127,990 bytes)
+# sha256 4.6.19-vm.tap = d5e7e03ed817767e45e05354cea2a9f61580e19a0688ebb55f5f78e6d6e1d6b1
+
+ok 105 - daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher # SKIP launcher installation is Windows-only
+ok 244 - install-launcher stages a content-addressed binary and a sidecar config # SKIP launcher installation is Windows-only
+ok 356 - attachSession follows an existing alias instead of returning the legacy key # SKIP case-insensitive path keys only split on Windows/macOS
+
+# the three skips are platform-gated (Windows-only launcher install x2, Windows/macOS path keys x1);
+# the same suite on the Windows host reports 579/579 with 0 skipped.

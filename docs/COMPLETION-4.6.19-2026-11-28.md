@@ -87,13 +87,18 @@ dataSha256 79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4
 
 - 本轮修改代码：`lib/profile.mjs`、`lib/store.mjs`、`lib/tool-definitions.mjs`、`scripts/install.mjs`、`bench/public-retrieval.mjs`、`test/min-content-gate-4.6.17.test.mjs`、`package.json`、`package-lock.json`、`README.md`。
 - 文档：`docs/{CHANGELOG,DESIGN,REFERENCE,BENCHMARKS,REMEDIATION-BACKLOG}.md`、`docs/COMPLETION-4.6.18-2026-11-27.md`、本报告、`docs/evidence/4.6.17-context.txt`、`docs/evidence/4.6.18-vm.txt`。
+- 干净包数（Linux `git archive` + `npm pack --dry-run --json`）：tag 提交 `b2e1970d` = **233 files / 20,414,091 B**（比 4.6.18 的 229 多 4 项：本报告、`4.6.19.json`、两份 4.6.19 LoCoMo）。最终 HEAD 再追加 `4.6.19-vm.txt`、`4.6.19-vm.tap`（127,990B）与 `4.6.19-install-release.txt`，预期 **236**；工作树数字不作为发布口径。
 
 ## 8 发布链
 
-- 内容提交：待填。
-- update-log 提交（tag 指向）：待填。
-- tag object / Release：待填。
-- `verify:release` 与 `setup`：待填。
+- 内容提交：`f95bd088a7e51ef72e6267a6a0a2be737d761b2f`（本地 `e5c40b9f`）。
+- update-log 提交（tag 指向）：`b2e1970d6ab7bab278818818f2d587b0ba9fa285`（本地 `ecc1d01b`）。
+- tag object：`afb249bf912d323012846e0524f0625b60a0383e`；Release `461281164`（https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.19）。
+- 资产：`omni-update-manifest-v2.json` id `803110689`（632B）、`omni-update-manifest.json` id `803110756`（485B）。
+- `npm run verify:release -- --tag v4.6.19`：OK；package.json SHA-256 `be2ab62c…3117`、launcher `d7ba3e76…6dce4`。
+- `npm run setup`：doctor 通过（4.6.19、schema 20、2146 notes / 35 facts、HTTP 30 tools）；`/health` 返回 `version 4.6.19`。
+- 云主机在 `f95bd088` 复跑 579（576 通过 / 3 平台跳过），TAP 原文与 sha256 见 `docs/evidence/4.6.19-vm.{txt,tap}`。
+- 证据提交与最终 update-log：见远端 main HEAD（`docs/evidence/4.6.19-*` 与本节一并提交）。
 
 ## 9 未纳入
 
