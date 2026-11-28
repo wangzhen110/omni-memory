@@ -15,7 +15,7 @@
 
 ## 2026-11-28
 
-- 14:00:57 `ce081b6a` — docs: bind 4.6.21 evidence to the pushed content commit — [提交](https://github.com/wangzhen110/omni-memory/commit/ce081b6a8bfde398e06819eaf9664f5e6a02dcb8)
+- 14:00:57 `8a0c834e` — docs: bind 4.6.21 evidence to the pushed content commit — [提交](https://github.com/wangzhen110/omni-memory/commit/8a0c834ecb190ef5338c2cf75c54c61414bccf05)
 - 14:00:12 `2cca83a2` — docs: 4.6.21 evidence, completion report and backlog — [提交](https://github.com/wangzhen110/omni-memory/commit/2cca83a22308f91f00eaa82edb0a3056d71bbd39)
 - 13:59:34 `c7da8cfb` — test: bind TAP to commit, fix install fallback assertion, make release checklist executable (4.6.21) — [提交](https://github.com/wangzhen110/omni-memory/commit/c7da8cfb56019e1eec8ab2d67e8210c8212d58b2)
 - 13:35:02 `d0379d53` — docs: drop moving final-head snapshot from package counts — [提交](https://github.com/wangzhen110/omni-memory/commit/d0379d53f7995c68cfffdb725af9e877b22ce3b3)
