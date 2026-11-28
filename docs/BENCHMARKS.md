@@ -205,7 +205,8 @@ turn 从 0.3179 提到 0.5114（+0.1935，相对 +61%），跨过 0.40 的门槛
 
 ### 6.3 回归门（可持续，4.7.0 已启用）
 
-- 只对**检索层**设硬阈值进 `npm run check`，由 `scripts/check-retrieval-gate.mjs` 执行、`scripts/retrieval-gate-lib.mjs` 定义：session recall@10 ≥ 0.70、session nDCG@10 ≥ 0.55、turn recall@10 ≥ 0.40。固定 seed 500 题分层子集，本轮实测 session 0.7434 / nDCG 0.5699、turn 0.5218，两道都有余量。
+- 只对**检索层**设硬阈值进 `npm run check`，由 `scripts/check-retrieval-gate.mjs` 执行、`scripts/retrieval-gate-lib.mjs` 定义：session recall@10 ≥ 0.70、session nDCG@10 ≥ 0.55、turn recall@10 ≥ 0.40。固定 seed 500 题分层子集，本轮两次实测 session 0.7434 / nDCG 0.5699、turn 0.5218，与 session 0.7424 / nDCG 0.5711、turn 0.5168，两道都有余量。
+- 同一命令同 seed 复跑有约 ±0.005 的抖动（词面打分在等价分数上存在并列，排序不稳定），所以闸门阈值取整到 0.70 / 0.55 / 0.40，并在余量里给抖动留了位置；不要用两次跑出的末位数字互相当“回归证据”，小于 0.01 的差属于噪声。
 - turn 不设 nDCG 硬门：turn nDCG 0.2929 与 session 的 0.5612 不是同一口径（turn 的分母是“所有证据轮都要排进前 10”），设 0.55 会立刻长期红灯；报告里照常公布 turn nDCG，但不作为闸门。
 - 数据集 `bench/data/locomo10.json` 不入库；未下载时闸门打印 `SKIP` 并放行，避免新克隆因缺数据而红。
 - 答题层因 judge 不稳定，只做趋势记录（同一模型、同一 judge 模板下比较），不设硬门。
