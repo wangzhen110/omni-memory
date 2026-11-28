@@ -2,11 +2,16 @@
 // © 2026 wangzhen110 · https://github.com/wangzhen110/omni-memory
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allQuestions, extractiveAnswer, readDataset, ruleJudge, subsetQuestions, tokenF1 } from '../bench/locomo-lib.mjs';
+import { existsSync } from 'node:fs';
+import { DEFAULT_DATA, allQuestions, extractiveAnswer, readDataset, ruleJudge, subsetQuestions, tokenF1 } from '../bench/locomo-lib.mjs';
 
-const data = readDataset();
+// The corpus is gitignored (2.8 MB, fetched with `node bench/fetch-public.mjs`),
+// so a fresh clone must skip the sampling tests instead of failing to load.
+const hasData = existsSync(DEFAULT_DATA);
+const data = hasData ? readDataset() : null;
+const needData = hasData ? {} : { skip: 'bench/data/locomo10.json not fetched' };
 
-test('subsetQuestions is deterministic for a fixed seed and keeps the exact size', () => {
+test('subsetQuestions is deterministic for a fixed seed and keeps the exact size', needData, () => {
   const rows = allQuestions(data, { granularity: 'turn' });
   const a = subsetQuestions(rows, { size: 120, seed: 42 });
   const b = subsetQuestions(rows, { size: 120, seed: 42 });
@@ -16,7 +21,7 @@ test('subsetQuestions is deterministic for a fixed seed and keeps the exact size
   assert.notDeepEqual(a.map(row => row.question), c.map(row => row.question));
 });
 
-test('subsetQuestions keeps every category represented', () => {
+test('subsetQuestions keeps every category represented', needData, () => {
   const rows = allQuestions(data, { granularity: 'turn' });
   const subset = subsetQuestions(rows, { size: 120, seed: 42 });
   const allCategories = new Set(rows.map(row => row.category));
