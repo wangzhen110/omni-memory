@@ -1,0 +1,104 @@
+4.6.22 release API evidence (captured 2026-11-28, repo wangzhen110/omni-memory)
+
+## POST /git/tags  -> http 201 (tag object d9e5e24d76d2f6d9b0cc52055fc3fc3df1a4560e)
+{
+  "node_id": "TA_kwDOVvRz1NoAKGQ5ZTVlMjRkNzZkMmY2ZDliMGNjNTIwNTVmYzNmYzNkZjFhNDU2MGU",
+  "sha": "d9e5e24d76d2f6d9b0cc52055fc3fc3df1a4560e",
+  "url": "https://api.github.com/repos/wangzhen110/omni-memory/git/tags/d9e5e24d76d2f6d9b0cc52055fc3fc3df1a4560e",
+  "tagger": {
+    "name": "wangzhen110",
+    "email": "646271785@qq.com",
+    "date": "2026-11-28T06:45:50Z"
+  },
+  "object": {
+    "sha": "09fcd382149024535d6cd5cb6181290ec4c061a2",
+    "type": "commit",
+    "url": "https://api.github.com/repos/wangzhen110/omni-memory/git/commits/09fcd382149024535d6cd5cb6181290ec4c061a2"
+  },
+  "tag": "v4.6.22",
+  "message": "omni memory 4.6.22",
+  "verification": {
+    "verified": false,
+    "reason": "unsigned",
+    "signature": null,
+    "payload": null,
+    "verified_at": null
+  }
+}
+
+## POST /git/refs  -> http 201 (ref refs/tags/v4.6.22)
+{
+  "ref": "refs/tags/v4.6.22",
+  "node_id": "REF_kwDOVvRz1LFyZWZzL3RhZ3MvdjQuNi4yMg",
+  "url": "https://api.github.com/repos/wangzhen110/omni-memory/git/refs/tags/v4.6.22",
+  "object": {
+    "sha": "d9e5e24d76d2f6d9b0cc52055fc3fc3df1a4560e",
+    "type": "tag",
+    "url": "https://api.github.com/repos/wangzhen110/omni-memory/git/tags/d9e5e24d76d2f6d9b0cc52055fc3fc3df1a4560e"
+  }
+}
+
+## POST /releases -> http 201 (release 461362004)
+{
+  "url": "https://api.github.com/repos/wangzhen110/omni-memory/releases/461362004",
+  "assets_url": "https://api.github.com/repos/wangzhen110/omni-memory/releases/461362004/assets",
+  "upload_url": "https://uploads.github.com/repos/wangzhen110/omni-memory/releases/461362004/assets{?name,label}",
+  "html_url": "https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.22",
+  "id": 461362004,
+  "author": {
+    "login": "wangzhen110",
+    "id": 256335272,
+    "node_id": "U_kgDOD0ddqA",
+    "avatar_url": "https://avatars.githubusercontent.com/u/256335272?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/wangzhen110",
+    "html_url": "https://github.com/wangzhen110",
+    "followers_url": "https://api.github.com/users/wangzhen110/followers",
+    "following_url": "https://api.github.com/users/wangzhen110/following{/other_user}",
+    "gists_url": "https://api.github.com/users/wangzhen110/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/wangzhen110/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/wangzhen110/subscriptions",
+    "organizations_url": "https://api.github.com/users/wangzhen110/orgs",
+    "repos_url": "https://api.github.com/users/wangzhen110/repos",
+    "events_url": "https://api.github.com/users/wangzhen110/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/wangzhen110/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "node_id": "RE_kwDOVvRz1M4bf9NU",
+  "tag_name": "v4.6.22",
+  "target_commitish": "09fcd382149024535d6cd5cb6181290ec4c061a2",
+  "name": "v4.6.22",
+  "draft": false,
+  "immutable": false,
+  "prerelease": false,
+  "created_at": "2026-11-28T06:45:50Z",
+  "updated_at": "2026-11-28T06:46:00Z",
+  "published_at": "2026-11-28T06:46:00Z",
+  "assets": [
+
+  ],
+  "tarball_url": "https://api.github.com/repos/wangzhen110/omni-memory/tarball/v4.6.22",
+  "zipball_url": "https://api.github.com/repos/wangzhen110/omni-memory/zipball/v4.6.22",
+  "body": "4.6.22: completion report time-point phrasing, evidence commit source, tap sha"
+}
+
+## POST /releases/461362004/assets?name=omni-update-manifest-v2.json -> http 201 (id 803560895, 632 B)
+{"url":"https://api.github.com/repos/wangzhen110/omni-memory/releases/assets/803560895","id":803560895,"node_id":"RA_kwDOVvRz1M4v5V2_","name":"omni-update-manifest-v2.json","label":"","uploader":{"login":"wangzhen110","id":256335272,"node_id":"U_kgDOD0ddqA","avatar_url":"https://avatars.githubusercontent.com/u/256335272?v=4","gravatar_id":"","url":"https://api.github.com/users/wangzhen110","html_url":"https://github.com/wangzhen110","followers_url":"https://api.github.com/users/wangzhen110/followers","following_url":"https://api.github.com/users/wangzhen110/following{/other_user}","gists_url":"https://api.github.com/users/wangzhen110/gists{/gist_id}","starred_url":"https://api.github.com/users/wangzhen110/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/wangzhen110/subscriptions","organizations_url":"https://api.github.com/users/wangzhen110/orgs","repos_url":"https://api.github.com/users/wangzhen110/repos","events_url":"https://api.github.com/users/wangzhen110/events{/privacy}","received_events_url":"https://api.github.com/users/wangzhen110/received_events","type":"User","user_view_type":"public","site_admin":false},"content_type":"application/json","state":"uploaded","size":632,"digest":"sha256:3d6885b9cb059988cb4a555c83083531a4ac99a48d6afc2f0ba66cde25c04a08","download_count":0,"created_at":"2026-11-28T06:46:01Z","updated_at":"2026-11-28T06:46:01Z","browser_download_url":"https://github.com/wangzhen110/omni-memory/releases/download/v4.6.22/omni-update-manifest-v2.json"}
+## POST /releases/461362004/assets?name=omni-update-manifest.json -> http 201 (id 803560968, 485 B)
+{"url":"https://api.github.com/repos/wangzhen110/omni-memory/releases/assets/803560968","id":803560968,"node_id":"RA_kwDOVvRz1M4v5V4I","name":"omni-update-manifest.json","label":"","uploader":{"login":"wangzhen110","id":256335272,"node_id":"U_kgDOD0ddqA","avatar_url":"https://avatars.githubusercontent.com/u/256335272?v=4","gravatar_id":"","url":"https://api.github.com/users/wangzhen110","html_url":"https://github.com/wangzhen110","followers_url":"https://api.github.com/users/wangzhen110/followers","following_url":"https://api.github.com/users/wangzhen110/following{/other_user}","gists_url":"https://api.github.com/users/wangzhen110/gists{/gist_id}","starred_url":"https://api.github.com/users/wangzhen110/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/wangzhen110/subscriptions","organizations_url":"https://api.github.com/users/wangzhen110/orgs","repos_url":"https://api.github.com/users/wangzhen110/repos","events_url":"https://api.github.com/users/wangzhen110/events{/privacy}","received_events_url":"https://api.github.com/users/wangzhen110/received_events","type":"User","user_view_type":"public","site_admin":false},"content_type":"application/json","state":"uploaded","size":485,"digest":"sha256:5c5b19cfeae56cb81b57842b0c7df6dcfbaec33a5f51c685158c6d70b04d43b9","download_count":0,"created_at":"2026-11-28T06:46:03Z","updated_at":"2026-11-28T06:46:03Z","browser_download_url":"https://github.com/wangzhen110/omni-memory/releases/download/v4.6.22/omni-update-manifest.json"}
+## npm run verify:release -- --tag v4.6.22
+
+> @local/omni-memory@4.6.22 verify:release
+> node scripts/verify-release.mjs --tag v4.6.22
+
+Release v4.6.22  https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.22
+  schema       omni-update-manifest-v2
+  version      4.6.22
+  commit       09fcd382149024535d6cd5cb6181290ec4c061a2
+  key          omni-ed25519-2026-01  76:f3:5c:2d:c5:d6:f7:7e:a8:4d:9b:03:26:c0:7f:fc:d5:94:70:50:8c:bf:c4:41:75:a5:59:c1:67:a9:10:f1
+  package.json a909c86b00df0ca4050c911d64b2f0b683ca18b298aff8ab7f52dfaa9ccfe6b9
+  launcher     d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4  15360 bytes
+OK: signature, package hash, and launcher hash are consistent
+

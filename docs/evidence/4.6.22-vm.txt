@@ -1,0 +1,29 @@
+4.6.22 VM run evidence (captured 2026-11-28)
+
+git rev-parse HEAD: 09fcd382149024535d6cd5cb6181290ec4c061a2
+git log -1: 09fcd382149024535d6cd5cb6181290ec4c061a2 docs: update per-commit update log
+git status --porcelain --untracked-files=no:
+(end of tracked status; empty above means clean)
+
+node: v22.23.4
+
+npm test summary (TAP literal lines):
+1..589
+# tests 589
+# pass 586
+# fail 0
+# cancelled 0
+# skipped 3
+# todo 0
+# duration_ms 90212.755772
+
+TAP sha256: 338a35e65dd2e6567e4e8dfe40c1a42bfc6535249e6ba443de824e2d449ac201
+TAP bytes: 129998
+
+SKIP lines:
+652:ok 105 - daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher # SKIP launcher installation is Windows-only
+1563:ok 250 - install-launcher stages a content-addressed binary and a sidecar config # SKIP launcher installation is Windows-only
+2272:ok 362 - attachSession follows an existing alias instead of returning the legacy key # SKIP case-insensitive path keys only split on Windows/macOS
+
+npm pack clean archive (git archive 09fcd382):
+entryCount 251 size 20509966 unpackedSize 44242166

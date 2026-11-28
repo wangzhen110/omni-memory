@@ -51,4 +51,14 @@
 
 ## 8 发布链
 
-见发版后按清单第 4 节执行补写；时点表述只写发行提交与该提交上的 check 结果，不写「最终 HEAD」。
+按清单第 4 节顺序执行。原始回执在 `docs/evidence/4.6.22-release-api.txt`，安装证据在 `docs/evidence/4.6.22-install-release.txt`，云主机复跑在 `docs/evidence/4.6.22-vm.txt`。
+
+- 内容提交 `8a381d9d` → 远端 `725e6f0633dd0dd363f1020f09f0ff12f8321d1b`；证据提交 `54ea88f2` → `942e74284faf9f0a6aa786c794cce860a1a49a00`；update-log `86082cb7` → `09fcd382149024535d6cd5cb6181290ec4c061a2`。SHA 变化来自推送通道改写，发行提交以远端为准。
+- tag `v4.6.22` → tag object `d9e5e24d76d2f6d9b0cc52055fc3fc3df1a4560e`，指向 `09fcd382`；Release `461362004`（`https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.22`）；资产 v2 `803560895`（632 B）、v1 `803560968`（485 B）。
+- `npm run check` 在 `09fcd382` 上 exit 0（`update log covers 188 recorded commit hashes`）；`verify:release -- --tag v4.6.22` 输出 `OK: signature, package hash, and launcher hash are consistent`，`package.json` sha256 `a909c86b00df0ca4050c911d64b2f0b683ca18b298aff8ab7f52dfaa9ccfe6b9`，launcher `d7ba3e76…6dce4` 15360 B。
+- 生产：`npm run setup` 通过（0 错误 0 警告），`/health` 返回 `{"ok":true,"version":"4.6.22","tools":30}`；安装时点数据库 43.0 MiB、schema 20、2154 notes / 36 facts。
+- 云主机在 `09fcd382` 干净检出上复跑：589 tests / 586 pass / 3 skip，`# duration_ms 90212.755772`，TAP sha256 `338a35e65dd2e6567e4e8dfe40c1a42bfc6535249e6ba443de824e2d449ac201`（129,998 B）。三条 SKIP 与上一版同型（launcher Windows-only ×2、路径键 Windows/macOS ×1）。
+- 干净包数（`git archive 09fcd382` 后 `npm pack --dry-run --json`）：251 files / 20,509,966 B / unpacked 44,242,166 B，原始 JSON 在 `docs/evidence/4.6.22-pack.json`。
+- 证据回传：临时 deploy key `171386645` → 云主机推 `evidence/4.6.22` → 本机按 Contents API 取回并校验 TAP sha256 → 删分支 ref（204）、删 key（204）；云主机随后切回 main 并 `reset --hard origin/main`。
+
+本报告不对「最终 HEAD」下结论：上表是发行提交的时点事实，之后若再有 docs 提交，只按清单第 5 节的写法描述。
