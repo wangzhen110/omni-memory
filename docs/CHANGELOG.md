@@ -2,10 +2,31 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.21] — 2026-11-28
+
+### 修复
+- **install 第 2 条用例是假阳性（P1-A）**：4.6.20 的「falls back to plan.home」只断言全文里出现 `/数据根目录: D:\\.dsh-alt/`，而 `human()` 会打印两行同名内容——安装摘要行与 `formatDoctor()` 的 doctor 行，测试又把 `doctor.home` 填成同一个值。删掉 `plan.home` 回退做变异，六条仍全绿。现在改为断言**第一次出现**的那一行（`installLine()` 只取 install 段），`doctor.home` 固定成 `D:\\doctor-home`，并补 `doesNotMatch(/undefined/)`。变异复验：删 `plan.home` 回退 → 该条转红。
+- **`计划任务` 回退无测试（P2-L1）**：4.6.20 唯一改到运行态字符串就是这条，却没有断言。新增一条覆盖四种输入：`result.task` 有值、只有 `plan.task`、`noTask` 为真、两者都缺（必须打印“未解析”），并统一断言不出现 `计划任务: undefined`。
+
+### 变更
+- **TAP 与提交绑定（P2-L8）**：`scripts/tap-evidence.mjs` 增加 `commitSha` / `commitShaSource` 字段，默认 `git rev-parse HEAD`，可用 `--commit` 显式指定；取不到时写 `null` + `unresolved`，不抛错。此前「TAP 对哪个提交有效」只能靠 mtime 与外部说明。
+
+### 文档
+- **发版清单可执行化（P1-C / P1-D / P2-L5）**：`docs/RELEASE-CHECKLIST.md` 规则 3 从「每个数字都要能查到」改成按类型指定出处（测试数→`evidence/<版本>.json`，包数→归档的 `-pack.json`，Release/资产/tag object→归档的 `-release-api.txt`）；规则 1 的模板改成时点表述，去掉会漂移的「最终 HEAD `<sha>`」；命令块明确为「4 条 npm 命令 + 1 条前置脚本」，并写清 push 后必须 `git reset --hard origin/main` 再跑 update-log，否则 UPDATES 记的本地 SHA 会让远端新克隆的 check 变红。
+- **CHANGELOG 4.6.20 逐字失配（P2-L4）**：`result.plan.home` / `result.plan.task` 改为 `result.plan?.home` / `result.plan?.task`，与代码一致。
+- **evidence 汇总行口径（P2-L7）**：`summaryLine` 旁新增 `summaryLineNote`，明写它由分列行拼出、不是 TAP 字面行。
+
+### 测试
+- 测试 **585/585**（4.6.20 的 584 条 + 新增 1 条「计划任务」；install 用例仍是 6 条）。
+
+### 说明
+- 无写入、调度、排序行为变更；本轮只修测试断言、脚本一处元数据、文档口径。
+- 未重签 Release：4.6.20 的包与签名不动，本轮是 4.6.21 自己的 tag/Release。
+
 ## [4.6.20] — 2026-11-28
 
 ### 修复
-- **install 回退分支上锁（P2-Q1）**：`数据根目录` 的三级回退（`result.home` → `result.plan.home` → “未解析”）此前只有实现、没有测试，4.6.19 复核指出这正是“文档写了、代码悄悄回退”的高发处。现在 `scripts/install.mjs` 导出 `human()`，五条用例覆盖：有 `home`、只有 `plan.home`、两者都缺（必须打印“未解析”且整段不出现 `undefined`）。同批发现并修掉同型 bug：`计划任务` 在 `plan.task` 缺失时打印 `undefined`，改为 `result.task ?? result.plan.task ?? '未解析'`。
+- **install 回退分支上锁（P2-Q1）**：`数据根目录` 的三级回退（`result.home` → `result.plan?.home` → “未解析”）此前只有实现、没有测试，4.6.19 复核指出这正是“文档写了、代码悄悄回退”的高发处。现在 `scripts/install.mjs` 导出 `human()`，五条用例覆盖：有 `home`、只有 `plan.home`、两者都缺（必须打印“未解析”且整段不出现 `undefined`）。同批发现并修掉同型 bug：`计划任务` 在 `plan.task` 缺失时打印 `undefined`，改为 `result.task ?? result.plan?.task ?? '未解析'`。
 - **`human()` 改为无副作用可导入**：文件尾加 `pathToFileURL(process.argv[1]).href === import.meta.url` 守卫，只有直接执行才走 `main()`。`npm run setup` 行为不变，测试可以 `import` 而不触发安装。
 
 ### 测试
