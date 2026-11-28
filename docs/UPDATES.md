@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 178 次提交；更新记录自身的提交不计入列表。
+> 共 179 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-28
 
+- 13:32:00 `784f3b80` — docs: record 4.6.20 release chain, install and vm evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/784f3b807737cbd78fc8a5349f9ef44db83979cf)
 - 13:25:05 `31f7ece1` — test: lock install fallbacks, fact error wording and release checklist (4.6.20) — [提交](https://github.com/wangzhen110/omni-memory/commit/31f7ece1992f37018f098ce9675daab961b72572)
 - 13:12:15 `b89dc9b0` — docs(4.6.19): record cloud-host reset to the post-fix HEAD — [提交](https://github.com/wangzhen110/omni-memory/commit/b89dc9b036378e8c5c4aeaa6ee744fd903bf6fdd)
 - 13:11:16 `6fae83c8` — docs(4.6.19): align fact error texts, count five paging sources, add VM final-HEAD proof — [提交](https://github.com/wangzhen110/omni-memory/commit/6fae83c87775a035dad068af0da19a42f6a29153)
