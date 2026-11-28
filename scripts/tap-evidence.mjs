@@ -9,6 +9,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -19,7 +20,12 @@ const arg = name => {
 
 const tapPath = path.resolve(root, arg('--tap') || '.test-results.tap');
 const outPath = path.resolve(root, arg('--out') || `docs/evidence/${JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version}.json`);
-const text = readFileSync(tapPath, 'utf8');
+const tapBytes = readFileSync(tapPath);
+const text = tapBytes.toString('utf8');
+// Hash of the TAP bytes themselves. A `--commit` label alone cannot prove the
+// TAP belongs to a commit; this at least lets anyone re-hash the archived file
+// and the on-disk one, and compares by content instead of mtime.
+const tapSha256 = createHash('sha256').update(tapBytes).digest('hex');
 
 const value = label => {
   const matches = [...text.matchAll(new RegExp(`^# ${label} (\\d+)$`, 'gm'))];
@@ -44,6 +50,10 @@ if (!planLine || Number(planLine.slice(3)) !== tests) throw new Error('TAP plan 
 
 // Which commit this TAP belongs to. mtime comparisons were the only binding
 // before 4.6.21 and they break the moment a docs commit lands after the run.
+// When the API push channel rewrites the commit SHA, pass --commit-source so
+// the archived file says where the value came from instead of being hand-edited
+// after the fact.
+const commitSourceFlag = arg('--commit-source');
 const commitSha = (() => {
   const explicit = arg('--commit');
   if (explicit) return explicit.trim();
@@ -53,12 +63,19 @@ const commitSha = (() => {
     return null;
   }
 })();
+const commitShaSource = commitSourceFlag
+  ? commitSourceFlag.trim()
+  : commitSha
+    ? (arg('--commit') ? 'flag' : 'git rev-parse HEAD')
+    : 'unresolved';
 
 const evidence = {
   version: JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version,
   tap: path.relative(root, tapPath).replaceAll('\\', '/'),
+  tapSha256,
+  tapBytes: tapBytes.length,
   commitSha,
-  commitShaSource: commitSha ? (arg('--commit') ? 'flag' : 'git rev-parse HEAD') : 'unresolved',
+  commitShaSource,
   capturedAt: statSync(tapPath).mtime.toISOString(),
   summary: { tests, pass, fail, cancelled, skipped, todo },
   summaryLine: `${tests} tests / ${pass} pass / ${fail} fail / ${cancelled} cancelled / ${skipped} skipped`,
@@ -69,4 +86,4 @@ const evidence = {
 };
 mkdirSync(path.dirname(outPath), { recursive: true });
 writeFileSync(outPath, `${JSON.stringify(evidence, null, 2)}\n`);
-console.log(JSON.stringify({ ok: true, out: outPath, commitSha, summaryLine: evidence.summaryLine, durationLine: evidence.durationLine, adrLines: evidence.adrLines, indexLine: evidence.indexLine }, null, 2));
+console.log(JSON.stringify({ ok: true, out: outPath, tapSha256, commitSha, commitShaSource, summaryLine: evidence.summaryLine, durationLine: evidence.durationLine, adrLines: evidence.adrLines, indexLine: evidence.indexLine }, null, 2));

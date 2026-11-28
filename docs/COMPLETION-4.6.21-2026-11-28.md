@@ -31,11 +31,11 @@
 
 - **P2-L4**：CHANGELOG 4.6.20 的 `result.plan.home` / `result.plan.task` 改为 `result.plan?.home` / `result.plan?.task`，与代码可选链一致。
 - **P2-L7**：`docs/evidence/<版本>.json` 的 `summaryLine` 旁新增 `summaryLineNote`，明写它由分列行拼出、不是 TAP 字面行；逐字引文以 TAP 分列行为准。
-- **P2-L8**：`scripts/tap-evidence.mjs` 增加 `commitSha` / `commitShaSource`，默认 `git rev-parse HEAD`，可 `--commit` 显式指定，取不到写 `null` + `unresolved` 不抛错。4.6.21 的 evidence 绑定 `91d9b76b`。
+- **P2-L8**：`scripts/tap-evidence.mjs` 增加 `commitSha` / `commitShaSource`，默认 `git rev-parse HEAD`，可 `--commit` 显式指定，取不到写 `null` + `unresolved` 不抛错。脚本当场记录的是推送前的本地提交 `91d9b76b`；推送后按远端实际提交手工改为 `c7da8cfb`（`commitShaSource` 相应标注来源），4.6.22 起改由 `--commit-source` 在生成时写入，不再事后编辑。
 - **P2-L9**：补归档 `docs/evidence/4.6.20-release-api.txt`（tag/ref/Release/资产上传的原始 JSON + `verify:release` 输出 + 临时 deploy key 的 POST/DELETE 状态码与 id）。其中 204 响应体当天未保存，文件里已注明这是补记。
 - **P2-L2**：口径收窄为「没有写入、调度、排序行为变更；只有一处文案层防御与两处脚本/文档改动」，不再说「没有行为变更」。
 - **P2-L3**：两次 `boot()` 保留。合并只省一次进程启动，但会让「文案断言」与「正常写入」的失败信号粘在一起，收益不抵定位成本。
-- **P2-L6**：本轮汇总按实计口径写「4 条实质 docs 改动 + 4 条 update-log」。
+- **P2-L6**：本轮汇总按实计口径写实际改动量与「之后 main 只再前进两笔纯 docs 提交」，不写「4 条实质 docs 改动 + 4 条 update-log」这种与归档文本对不上的概述。
 
 ## 7 证据（取自 docs/evidence/4.6.21.json）
 
@@ -59,8 +59,8 @@ evidence 绑定 `commitSha c7da8cfb`（`commitShaSource: flag (remote sha after 
 
 按清单第 4 节顺序执行完毕，全部取值见 `docs/evidence/4.6.21-release-api.txt`（API 回执原文）、`docs/evidence/4.6.21-pack.json`（干净包数）、`docs/evidence/4.6.21-vm.txt`（云主机复跑）。
 
-- 内容提交 `91d9b76b` → 远端 `c7da8cfb`；证据文档提交 `cc0a580` → `2cca83a2`；rebind `ce081b6a` → `8a0c834e`；两次 update-log `ea555463` → `62e3e9a5`、`28705885` → 最终远端 main `c9cda4830efddd054be64e3a5192547e4d99da0e`。中间 SHA 变化来自 push 工具改写，最终 HEAD 以远端为准。
-- 最终 HEAD `c9cda483` 上 `npm run check` exit 0（`update log covers 185 recorded commit hashes`），即 P1-B 的处置在本版自身生效。
+- 内容提交 `91d9b76b` → 远端 `c7da8cfb`；证据文档提交 `cc0a580` → `2cca83a2`；rebind `ce081b6a` → `8a0c834e`；两次 update-log `ea555463` → `62e3e9a5`、`28705885` → `c9cda483`。中间 SHA 变化来自 push 工具改写，发行提交以远端为准。
+- 发行提交即 tag 所指的 `c9cda4830efddd054be64e3a5192547e4d99da0e`：`npm run check` 在该提交上 exit 0（当时 `update log covers 185 recorded commit hashes`）。此后 main 只追加了两笔纯 docs 提交 `92b7f58b`（证据入库）、`dd1283aa`（update-log），`git diff c9cda483..dd1283aa -- lib/ test/ scripts/ package.json package-lock.json` 为空；`npm run check` 在 `dd1283aa` 上同样 exit 0（`update log covers 186 recorded commit hashes`）。
 - tag `v4.6.21` → tag object `8517a6375008a90082b8f22f7e8b2841b1bac283`，指向 `c9cda483`；Release `461342009`（`https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.21`）。
 - 资产：`omni-update-manifest-v2.json` id `803454761` 632 B；`omni-update-manifest.json` id `803454822` 485 B。
 - `npm run verify:release -- --tag v4.6.21` 输出 `OK: signature, package hash, and launcher hash are consistent`；`package.json` sha256 `5043a6247ff87f60a2fab56c27c7ae952d721ea19b8474c6d357be0226efeedc`，launcher `d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4` 15360 B。

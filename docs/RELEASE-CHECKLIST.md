@@ -19,7 +19,8 @@
 
 ## 2 测试提交与最终 HEAD 分离时，先对齐再引用
 
-- `.tap` 与 `docs/evidence/<版本>.json` 只对**跑测的那个提交**有效。evidence 里的 `commitSha` 由 `scripts/tap-evidence.mjs` 当场从 `git rev-parse HEAD` 写入，缺这个字段就不算落证。
+- `.tap` 与 `docs/evidence/<版本>.json` 只对**跑测的那个提交**有效。evidence 里的 `commitSha` 由 `scripts/tap-evidence.mjs` 当场从 `git rev-parse HEAD` 写入，缺这个字段就不算落证；`tapSha256` / `tapBytes` 记录的是 TAP 字节本身，任何人重算归档 TAP 即可比对。
+- 推送通道会改写 SHA 时，用 `--commit <远端 sha> --commit-source "flag (remote sha after push)"` 在生成时一次写清来源，**不许**事后编辑归档 JSON：手改出来的值脚本复现不了，下一轮复核必然当作造假线索。
 - 发版后追加的 docs 提交不改代码树时，可以写“代码树与 `<跑测 sha>` 相同”，但不要说“在最终 HEAD 上测过”。
 - 交付前跑一次 `git diff <跑测 sha>..<当前 HEAD> -- lib/ test/ scripts/ package.json package-lock.json`，输出必须为空；不为空就重测，不许拿旧 TAP 充数。
 
@@ -38,7 +39,7 @@
 
 ```
 npm test                       # 全量；TAP 落到 .test-results.tap
-node scripts/tap-evidence.mjs  # 前置脚本，写 docs/evidence/<版本>.json（含 commitSha）
+node scripts/tap-evidence.mjs  # 前置脚本，写 docs/evidence/<版本>.json（含 commitSha / tapSha256）
 npm run check                  # 必须在最终 HEAD exit 0
 npm run verify:release -- --tag <版本>
 npm run setup
@@ -47,3 +48,12 @@ npm run setup
 `npm run check` 必须在**最终 HEAD**上 exit 0，而不是在某个中间提交上。实践教训（4.6.20）：push 会改写提交 SHA，若 `docs/UPDATES.md` 记的是本地 SHA，远端新克隆一跑就红。正确顺序是 push 之后 `git fetch && git reset --hard origin/main`，再 `npm run update-log` 并提交这一条，最后在最终 HEAD 复跑 `npm run check`。update-log 提交本身不进 `UPDATES.md`，所以不必无限重跑。
 
 四条 npm 命令都过、且最终 HEAD 的 check exit 0，才允许写“已发布”。
+
+## 5 完成报告不许写死最终 HEAD
+
+完成报告（`docs/COMPLETION-<版本>-*.md`）里只能出现时点表述：
+
+- “`npm run check` 在 `<sha>` 上 exit 0（当时 `update log covers <N> recorded commit hashes`）”
+- 加上“此后 main 只追加了 `<...>` 这些 docs 提交，`git diff <sha>..<当前 HEAD> -- lib/ test/ scripts/ package.json package-lock.json` 为空”
+
+写“最终远端 main `<sha>`”“最终 HEAD `<sha>` 上 check 通过”算不合格：这条清单一删模板，报告自己又写回去，就会在下一笔 docs 提交后立即过期。4.6.19、4.6.20、4.6.21 已经连续三次栽在同一句话上。
