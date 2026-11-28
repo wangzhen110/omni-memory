@@ -13,6 +13,15 @@
 4. 补丁版只放低风险修复；schema、结构改造进次版本。
 5. 延后项必须写触发条件和复查版本；不采纳项必须写替代方案。
 
+## 4.6.21 本轮处理
+
+- **install 用例 2 假阳性（P1，做）**：断言改为只取第一次出现的安装摘要行并整行相等，`doctor.home` 用不同值，补 `doesNotMatch(/undefined/)`；变异复验（删 `plan.home` 回退）转红。
+- **`计划任务` 回退无锁（P2，做）**：补一条四输入用例（`result.task` / `plan.task` / `noTask` / 都缺），锁 `human()` 纯函数防御。口径写明：CLI 路径上 `plan.task` 不可达，这是测试缺口而非线上 bug。
+- **清单规则 3 不可执行（P1，做）**：改按类型指定出处（`evidence/<版本>.json`、`-pack.json`、`-release-api.txt`），并补归档 4.6.20 的 Release/资产/tag 原始 JSON。
+- **清单规则 1 与同版措辞冲突（P1，做）**：删掉「最终 HEAD `<sha>`」模板，只保留时点表述与 `git diff` 为空。
+- **发布 HEAD 门禁红（P1，做）**：把 push → `reset --hard origin/main` → update-log → 提交 → 最终 HEAD `check` exit 0 写进清单第 4 节，并在本版自身执行。
+- **P2 五条（做）**：CHANGELOG 可选链、`summaryLineNote`、evidence `commitSha`、4.6.20 release-api 归档、口径收窄；两次 `boot()` 保留（合并会让失败信号粘连）。
+
 ## 4.6.20 本轮处理
 
 - **P2-Q1 install 回退分支无回归锁（做，补测试）**：`数据根目录` 三级回退（`home` → `plan.home` → “未解析”）补 3 条用例，另加 fact 四条报错文案逐字断言（含一条合法写入防止文案锁死拦掉正常路径）。`scripts/install.mjs` 加 `export { human }` 与直接执行守卫，`npm run setup` 行为不变。同批修 `计划任务: undefined`。

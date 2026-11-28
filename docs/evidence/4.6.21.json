@@ -1,0 +1,23 @@
+{
+  "version": "4.6.21",
+  "tap": ".test-results.tap",
+  "commitSha": "91d9b76bda971afeb28891872c8c0eab4905add8",
+  "commitShaSource": "flag",
+  "capturedAt": "2026-11-28T05:59:22.013Z",
+  "summary": {
+    "tests": 585,
+    "pass": 585,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "summaryLine": "585 tests / 585 pass / 0 fail / 0 cancelled / 0 skipped",
+  "summaryLineNote": "derived from the # tests/# pass/# fail/# cancelled/# skipped lines; not a literal TAP line",
+  "durationLine": "# duration_ms 115250.0089",
+  "adrLines": [
+    "# 10k rows: seed=479ms p95=62.5ms max=63.4ms hitTotal=200 total=1736ms",
+    "# 100k rows: seed=5203ms p95=63.9ms max=65.2ms hitTotal=200 total=6598ms"
+  ],
+  "indexLine": "# 1000-file cold 244ms · warm 191ms · budget 2000ms"
+}
