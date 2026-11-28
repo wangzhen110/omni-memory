@@ -2,6 +2,29 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.19] — 2026-11-28
+
+### 修复
+- **回归不是恒真（E-18-02 / P1-1）**：4.6.18 的 E-02 用例植入行是 `a00…a59`，原文字长 3，被 SQL 预筛 `length(trim(text)) >= 4` 提前踢掉；把分页循环改回单页（`offset === 0`），测试照样全绿——断言根本没走到分页分支。现在植入 `★★★★`（raw 4、内容字符 0），并把 `59/60/61/200` 参数化：59 条时应命中分页、60 条起首屏 60 行里合格行数为 0；同时断言 SQL 首屏确实是 60 行。变异验证：把循环改成单页后 60/61/200 三个用例立刻红。
+- **facts 仍是 LIMIT 后过滤（E-18-01 / P1-2）**：4.6.18 只改了 notes，`profileFactLines` 仍 `LIMIT 40`、persona facts 仍 `LIMIT 80`、utterances 仍 `LIMIT 100`，全是先取后滤。40 条内容字符为 3 的 high-confidence fact 就能清空整节（探针 C1 `realFactRendered=false`）。现在三类全部页式：facts 页 40 到 40 条合格，persona facts 页 40 到 80 条，utterances 页 100 到 100 条；排序补 `id DESC`，避免同 `confidence`/`ts` 的行翻页重复或漏读。
+- **`contentCharCount` 口径（P2-07）**：从 `[\p{L}\p{N}]` 收到 `\p{L}` 与 `\p{Nd}`。圈码 `①②③` 属于 `No`、罗马数字 `Ⅰ` 属于 `Nl`，都是装饰不是信息；`①①①①`、`²²²²`、`ⅠⅠⅠⅠ` 现在过不了门。
+- **fact subject 契约（A-01 / P1-4）**：文档写三条都校内容字符，代码只 `if (!subject)` 校非空，`subject:'★★'` 能入库并渲染成 `- ★★ · 是：容器`。现在 subject 也要求 ≥1 个内容字符；存量符号 subject 行不进画像、不删数据。危害按实测收窄：它能入库、能进画像，但不是“永不进画像”。
+- **install 文案（P2-10）**：`数据根目录` 在 `home` 缺失时回退 `plan.home` 再回退“未解析”，不再打印 `undefined`。
+
+### 文档
+- **契约统一（P2-01/09）**：DESIGN §6.24、REFERENCE 5.3、CHANGELOG 三处对 fact 三元组与最小信息量的表述对齐到实际校验；§6.24 标题补到 4.6.19。
+- **benchmark 口径（P2-02/08）**：`BENCHMARKS.md` 分类表拆成“3.12.0 历史口径”与“4.6.18 复跑”两张并标版本；`bench/public-retrieval.mjs` 自己输出 `capturedAt`，归档 JSON 不再手工补 `codeVersion`/`capturedAt`。
+- **证据补落（P1-3 / P2-03）**：`docs/evidence/4.6.18-vm.txt` 追加 VM 最终 HEAD 落证（`18080973`、`git status` 空），COMPLETION-4.6.18 §9 从“仍待补”改为“已覆盖”；`docs/evidence/4.6.17-context.txt` 追加 note#1315 只读 retention probe，同时把“仍可搜”收窄为“仍在库中（按 id）、单字查询不进 top-5”。
+- **诊断日志（P2-13）**：`OMNI_PROFILE_DEBUG=1` 时 stderr 打 `[profile-scan] {pagesRead,rowsScanned,stopReason}`；默认静默。
+
+### 测试
+- 测试 **579/579**，本机全量 111.89s。E-02 从 1 条拆成 4 条参数化（59/60/61/200），新增 facts 40 条饥饿、符号 subject 拒绝、圈码/罗马数字拒绝、NUL 截断记录，共 7 条。
+
+### 说明
+- schema 仍 20，预算仍 1200，排序语义不变（只补 `id DESC` 兜底）。
+- P2 #4（NUL 截断）前提不成立：SQLite 保留 NUL 字节，但读取与 `length()` 都在 NUL 处截断，模型永远看不到后半段。SQL 预筛仍删除，JS 过滤成为唯一口径。
+- 分页 `OFFSET` 累计扫描（O(N²) 上界）与页间快照并发同根，明确排 4.7.0，本轮只把措辞改为“读页次数线性、扫描量随行号增长”。
+
 ## [4.6.18] — 2026-11-27
 
 ### 修复
@@ -11,7 +34,7 @@
 - **错误文案单复数（P2-08）**：先算 `shortCount` 再拼串，避免同一行重复调用计数；`1 content character` 与 `n content characters` 分开，候选审批那条同样处理。
 
 ### 文档
-- **生产复验落证（P1-04）**：不再只凭叙述。新增 `docs/evidence/4.6.17-context.txt`，含 `omni context` 全文、执行命令、生产库路径与 SHA-256、抓取时间；同时把 4.6.17 条目的表述收窄为“常驻画像没有 `- x` 条目；该 note 仍在库中、仍可被 `memory_search` 检索”，不再声称“同一命令前后对照”。
+- **生产复验落证（P1-04）**：不再只凭叙述。新增 `docs/evidence/4.6.17-context.txt`，含 `omni context` 全文、执行命令、生产库路径与 SHA-256、抓取时间；同时把 4.6.17 条目的表述收窄为“常驻画像没有 `- x` 条目；该 note 仍在库中（按 id 存在；单字查询不进 top-5）”，不再声称“同一命令前后对照”。
 - **包数口径（P1-05 / P2-11 / P2-12）**：干净快照实测，4.6.17 发布提交 `7b8c0ad` 为 **220** 项、最终 HEAD `0dd49cd` 为 **222** 项；工作树 224 是多了两份未跟踪的 `docs/web-ui-preview-2026-11-21.*`（`npm pack` 会把未跟踪文件算进去）。`f9a2945c…` 明确为 `package.json` 的 SHA-256，不是“包哈希”；`171` 是 update-log 覆盖的提交数，与 `git rev-list --count HEAD` 是两个口径。
 - **基准可证性（P2-03/04/05/06）**：`docs/BENCHMARKS.md` 的 LoCoMo 数字标明来自 3.12.0 基线并给归档 hash；`locomo10.json` 补完整 64 位 SHA-256；mem0/Zep 数字标注来源与日期，并写明不可跨 harness 比较；§6 拆成“已落地/待补”两栏。
 - `docs/DESIGN.md` 版本行对齐 4.6.18，§6.24 补 P1-01/02/03 后的口径；`docs/REFERENCE.md` 的 `memory_write` 补 fact 必填与字符计数口径；`docs/COMPLETION-4.6.17-2026-11-27.md` 修正包数与证据文件清单；`docs/REMEDIATION-BACKLOG.md` 增 4.6.18 段。
@@ -28,7 +51,7 @@
 
 ### 修复
 - **最小信息量门禁（常驻画像被单字符垃圾占位）**：生产画像里出现一条 `x` 笔记（note#1315，旧版本写入），按 `importance DESC, ts DESC` 拿到一个常驻槽位，把真规则挤掉。现在两层拦截：`memory_write` 的 note/episode 与 `memory_amend` 要求 ≥2 个内容字符（空白与标点不计），不足抛 `text is too short`；候选审批 `memory_candidate accept` 同一门槛。画像侧再设 ≥4 个内容字符（`profileEligibleNote` 与 `personaEvidenceEligible`），已入库的垃圾也花不掉 1200 字符预算。facts 豁免（正文可由 subject/relation/object 派生）。被挡住的记录不删除，仍可 `memory_search`。
-- 生产库复验（口径收窄，4.6.18 落证）：生产常驻画像里不再出现 `- x` 条目，预算回到真实规则（note#2136 画像预算口径）；note#1315 本身仍在库中，仍可被 `memory_search` 检索。逐字证据见 `docs/evidence/4.6.17-context.txt`（4.6.18 追加，非安装当时的原始输出）。
+- 生产库复验（口径收窄，4.6.18 落证）：生产常驻画像里不再出现 `- x` 条目，预算回到真实规则（note#2136 画像预算口径）；note#1315 本身仍在库中（按 id 存在）；单字查询不把它排进 top-5，故不再声称“仍可搜”。逐字证据见 `docs/evidence/4.6.17-context.txt`（4.6.18 追加，非安装当时的原始输出）。
 
 ### 文档
 - `docs/BENCHMARKS.md` 新增第 6 节“检索质量可证性路线（4.7.0 预置）”：把现有 LoCoMo 证据召回，升级为可对外比较的分层证据（检索层 + 答题层 + 回归门），并列明口径与成本。

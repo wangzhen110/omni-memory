@@ -132,7 +132,7 @@ function human(result) {
   const lines = [];
   lines.push(`全息记忆安装 · ${result.dryRun ? '计划（未落盘）' : '已安装'}`);
   lines.push(`仓库: ${result.repo}`);
-  lines.push(`数据根目录: ${result.home}`);
+  lines.push(`数据根目录: ${result.home ?? result.plan?.home ?? '未解析（doctor 使用默认 ~/.dsh）'}`);
   lines.push(`启动器: ${result.plan?.target || '—'}`);
   if (result.release) {
     lines.push(`发布验签: ${result.release.tag} · commit ${result.release.commit} · key ${result.release.keyId}`);

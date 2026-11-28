@@ -70,7 +70,7 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 | session（默认） | 330 | 1,982 | **0.7134** | **0.7583** | **0.5621** | 19.7s |
 | turn | 5,882 | 1,982 | 0.3483 | 0.3845 | 0.2193 | 160.6s |
 
-**4.6.18 复跑（2026-11-27，重新归档）**：同一份数据、同一命令、`k=10`、检索-only；每次运行的完整 JSON（含 `dataSha256`、分类明细、`elapsedMs`）落在 `docs/evidence/locomo-retrieval-*.json`，不再只留控制台表格。
+**4.6.18 复跑（2026-11-27，重新归档）**：同一份数据、同一命令、`k=10`、检索-only；每次运行的完整 JSON（含 `dataSha256`、分类明细、`elapsedMs`）落在 `docs/evidence/locomo-retrieval-*.json`，不再只留控制台表格。`bench/public-retrieval.mjs` 自 4.6.19 起在输出里自产 `capturedAt`（生成时刻的 ISO 时间），归档文件不再由人工补 `codeVersion`/`capturedAt` 字段；判断版本只看文件名与 `dataSha256`。
 
 | 粒度 | 笔记/块 | 问题 | evidence recall@10 | any-evidence recall@10 | nDCG@10 | 耗时 |
 |---|---:|---:|---:|---:|---:|---:|
@@ -79,7 +79,11 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 
 两组数不能混着引用：3.12.0 之后检索实现有改动（语义向量、重排与去重），4.6.18 的 session 召回比基线高约 1 个百分点，turn 粒度反而低了约 3 个百分点；耗时差异来自本机负载，不归因于算法。要比较版本，必须同一台机、同一命令重跑。这也说明 4.7.0 的 turn 优化目标（先做 turn 级邻句扩展，再调重排）仍成立，且不能拿 session 的高分掩盖 turn 的退步。
 
+**4.6.19 复跑（2026-11-28，同命令）**：session recall@10 **0.7240** / any 0.7699 / nDCG 0.5687 / 40.5s；turn recall@10 **0.3179** / any 0.3562 / nDCG 0.2101 / 247.3s；`dataSha256` 同上。归档 `docs/evidence/locomo-retrieval-4.6.19-{session,turn}.json`，`capturedAt` 由脚本自产。与 4.6.18 相比是同一量级（session +0.0001、turn −0.0006），说明 4.6.19 的门禁/分页改动没有触碰检索路径。
+
 分类型（session 粒度）：
+
+**3.12.0 分类型（历史口径，2026-11-23）**：
 
 | category | 问题 | evidence recall | any-evidence | nDCG |
 |---|---:|---:|---:|---:|
@@ -88,6 +92,16 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 | 3 | 92 | 0.4159 | 0.5326 | 0.2608 |
 | 4 | 841 | 0.7937 | 0.7943 | 0.6362 |
 | 5 | 446 | 0.7870 | 0.7870 | 0.6468 |
+
+**4.6.18 分类型（复跑，2026-11-27）**：取自 `docs/evidence/locomo-retrieval-4.6.18-session.json` 的 `byCategory`。
+
+| category | 问题 | evidence recall | any-evidence | nDCG |
+|---|---:|---:|---:|---:|
+| 1 | 282 | 0.4809 | 0.7482 | 0.3780 |
+| 2 | 321 | 0.6952 | 0.7072 | 0.5021 |
+| 3 | 92 | 0.3969 | 0.5217 | 0.2578 |
+| 4 | 841 | 0.8115 | 0.8121 | 0.6465 |
+| 5 | 446 | 0.8004 | 0.8004 | 0.6516 |
 
 **这不是官方 LoCoMo QA 分数。** 官方分数需要答案生成器和 judge；本仓库只测“证据能否被检索到”。session 粒度把同一 session 的对话拼成块，turn 粒度严格到单条 dialogue；两者不能互相替代。
 

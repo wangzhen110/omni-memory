@@ -1,0 +1,52 @@
+{
+  "dataset": "LoCoMo",
+  "dataPath": "D:\\xiangmu\\全息记忆\\bench\\data\\locomo10.json",
+  "dataSha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+  "samples": 10,
+  "turns": 5882,
+  "notes": 5882,
+  "granularity": "turn",
+  "questions": 1982,
+  "limit": null,
+  "k": 10,
+  "mode": "retrieval-only",
+  "metrics": {
+    "evidenceRecall": 0.3179,
+    "anyEvidenceRecall": 0.3562,
+    "ndcg": 0.2101
+  },
+  "byCategory": {
+    "1": {
+      "questions": 282,
+      "evidenceRecall": 0.1213,
+      "anyEvidenceRecall": 0.2872,
+      "ndcg": 0.09
+    },
+    "2": {
+      "questions": 321,
+      "evidenceRecall": 0.3769,
+      "anyEvidenceRecall": 0.4081,
+      "ndcg": 0.2337
+    },
+    "3": {
+      "questions": 92,
+      "evidenceRecall": 0.1228,
+      "anyEvidenceRecall": 0.1957,
+      "ndcg": 0.0809
+    },
+    "4": {
+      "questions": 841,
+      "evidenceRecall": 0.3835,
+      "anyEvidenceRecall": 0.3948,
+      "ndcg": 0.2558
+    },
+    "5": {
+      "questions": 446,
+      "evidenceRecall": 0.3161,
+      "anyEvidenceRecall": 0.3229,
+      "ndcg": 0.2098
+    }
+  },
+  "elapsedMs": 247281.7,
+  "capturedAt": "2026-11-28T03:45:26.062Z"
+}

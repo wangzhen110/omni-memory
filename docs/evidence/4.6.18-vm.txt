@@ -21,3 +21,12 @@ ok 349 - attachSession follows an existing alias instead of returning the legacy
 
 # the three skips are platform-gated (Windows-only launcher install ×2, Windows/macOS path keys ×1);
 # the same suite on the Windows host reports 572/572 with 0 skipped.
+# --- post-test reset proof (added 2026-11-28 for review QA-01 / P1-3) ---
+# The block above was captured while the VM tree still sat on the update-log commit
+# (a34128ae). The final release HEAD is 18080973, and this block records that the VM
+# was then fast-forwarded and left clean, so "VM reset to final HEAD" is no longer a
+# summary-only claim.
+# command: cd /home/user/omni-memory-vm && git rev-parse HEAD && git log -1 --format=%s && git status --porcelain
+# HEAD=18080973ec8de149ff978a575b91f7da4fc4bd80
+# SUBJECT=docs: update per-commit update log
+# git status --porcelain -> (empty, no output)

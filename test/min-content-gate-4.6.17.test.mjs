@@ -121,33 +121,53 @@ test('min content: zero-width, symbols, emoji and marks are not letters', async 
   assert.equal(profile.value.included.length, 0, 'three letters are too thin for a profile slot');
 });
 
-test('min content: sixty sub-floor rows cannot crowd a real rule out (E-02)', async () => {
-  const app = await boot();
-  // The real rule is written first with low importance, so it sorts below every
-  // planted row. The old build took 60 rows from SQL and filtered afterwards;
-  // 60 three-letter rows (>=2 for write, <4 for profile) then emptied the profile.
-  await app.call('memory_write', {
-    kind: 'note', text: '值班要求：每天开工先确认机器身份', scope: 'global', importance: 0.1,
-  });
-  const db = new DatabaseSync(`${app.home}/memory/omni.db`);
-  const base = Date.now();
-  try {
-    const stmt = db.prepare(`
-      INSERT INTO notes(ts, scope, text, text_hash, importance, revision, contested)
-      VALUES (?, 'global', ?, ?, 1, 1, 0)
-    `);
-    for (let i = 0; i < 60; i += 1) {
-      const text = `a${String(i).padStart(2, '0')}`;
-      stmt.run(base + i, text, hash(text));
-    }
-  } finally {
-    db.close();
-  }
+const contentChars = text => [...String(text)].filter(ch => /[\p{L}\p{Nd}]/u.test(ch)).length;
 
-  const profile = await app.call('memory_profile', { scope: 'global' });
-  assert.ok(String(profile.value.text).includes('值班要求'), 'the real rule must survive 60 thin rows');
-  assert.equal(profile.value.included.length, 1, 'only the real rule is included');
-});
+// The first version of this test planted `a00..a59`: three raw characters, so the
+// SQL prefilter excluded them before the page loop ever ran and the assertion
+// passed even with the loop deleted (review E-18-02, a false green). The planted
+// rows below are deliberately >=4 RAW characters while carrying <4 content
+// characters, so they occupy the first page and only the JS filter can reject
+// them. 59/60/61/200 cover the page boundary and the second page.
+for (const planted of [59, 60, 61, 200]) {
+  test(`min content: ${planted} sub-floor rows cannot crowd a real rule out (E-02)`, async () => {
+    const app = await boot();
+    // The real rule is written first with low importance, so it sorts below every
+    // planted row.
+    await app.call('memory_write', {
+      kind: 'note', text: '值班要求：每天开工先确认机器身份', scope: 'global', importance: 0.1,
+    });
+    const db = new DatabaseSync(`${app.home}/memory/omni.db`);
+    const base = Date.now();
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO notes(ts, scope, text, text_hash, importance, revision, contested)
+        VALUES (?, 'global', ?, ?, 1, 1, 0)
+      `);
+      for (let i = 0; i < planted; i += 1) {
+        stmt.run(base + i, '★★★★', hash(`star-${i}`));
+      }
+      // Proof that the old `LIMIT 60` really could not see the rule: the first
+      // page holds no eligible row at all when 60+ junk rows are planted.
+      const firstPage = db.prepare(`
+        SELECT text FROM notes
+        WHERE deleted_at IS NULL AND superseded_by IS NULL AND contested = 0
+        ORDER BY importance DESC, ts DESC, id DESC LIMIT 60
+      `).all();
+      assert.equal(firstPage.length, Math.min(planted + 1, 60));
+      assert.equal(firstPage.filter(row => contentChars(row.text) >= 4).length,
+        planted >= 60 ? 0 : 1,
+        'junk must fill the whole first page before the real rule appears');
+    } finally {
+      db.close();
+    }
+
+    const profile = await app.call('memory_profile', { scope: 'global' });
+    assert.ok(String(profile.value.text).includes('值班要求'),
+      `the real rule must survive ${planted} thin-but-long raw rows`);
+    assert.equal(profile.value.included.length, 1, 'only the real rule is included');
+  });
+}
 
 test('min content: a fact needs both ends of its tuple', async () => {
   const app = await boot();
@@ -175,9 +195,94 @@ test('min content: a fact needs both ends of its tuple', async () => {
   assert.ok(!String(profile.value.text).includes('空值实体'), 'a dangling legacy fact must not be rendered');
 });
 
+test('min content: forty sub-floor facts cannot empty the facts section (E-18-01)', async () => {
+  const app = await boot();
+  await app.call('memory_profile', { scope: 'global' });
+  const db = new DatabaseSync(`${app.home}/memory/omni.db`);
+  const base = Date.now();
+  try {
+    // Open the schema through a write first, then plant high-confidence junk:
+    // subject/object one letter each plus a one-letter relation = 3 content
+    // characters, below the profile floor of 4.
+    db.prepare(`
+      INSERT INTO facts(subject, relation, object, text, valid_from, confidence)
+      VALUES ('部署端口', '是', '7788', '部署端口 是 7788', ?, 0.7)
+    `).run(base);
+    const stmt = db.prepare(`
+      INSERT INTO facts(subject, relation, object, text, valid_from, confidence)
+      VALUES ('s', 'r', 'o', 's r o', ?, 1)
+    `);
+    for (let i = 0; i < 40; i += 1) stmt.run(base + i + 1);
+  } finally {
+    db.close();
+  }
+  const profile = await app.call('memory_profile', { scope: 'global' });
+  assert.ok(String(profile.value.text).includes('部署端口'),
+    'the real fact must survive 40 junk facts that sort above it');
+});
+
+test('min content: a symbol-only fact subject is rejected and not rendered', async () => {
+  const app = await boot();
+  await assert.rejects(
+    () => app.call('memory_write', { kind: 'fact', subject: '★★', relation: '是', object: '容器', scope: 'global' }),
+    /subject is required/,
+    'subject "★★" carries no letter/digit and must not become a fact',
+  );
+  // Legacy row written before this check: the triple totals >=4 content chars
+  // via the object, so the old empty-subject test alone would have rendered it.
+  const db = new DatabaseSync(`${app.home}/memory/omni.db`);
+  try {
+    db.prepare(`
+      INSERT INTO facts(subject, relation, object, text, valid_from, confidence)
+      VALUES ('★★', '是', '四个字的容器值', '★★ 是 四个字的容器值', ?, 0.9)
+    `).run(Date.now());
+  } finally {
+    db.close();
+  }
+  const profile = await app.call('memory_profile', { scope: 'global' });
+  assert.ok(!String(profile.value.text).includes('★★'), 'a symbol-only subject must not be rendered');
+});
+
+test('min content: circled numbers and roman numerals are not decimal digits', async () => {
+  const app = await boot();
+  for (const text of ['①①①①', '²²²²', 'ⅠⅠⅠⅠ']) {
+    await assert.rejects(
+      () => app.call('memory_write', { kind: 'note', text, scope: 'global' }),
+      /too short/,
+      `"${text}" is decoration (No/Nl), not content`,
+    );
+  }
+});
+
+test('min content: NUL-terminated text is truncated on read, so length() cannot hide a rule', async () => {
+  const app = await boot();
+  await app.call('memory_profile', { scope: 'global' });
+  const db = new DatabaseSync(`${app.home}/memory/omni.db`);
+  try {
+    // Review E-18-04 assumed "ab\u0000cd" keeps 4 letters in the stored value.
+    // SQLite preserves the bytes (hex 6162006364) but every reader truncates at
+    // the NUL, and length() agrees with the reader (2). There is therefore no
+    // legitimate 4-letter rule hidden by the SQL length prefilter; the floor
+    // sees exactly what the model would see. The prefilter is gone anyway so the
+    // two paths cannot disagree.
+    db.prepare(`
+      INSERT INTO notes(ts, scope, text, text_hash, importance, revision, contested)
+      VALUES (?, 'global', ?, ?, 1, 1, 0)
+    `).run(Date.now(), 'ab\u0000cd', hash('nul-rule'));
+    const row = db.prepare('SELECT text, length(text) AS len, hex(text) AS hex FROM notes ORDER BY id DESC LIMIT 1').get();
+    assert.equal(row.len, 2);
+    assert.equal(row.text, 'ab', 'readers see only the prefix before the NUL');
+    assert.equal(row.hex, '6162006364', 'the bytes are preserved on disk');
+  } finally {
+    db.close();
+  }
+  const profile = await app.call('memory_profile', { scope: 'global' });
+  assert.equal(profile.value.included.length, 0, 'two readable letters stay below the profile floor');
+});
+
+
 test('min content: candidate accept shares the floor and leaves the queue intact', async () => {
   const app = await boot();
-  // Open the store first (a read creates the file); the bare temp home has no DB yet.
   await app.call('memory_profile', { scope: 'global' });
   const db = new DatabaseSync(`${app.home}/memory/omni.db`);
   let candidateId;

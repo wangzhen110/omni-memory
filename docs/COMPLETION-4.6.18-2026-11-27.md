@@ -92,4 +92,4 @@ dataSha256 79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4
 ## 9 未纳入
 
 - 门禁三处复制（tool-definitions、store、search 的 notes INSERT）与 TAP→evidence 门禁绑定：4.7.0。
-- 云主机复跑本轮仍需在发版后补 `git rev-parse HEAD` 与 TAP 摘要（P2-13）。
+- **已覆盖（4.6.19 补）**：云主机复跑的 `git rev-parse HEAD` 与干净状态已落 `docs/evidence/4.6.18-vm.txt` 末尾（HEAD=`18080973`、`git status --porcelain` 为空），不再是“仍待补”。4.6.19 起云主机 TAP 原文与 sha256 一并归档。

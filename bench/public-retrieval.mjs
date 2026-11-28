@@ -184,4 +184,7 @@ console.log(JSON.stringify({
   },
   byCategory: reportByCategory,
   elapsedMs: Number((performance.now() - started).toFixed(1)),
+  // Emitted by the script itself so archived runs never carry hand-added
+  // timestamps (review A-07): the value is the moment this JSON was produced.
+  capturedAt: new Date().toISOString(),
 }, null, 2));

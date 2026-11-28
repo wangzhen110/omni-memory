@@ -9,8 +9,10 @@
 # installed version at capture: 4.6.17 (health: {"ok":true,"version":"4.6.17",...})
 # command: node D:\xiangmu\全息记忆\hosts\cli.mjs context --dir C:\Users\Administrator\.dsh\memory --query "<see below>"
 # query: 全息记忆 4.6.17 生产复验 画像 最小信息量
-# assertion: 常驻画像 section contains no "- x" bullet; note#1315 still exists in the
-# library and stays searchable (the gate filters the profile, it does not delete).
+# assertion: the always-injected profile section contains no "- x" bullet. The gate
+# filters the profile; it does not delete. note#1315 is still present in the table
+# (see the retention probe at the end), but a single-character query does not rank
+# it into memory_search top-5, so this file does NOT claim "still searchable".
 # --- raw stdout follows ---
 ## 常驻画像
 ## 全局
@@ -26,4 +28,10 @@
 - [note#2124] 【规则4・双机轮换 2026-11-27】白天公司电脑、晚上家里电脑、周日不走公司机。每轮开工先认机器（PC-20261022JWAL=公司机，Administrator），再三对账：1) 代码以 GitHub main 为准，开工 pull、收工 push，版本号变动必须推；2) 记忆库是本机文件 C:\Users\Administrator\.dsh\memory\omni.db，CLI 没有 export/import，跨机需要的 · verified
 - [note#1324] 【最高规则 2026-11-27】一、禁止凭记忆作答：先查全息记忆（context/search，含踩坑与死路）、项目 docs、实测；查不到找成熟案例，能抄就抄，不能抄学做法；仍无依据就直说。二、开发优化任务先找 skill：扫已注入清单→查记忆→列三根目录→全网案例→自建；过五道闸（技术栈版本、触发场景、可验证产出、docs 优先、来源新鲜）再适配，首落必跑最小样本。三、平台官方文档（微信小游戏等）全量入项目层记忆：问题走 查记忆→ · verified
 - [note#1323] 【规则3・官方文档入记忆库 2026-11-27】适用：微信小游戏（当前《萌宠打工记》），后续任何平台项目照此复制。一、入库范围（P0 先做）：小游戏 API 目录全量（生命周期、应用级事件、性能、TCP/UDP、渲染 Canvas、音频、开放接口、开放数据域、广告、虚拟支付、游戏服务）；框架与配置（game.json、project.config.json）；云开发 CloudBase（登录态、数据库、存储、云函数）；审核合规与类目； · verifi
-
+# --- retention probe (read-only, 2026-11-28, added for review QA-02/A-04) ---
+# node (readOnly) SELECT id, scope, text, ts, deleted_at FROM notes WHERE id = 1315
+# -> {"id":1315,"scope":"proj:全息记忆#30534c","text":"x","ts":1795573048329,"deleted_at":null}
+# SELECT count(*) FROM notes WHERE text = 'x' -> 1
+# command: node D:\xiangmu\全息记忆\hosts\cli.mjs search "x" --dir C:\Users\Administrator\.dsh\memory --limit 5
+# -> matched 12 candidate(s) · showing 5; top-5 are rules (note#2124/1324/1323/1320/1319),
+#    note#1315 is not among them. Hence the narrowed claim above.
