@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 173 次提交；更新记录自身的提交不计入列表。
+> 共 174 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -12,6 +12,10 @@
 - [3.9.3 完成报告](./COMPLETION-3.9.3-2026-11-21.md)
 - [3.9.4 完成报告](./COMPLETION-3.9.4-2026-11-21.md)
 - [3.9.5 完成报告](./COMPLETION-3.9.5-2026-11-21.md)
+
+## 2026-11-28
+
+- 11:46:06 `f95bd088` — fix(4.6.19): page facts/persona sources before filtering, gate fact subject — [提交](https://github.com/wangzhen110/omni-memory/commit/f95bd088a7e51ef72e6267a6a0a2be737d761b2f)
 
 ## 2026-11-27
 
