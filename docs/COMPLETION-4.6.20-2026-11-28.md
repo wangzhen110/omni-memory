@@ -62,5 +62,6 @@
 - 资产：`omni-update-manifest-v2.json` id `803360777`（632B）、`omni-update-manifest.json` id `803360827`（485B）。
 - `npm run verify:release -- --tag v4.6.20`：OK；package.json SHA-256 `651ced83…e339`、launcher `d7ba3e76…6dce4` 15360B。
 - `npm run setup`：doctor 通过（4.6.20、schema 20、2150 notes / 35 facts、HTTP 30 tools）；`/health` 返回 `version 4.6.20`。全文见 `docs/evidence/4.6.20-install-release.txt`。
-- 云主机：reset 到 `ed687884`（= 最终 HEAD），`git status --porcelain` 空，复跑 584（581 通过 / 3 平台跳过，`# duration_ms 90486.474218`）。落证 `docs/evidence/4.6.20-vm.txt`，TAP 原文 `4.6.20-vm.tap`（128,922B，sha256 `f896061f…4b8f`）。
-  - 本轮跑测提交与最终 HEAD 是同一个 `ed687884`，不存在 4.6.19 那种“TAP 早于源码 mtime”的口子。
+- 云主机：reset 到 `ed687884`（当时的远端 main），`git status --porcelain` 空，复跑 584（581 通过 / 3 平台跳过，`# duration_ms 90486.474218`）。落证 `docs/evidence/4.6.20-vm.txt`，TAP 原文 `4.6.20-vm.tap`（128,922B，sha256 `f896061f…4b8f`）。
+  - 此后只追加数条 docs 提交（本报告收尾与 update-log），代码树不变：`git diff ed687884..HEAD -- lib/ test/ scripts/ package.json package-lock.json` 为空。
+  - 本轮跑测提交与 tag 指向的提交是同一个 `ed687884`，不存在 4.6.19 那种“TAP 早于源码 mtime”的口子。
