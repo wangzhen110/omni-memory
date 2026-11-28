@@ -2,6 +2,24 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.6.20] — 2026-11-28
+
+### 修复
+- **install 回退分支上锁（P2-Q1）**：`数据根目录` 的三级回退（`result.home` → `result.plan.home` → “未解析”）此前只有实现、没有测试，4.6.19 复核指出这正是“文档写了、代码悄悄回退”的高发处。现在 `scripts/install.mjs` 导出 `human()`，五条用例覆盖：有 `home`、只有 `plan.home`、两者都缺（必须打印“未解析”且整段不出现 `undefined`）。同批发现并修掉同型 bug：`计划任务` 在 `plan.task` 缺失时打印 `undefined`，改为 `result.task ?? result.plan.task ?? '未解析'`。
+- **`human()` 改为无副作用可导入**：文件尾加 `pathToFileURL(process.argv[1]).href === import.meta.url` 守卫，只有直接执行才走 `main()`。`npm run setup` 行为不变，测试可以 `import` 而不触发安装。
+
+### 测试
+- 新增 `test/install-fact-contract-4.6.20.test.mjs`（5 条）：三条 install 文案回退 + fact 四条报错文案逐字断言（`subject is required for kind=fact` / 带 `(it must contain a letter or digit)` 的变体 / `relation is required for kind=fact` / `object is required for kind=fact (pass object or a non-empty text)`），外加一条“合法 fact 仍能写入”，防止文案锁死到把正常路径一起拦掉。
+- 测试 **584/584**，本机全量 114.52s。
+
+### 文档
+- 新增 `docs/RELEASE-CHECKLIST.md`：把 4.6.17 → 4.6.19 连犯三轮的两件事写成固定步骤 —— ① 汇总写“云主机已 reset 到 `<sha>`”前，VM 必须实跑 `git rev-parse HEAD` 并把原文追加进 `docs/evidence/<版本>-vm.txt`，汇总 SHA 与该行逐字一致；② `.tap` / evidence 只对跑测提交有效，最终 HEAD 若另加 docs 提交，必须 `git diff <跑测 sha>..<最终 HEAD> -- lib/ test/ scripts/ package.json package-lock.json` 为空，且措辞写成“只多 N 条 docs 提交”。
+- `README` badge 与指标、`DESIGN` NFR-10/NFR-12、版本行同步到 4.6.20 / 584。
+
+### 说明
+- 补丁只收口测试与发版流程，schema 仍 20，预算仍 1200，无行为变更。
+- 4.6.19 复核结论是“可定稿、不需要 4.6.20”；本轮不是为复核而发，是把两条靠人记的纪律换成可执行文件。
+
 ## [4.6.19] — 2026-11-28
 
 ### 修复

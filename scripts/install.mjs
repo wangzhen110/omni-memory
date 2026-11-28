@@ -25,7 +25,7 @@
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { installLauncherFromCommit } from './install-launcher.mjs';
 import { verifyRelease } from './verify-release.mjs';
 import { describeHeadDelta } from './release-delta.mjs';
@@ -145,7 +145,10 @@ function human(result) {
   } else {
     lines.push('启动器校验: 同提交 SHA-256（本地自洽；未验 Release 签名）');
   }
-  lines.push(`计划任务: ${result.plan?.noTask ? '不创建/不修改' : result.task}`);
+  const taskLabel = result.plan?.noTask
+    ? '不创建/不修改'
+    : (result.task ?? result.plan?.task ?? '未解析');
+  lines.push(`计划任务: ${taskLabel}`);
   if (result.plan?.taskUnknown) lines.push(`任务探测: 未知（${result.plan.taskError}）`);
   if (result.plan) lines.push(`提交: ${result.plan.commit} · sha256 ${result.plan.sha256}`);
   lines.push('');
@@ -276,7 +279,15 @@ async function main() {
   }
 }
 
-main().catch(error => {
-  console.error(JSON.stringify({ ok: false, error: String(error?.message ?? error) }, null, 2));
-  process.exitCode = 1;
-});
+// Exported so tests can pin the human-readable summary (notably the data-root
+// fallback: `home` is absent on the apply path, and it must never print
+// "undefined"). Importing this file must not run the installer.
+export { human };
+
+const invokedDirectly = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
+if (invokedDirectly) {
+  main().catch(error => {
+    console.error(JSON.stringify({ ok: false, error: String(error?.message ?? error) }, null, 2));
+    process.exitCode = 1;
+  });
+}

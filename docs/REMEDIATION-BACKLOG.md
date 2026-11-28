@@ -13,6 +13,12 @@
 4. 补丁版只放低风险修复；schema、结构改造进次版本。
 5. 延后项必须写触发条件和复查版本；不采纳项必须写替代方案。
 
+## 4.6.20 本轮处理
+
+- **P2-Q1 install 回退分支无回归锁（做，补测试）**：`数据根目录` 三级回退（`home` → `plan.home` → “未解析”）补 3 条用例，另加 fact 四条报错文案逐字断言（含一条合法写入防止文案锁死拦掉正常路径）。`scripts/install.mjs` 加 `export { human }` 与直接执行守卫，`npm run setup` 行为不变。同批修 `计划任务: undefined`。
+- **mtime 倒挂判据（延后，不采纳为自动检查）**：本轮只做 `git hash-object` 人工核对（与 `f95d088` 一致、内容零变化）。做成自动判据会在 docs-only 提交上误报，且复核只要求“回退分支有测试”。触发条件：mtime 再次被拿来当“测过”的证据。
+- **云主机落证与汇总措辞（做，工程化）**：新增 `docs/RELEASE-CHECKLIST.md`，把两件事写成固定步骤（VM 必须实跑 `git rev-parse HEAD` 并落进 evidence；跑测提交与最终 HEAD 不一致时 `git diff` 必须为空）。
+
 ## 4.6.1 本轮处理
 
 > 状态：已完成（2026-11-26，`npm test` 483/483，`npm run check` 通过）。以下条目已进仓库；发布与生产升级由 #77 收口。
@@ -91,7 +97,7 @@
 - **P2-A2 漏列 persona notes（做）**：DESIGN §6.24 与 COMPLETION-4.6.19 的“四类源”改“五处取数”，补 persona notes 40/40。
 - **P2-A3/Q2 note#1315 旧口径（做）**：DESIGN §6.24、COMPLETION-4.6.17 第 20/50 行、COMPLETION-4.6.18 第 36 行统一改成“仍在库中、单字查询不进 top-5、不声称可搜”。
 - **P2-Q3 SKIP 措辞（做）**：汇总不再把三条跳过统称 Windows 专用；356 是 Windows/macOS 路径键。
-- **P2-Q1 install.mjs mtime 与回退路径无回归锁（排 4.6.20）**：mtime 晚于 TAP 属于形式判据（`git hash-object` 与 f95d088 一致、内容零变化），本轮不动；`数据根目录` 回退分支需要一条测试锁，归入 4.6.20 代码批次，不在 docs 批次里塞测试。
+- **P2-Q1 install.mjs mtime 与回退路径无回归锁（排 4.6.20）**：mtime 晚于 TAP 属于形式判据（`git hash-object` 与 f95d088 一致、内容零变化），本轮不动；`数据根目录` 回退分支需要一条测试锁，归入 4.6.20 代码批次，不在 docs 批次里塞测试（4.6.20 已补，见文首 4.6.20 段）。
 
 - **E-18-02 回归恒真（P1，做）**：原植入串 `a00..a59` 原文字长 3，被 SQL `length(trim(text))>=4` 预筛排除，把分页循环改回单页仍全绿。改法：植入 `★★★★`（raw 4 / 内容字符 0），`59/60/61/200` 参数化并断言首屏 60 行；变异验证已做，单页变异使 60/61/200 三条转红。
 - **E-18-01 facts 饥饿（P1，做）**：`profileFactLines` 40、persona facts 80、utterances 100 全部改为页式过滤（页 40/40/100），排序补 `id DESC`；新增“40 条 3 字符 high-confidence fact 不清空真 fact”用例。
