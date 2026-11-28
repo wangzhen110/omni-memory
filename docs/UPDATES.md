@@ -2,7 +2,7 @@
 
 > 本文件由 `npm run update-log` 从 git 历史自动生成，按时间倒序记录每一次提交。
 > 版本摘要见 [CHANGELOG](CHANGELOG.md)，版本报告见下方“版本报告”。
-> 共 196 次提交；更新记录自身的提交不计入列表。
+> 共 197 次提交；更新记录自身的提交不计入列表。
 
 ## 版本报告
 
@@ -15,6 +15,7 @@
 
 ## 2026-11-28
 
+- 17:08:39 `8d729497` — docs: record retrieval-gate run-to-run jitter — [提交](https://github.com/wangzhen110/omni-memory/commit/8d729497bef9497167b7e825908b702319cc9f36)
 - 17:05:51 `9aae6529` — docs: 4.7.0 update log — [提交](https://github.com/wangzhen110/omni-memory/commit/9aae6529bf4df5bcf0c77654fbeff0c069a3864a)
 - 17:05:26 `1f02bc95` — docs: 4.7.0 install evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/1f02bc95d72a7de0c84c6efa5fa916831f8b2004)
 - 17:04:51 `4ef911ee` — docs: 4.7.0 completion report, pack and release evidence — [提交](https://github.com/wangzhen110/omni-memory/commit/4ef911ee6eeeeaa0d0629d5d32763a6a63b552aa)
