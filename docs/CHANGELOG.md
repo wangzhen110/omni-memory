@@ -2,6 +2,25 @@
 
 格式遵循 Keep a Changelog；版本遵循语义化。可靠性 = `npm test` 通过率。
 
+## [4.7.0] — 2026-11-28
+
+### 变更
+- **turn 粒度检索提升（0.3179 → 0.5114）**：三处叠加，全部有全量对照。①`queryTerms` 剔除英文功能词（what/did/the 这类几乎命中所有笔记的词），裸 turn 单这一项就从 0.3179 到 0.4081；②`bench` 的 turn 写入口径支持 `--ctx N`，把前后各 N 轮拼进同一条笔记（证据单位仍是 `dia_id`），发布口径用 `--ctx 2`；③`memory_search` 新增 `expand` 开关，按 `source` 家族把已命中行向家族最高分抬升（强度 0.3，只重排、不新增行）。`lib/search.mjs` 新增 `sourceFamily` / `expandContext` 并导出。
+- **session 粒度同步微涨**：0.7240 → 0.7279，nDCG 0.5687 → 0.5612（仍在 0.55 以上）。
+
+### 新增
+- **检索硬阈值进 `npm run check`**：`scripts/check-retrieval-gate.mjs` 跑固定 seed 500 题分层子集，阈值（session recall ≥0.70 / session nDCG ≥0.55 / turn recall ≥0.40）在 `scripts/retrieval-gate-lib.mjs`；实测 session 0.7434 / nDCG 0.5699、turn 0.5218。数据集未下载时打印 `SKIP` 放行，不伪装绿灯。
+- **答题层首次落数**：`bench/locomo-qa.mjs`（生成 / 判分可插拔，确定性基线 + 可选 OpenAI 兼容 LLM 路径），固定 seed 500 题 accuracy 0.1189 / token F1 0.1138，token 账随报告落盘；`bench/locomo-lib.mjs` 收拢两份 harness 的语料写入与子集抽样；`bench/README.md` 写清复现步骤与成本。
+- **证据**：`docs/evidence/locomo-retrieval-4.7.0-{session,turn}.json`、`docs/evidence/locomo-qa-4.7.0.json`。
+
+### 说明
+- turn 不设 nDCG 硬门：turn nDCG 0.2929 与 session 的 0.5612 不是同一分母口径（turn 要求“所有证据轮都排进前 10”），硬套 0.55 会长期红灯；报告照常公布。
+- 答题层数字**不可与 mem0 的 92.5 比较**：本机没有 LLM key，跑的是“答案能否从检索片段逐字取出”的下限路径。LLM 路径已接好，预算 500 题约 350 万 token。
+- 未做：只用查询侧扩展（邻句并入候选）的旧方案实测更差（含 ±1 邻句 0.3215、session 家族并入 0.0336），已弃用，相关代码不留在 `lib/search.mjs`。
+
+### 测试
+- 测试 **604/604**（4.6.22 的 589 条 + 新增 15 条：检索上下文/闸门/答题层，并补齐 4.6.22 复核延后的 unresolved 分支断言）。
+
 ## [4.6.22] — 2026-11-28
 
 ### 修复
@@ -261,7 +280,7 @@
 - **`omni context --json` 被忽略**：空库时 `--json` 仍打印散文，脚本无法解析；现在返回工具原值 JSON。
 
 ### 新增
-- **测试文件**：`test/mcp-dispatch-error-4.6.8.test.mjs`（dispatch 失败帧带 id 回 `-32603`、不带 id 只记日志）、`test/entry-diagnostics-4.6.8.test.mjs`（`routes`/`at`/`chars`/`auto` 诊断与 dream 租约门）、`test/cli-project-search-4.6.8.test.mjs`（`index`/`project search`/`context`/`impact`/`sync`/`status`/`init` 与 `write`/`search`/`ingest`/`candidates` 主链路），共 13 条。
+- **测试文件**：`test/mcp-dispatch-error-4.6.8.test.mjs`（dispatch 失败帧带 id 回 `-32604`、不带 id 只记日志）、`test/entry-diagnostics-4.6.8.test.mjs`（`routes`/`at`/`chars`/`auto` 诊断与 dream 租约门）、`test/cli-project-search-4.6.8.test.mjs`（`index`/`project search`/`context`/`impact`/`sync`/`status`/`init` 与 `write`/`search`/`ingest`/`candidates` 主链路），共 13 条。
 - `test/fixtures/mcp-stdio-harness.mjs` 增加 `explode` 工具，作为唯一能到达 dispatch 失败分支的路径。
 - `test/prompt-and-dream-4.6.7.test.mjs` 的 `routes` 断言由近似恒真改为三态枚举，并补 `at`/`auto` 断言。
 

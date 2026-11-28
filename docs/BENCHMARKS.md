@@ -81,7 +81,41 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 
 **4.6.19 复跑（2026-11-28，同命令）**：session recall@10 **0.7240** / any 0.7699 / nDCG 0.5687 / 40.5s；turn recall@10 **0.3179** / any 0.3562 / nDCG 0.2101 / 247.3s；`dataSha256` 同上。归档 `docs/evidence/locomo-retrieval-4.6.19-{session,turn}.json`，`capturedAt` 由脚本自产。与 4.6.18 相比是同一量级（session +0.0001、turn −0.0006），说明 4.6.19 的门禁/分页改动没有触碰检索路径。
 
-分类型（session 粒度）：
+**4.7.0 复跑（2026-11-28，turn 优化落地）**：同一份数据（`dataSha256` 同上）、同一台机、`k=10`。turn 粒度这次换了**索引口径与排序口径**，不再是裸 turn：
+
+1. **写入侧 ±2 上下文拼接**：每条 turn 笔记的正文带上前后各两轮对话（`--ctx 2`），来源仍是 `locomo:<sample>:<dia_id>`，证据单位没有变。
+2. **查询侧同源家族重排**：同一 conversation 内已有命中向该家族最高分靠拢（`memory_search` 的 `expand: true`，默认强度 0.3），只重排、不新增行。
+3. **英文功能词剔除**：`queryTerms` 丢弃 what/did/the 这类几乎命中所有笔记的词。
+
+| 粒度 | 笔记/块 | 问题 | evidence recall@10 | any-evidence recall@10 | nDCG@10 | 耗时 |
+|---|---:|---:|---:|---:|---:|---:|
+| session（默认） | 330 | 1,982 | **0.7279** | 0.7735 | **0.5612** | 37.0s |
+| turn（±2 上下文 + 家族重排） | 5,882 | 1,982 | **0.5114** | 0.5469 | 0.2929 | 289.9s |
+
+turn 从 0.3179 提到 0.5114（+0.1935，相对 +61%），跨过 0.40 的门槛；session 同时小涨（0.7240 → 0.7279），nDCG 0.5612 仍在 0.55 以上。耗时翻倍来自上下文拼接后的长正文，属于预期代价。
+
+**4.7.0 归因（同一数据集、同一命令，只改一项）**：全量 1,982 题的裸 turn 在只加功能词剔除后就是 **0.4081** / any 0.4495 / nDCG 0.2909 / 230.8s——即 4.7.0 的大头来自词面清洗，上下文拼接与家族重排再补上约 0.10。家族重排的单独收益在固定 seed 500 题子集上量：`--ctx 2` 不开重排 0.4575 → 开启 0.5218（+0.064）。子集与全量不可混引，子集只用于归因，不作为发布口径。
+
+
+**4.7.0 分类型（session 粒度，2026-11-28）**：功能词剔除让 category 2（时间类）与 4/5 小幅上升，category 1（多跳）与 3（开放域）略降，属于换打分口径后的正常重分配。
+
+| category | 问题 | evidence recall | any-evidence | nDCG |
+|---|---:|---:|---:|---:|
+| 1 | 282 | 0.4658 | 0.7305 | 0.3524 |
+| 2 | 321 | 0.7160 | 0.7321 | 0.5348 |
+| 3 | 92 | 0.3543 | 0.4674 | 0.2392 |
+| 4 | 841 | 0.8205 | 0.8205 | 0.6410 |
+| 5 | 446 | 0.8049 | 0.8049 | 0.6300 |
+
+**4.7.0 分类型（turn 粒度，2026-11-28）**：多跳（category 1）仍是短板，单跳（4）与对抗（5）已经在 0.6 上下。
+
+| category | 问题 | evidence recall | nDCG |
+|---|---:|---:|---:|
+| 1 | 282 | 0.1388 | 0.0994 |
+| 2 | 321 | 0.5023 | 0.2746 |
+| 3 | 92 | 0.1477 | 0.0964 |
+| 4 | 841 | 0.6284 | 0.3607 |
+| 5 | 446 | 0.6121 | 0.3417 |
 
 **3.12.0 分类型（历史口径，2026-11-23）**：
 
@@ -105,6 +139,24 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 
 **这不是官方 LoCoMo QA 分数。** 官方分数需要答案生成器和 judge；本仓库只测“证据能否被检索到”。session 粒度把同一 session 的对话拼成块，turn 粒度严格到单条 dialogue；两者不能互相替代。
 
+### 3.1 答题层（LoCoMo QA，4.7.0 首次落数）
+
+`bench/locomo-qa.mjs` 在同一份 LoCoMo 语料上做“检索 + 生成 + 判分”。生成与判分都是可插拔的：本仓库当前跑的是**确定性路径**（`--generator extractive` 取检索片段里最贴题的一段，`--judge rule` 用逐字包含 / 词元包含 / 词元 F1 ≥ 0.6 判分），不调任何模型；LLM 路径（`--generator llm --judge llm`，OpenAI 兼容端点，`OMNI_QA_API_KEY`）已接好但本环境没有 key，本轮没有 LLM 数字。
+
+固定 seed 500 题（`--seed 42`，按 category 分层抽样，`docs/evidence/locomo-qa-4.7.0.json` 可复现）：
+
+| 指标 | 数值 |
+|---|---:|
+| 判分题数 | 387（500 题中 113 题属 category 5 对抗题，规则判分无法判“拒答”，单列不计入） |
+| accuracy（规则判分） | **0.1189** |
+| 逐字/词元包含率 | 0.0775 |
+| token F1 | 0.1126 |
+| 同批检索 evidence recall@10 | 0.4945 |
+
+分类型（accuracy / token F1）：category 1 多跳 71 题 0 / 0.0314；category 2 时间 81 题 0.1975 / 0.3082；category 3 开放域 23 题 0.0435 / 0.0200；category 4 单跳 212 题 0.1368 / 0.0750。
+
+**这不是可与 mem0 92.5 同桌的分数。** 它是“本地、离线、零 API”路径的下限：答案必须能从检索片段里逐字取出才可能判对，而 LoCoMo 的答案经常需要跨轮聚合或简单推理。要拿到可比数字，必须走 LLM 生成 + LLM judge 路径；按 §6.2 的预算，500 题约 350 万 token（每题约 6–7k），1,982 题约 1,300–1,400 万 token。脚本会把实际 `prompt/completion/total` 写进 `tokenAccounting`，没有调用时明确写 `no LLM call`。
+
 ## 4. 金标检索
 
 脚本：`bench/golden.mjs`（20 条中文语料、24 个问题，含 4 个低词面重叠改写）
@@ -118,14 +170,18 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 - 语义模型是否加载会影响冷启动和内存；规模脚本默认关闭语义，避免把模型加载时间混入检索延迟。
 - 机器负载会改变绝对值；本页用区间和原始日志 `.bench-*.log` 保留上下文。
 
-## 6. 检索质量可证性路线（4.7.0 预置，未实装）
+## 6. 检索质量可证性路线（4.7.0 已落地）
 
-现状是三块证据强弱不一：**检索层有数**（LoCoMo 证据召回，4.6.18 复跑 session recall@10 0.7239 / any 0.7699 / nDCG 0.5680，turn 0.3185），**答题层没有数**（没跑答案生成与 judge，不能与厂商的 QA 准确率同桌），**回归门部分有**（中文金标 + 120 条确定性质量用例只防回退）。本节把“可证性”拆成可独立验收的三步，避免把三个口径混成一个分数。
+4.6.22 复核时这三块证据强弱不一：检索层有数但 turn 未达标、答题层完全没有数、回归门只覆盖中文金标。4.7.0 把三块都推进了一步：
 
-**已落地 / 待补**（本节其余内容写的是目标，不要当成现状）：
+- **检索层**：turn recall@10 从 0.3179 提到 **0.5114**（全量 1,982 题），session 0.7279 / nDCG 0.5612；归因与方法见 §3。
+- **答题层**：`bench/locomo-qa.mjs` 首次落数，固定 seed 500 题确定性基线 accuracy 0.1189 / token F1 0.1126；LLM 路径接好但无 key，未跑，不与 mem0 同桌（§3.1）。
+- **回归门**：`scripts/check-retrieval-gate.mjs` 已进 `npm run check`，session recall ≥ 0.70、session nDCG ≥ 0.55、turn recall ≥ 0.40；数据集未下载时明确 `SKIP`，不伪装绿灯。阈值与判定逻辑在 `scripts/retrieval-gate-lib.mjs`，有单测。
 
-- 已落地：数据 hash 全量写入报告与 `bench/data/README.md`；`k` 与粒度已可参数化（`--k` 默认 10、`--granularity session|turn`）；检索-only 与答题层分离；每次运行落完整 JSON 证据（`docs/evidence/locomo-retrieval-4.6.18-*.json`）；中文金标在 `npm run check` 的回归范围内。
-- 待补：答题层脚本与 judge；三档语义（关 / 本地 / 远端）的分档记录；检索层硬阈值进 `check`（session ≥0.70 / turn ≥0.40 / nDCG ≥0.55，当前 turn 0.3185 未达标，先改检索再上闸）；固定 seed 的 500 题子集成本账。
+**已落地 / 待补**：
+
+- 已落地：数据 hash 全量写入报告与 `bench/data/README.md`；`--k`、`--granularity`、`--ctx` 可参数化；每次运行落完整 JSON 证据；固定 seed 500 题子集与答题层脚本（`bench/locomo-qa.mjs`）；检索硬阈值进 `check`。
+- 待补：答题层的 LLM 生成 + LLM judge 实跑（需要可用端点与约 350 万 token/500 题的预算）；三档语义（关 / 本地 / 远端）的分档记录；category 1 多跳的 turn 召回（0.1388）仍是短板。
 
 **外部数字的出处**（只作背景，不作对比结论）：
 
@@ -147,11 +203,13 @@ node bench/public-retrieval.mjs --granularity turn --k 10
 3. **成本闸**：1,982 题 × 约 6–7k token ≈ 1,300–1,400 万 token。先跑固定种子的 500 题子集（约 350 万 token）拿到收敛区间，再决定是否全量；两段结果都要落 `docs/evidence/locomo-qa-<version>.json`。
 4. **产物**：`docs/evidence/locomo-qa-<version>.json`（分数 + 失败样例 + token 账）、BENCHMARKS §3 扩一张“答题层”表、`bench/README` 写清复现步骤。
 
-### 6.3 回归门（可持续）
+### 6.3 回归门（可持续，4.7.0 已启用）
 
-- 只对**检索层**设硬阈值进 `npm run check`：目标 session recall@10 ≥ 0.70、turn ≥ 0.40、nDCG@10 ≥ 0.55。session 与 nDCG 当前已达标，turn 当前 0.3185 未达标，所以本闸**尚未启用**；顺序是先做 turn 级检索增强，达标后再把阈值写进 check，避免刚上闸就长期红灯。
-- 答题层因 judge 不稳定，先做趋势记录（同一模型、同一 judge 模板下比较），不设硬门，避免为了分数改 judge。
-- **turn 粒度 0.3185 是首要优化目标**：真实使用接近单轮检索，session 拼块的高分掩盖了这个问题。优化顺序：turn 级证据扩展（同 session 邻句并入候选）→ 重排特征（时间邻近 + 实体命中）→ 只在有回归证据时才动权重。
+- 只对**检索层**设硬阈值进 `npm run check`，由 `scripts/check-retrieval-gate.mjs` 执行、`scripts/retrieval-gate-lib.mjs` 定义：session recall@10 ≥ 0.70、session nDCG@10 ≥ 0.55、turn recall@10 ≥ 0.40。固定 seed 500 题分层子集，本轮实测 session 0.7434 / nDCG 0.5699、turn 0.5218，两道都有余量。
+- turn 不设 nDCG 硬门：turn nDCG 0.2929 与 session 的 0.5612 不是同一口径（turn 的分母是“所有证据轮都要排进前 10”），设 0.55 会立刻长期红灯；报告里照常公布 turn nDCG，但不作为闸门。
+- 数据集 `bench/data/locomo10.json` 不入库；未下载时闸门打印 `SKIP` 并放行，避免新克隆因缺数据而红。
+- 答题层因 judge 不稳定，只做趋势记录（同一模型、同一 judge 模板下比较），不设硬门。
+- **turn 粒度仍是首要优化目标**：0.5114 已过线，但 category 1 多跳只有 0.1388；后续顺序是 turn 级证据扩展（多跳跨 session 的那 330 题）→ 重排特征（时间邻近 + 实体命中）→ 只在有回归证据时才动权重。
 
 ### 6.4 不做的事
 

@@ -1,6 +1,6 @@
 {
   "name": "@local/omni-memory",
-  "version": "4.6.22",
+  "version": "4.7.0",
   "private": true,
   "type": "module",
   "description": "Omni Memory for any AI host: append-only transcripts, bi-temporal facts, self-verifying notes, hybrid retrieval, zero-config local semantic recall, project scoping and an interactive star map. Native DSH plugin, with MCP, HTTP, OpenAPI and CLI adapters.",
@@ -51,10 +51,12 @@
     "bench:quality": "node bench/quality.mjs",
     "bench:public": "node bench/public-retrieval.mjs",
     "bench:public:fetch": "node bench/fetch-public.mjs",
-    "check": "node scripts/check-docs.mjs && node scripts/check-client-hooks.mjs && node scripts/check-syntax.mjs && node scripts/check-client-load.mjs && node scripts/check-semantic-assets.mjs && node scripts/check-launcher.mjs && node -e \"['package.json','locale/zh.json','locale/en.json'].forEach(f=>JSON.parse(require('fs').readFileSync(f,'utf8')))\" && node scripts/check-update-log.mjs",
+    "bench:qa": "node bench/locomo-qa.mjs",
+    "check": "node scripts/check-docs.mjs && node scripts/check-client-hooks.mjs && node scripts/check-syntax.mjs && node scripts/check-client-load.mjs && node scripts/check-semantic-assets.mjs && node scripts/check-launcher.mjs && node -e \"['package.json','locale/zh.json','locale/en.json'].forEach(f=>JSON.parse(require('fs').readFileSync(f,'utf8')))\" && node scripts/check-update-log.mjs && node scripts/check-retrieval-gate.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "check:update-log": "node scripts/check-update-log.mjs",
     "check:launcher": "node scripts/check-launcher.mjs",
+    "check:retrieval": "node scripts/check-retrieval-gate.mjs",
     "install:launcher": "node scripts/install-launcher.mjs",
     "uninstall:launcher": "node scripts/uninstall-launcher.mjs",
     "update-log": "node scripts/update-log.mjs"

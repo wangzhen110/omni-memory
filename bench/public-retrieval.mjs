@@ -8,18 +8,20 @@
  * one note whose source is `locomo:<sample>:<dia_id>`; a question is scored by
  * whether the evidence turns appear in the top-k search results. It deliberately
  * does not claim an official LoCoMo QA score: that requires an answer generator
- * and the official judge, which are outside the local-only path.
+ * and the official judge, which `locomo-qa.mjs` covers separately.
  *
  * Usage:
  *   node bench/fetch-public.mjs
  *   node bench/public-retrieval.mjs [--limit 200] [--k 10] [--data path]
+ *     [--granularity turn] [--ctx 2] [--expand] [--semantic] [--dump out.json]
+ *
+ * Canonical turn-granularity run (the one the release gate uses):
+ *   node bench/public-retrieval.mjs --granularity turn --ctx 2 --expand
  */
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { boot } from '../test/helpers.mjs';
-
-const DEFAULT_DATA = path.resolve(import.meta.dirname, 'data', 'locomo10.json');
+import { DEFAULT_DATA, allQuestions, datasetSha256, readDataset, subsetQuestions, writeCorpus } from './locomo-lib.mjs';
 
 function option(name, fallback) {
   const index = process.argv.indexOf(name);
@@ -30,98 +32,25 @@ const dataPath = path.resolve(option('--data', DEFAULT_DATA));
 const limit = Math.max(0, Number(option('--limit', 0)));
 const K = Math.max(1, Number(option('--k', 10)));
 const granularity = option('--granularity', 'session') === 'turn' ? 'turn' : 'session';
-const data = JSON.parse(readFileSync(dataPath, 'utf8'));
-if (!Array.isArray(data) || !data.length) throw new Error(`not a LoCoMo array: ${dataPath}`);
-
-const app = await boot({ semantic: process.argv.includes('--semantic') });
+const expand = process.argv.includes('--expand');
+const contextWindow = granularity === 'turn' ? Math.max(0, Math.min(2, Number(option('--ctx', 0)))) : 0;
+const data = readDataset(dataPath);
+const semantic = process.argv.includes('--semantic');
+const app = await boot({ semantic });
 await app.call('memory_profile');
 
-let turns = 0;
-let notes = 0;
-for (const sample of data) {
-  const sampleId = String(sample.sample_id ?? 'unknown');
-  const scope = `proj:locomo#${sampleId}`;
-  const conversation = sample.conversation;
-  const sessionKeys = Object.keys(conversation)
-    .filter(key => /^session_\d+$/.test(key))
-    .sort((a, b) => Number(a.slice(8)) - Number(b.slice(8)));
-  for (const sessionKey of sessionKeys) {
-    const date = String(conversation[`${sessionKey}_date_time`] ?? '');
-    const sessionRows = conversation[sessionKey] ?? [];
-    if (granularity === 'session') {
-      const text = sessionRows
-        .filter(turn => turn?.text)
-        .map(turn => `${turn.speaker ?? ''}: ${turn.text}`)
-        .join(' ');
-      if (!text) continue;
-      const baseSource = `locomo:${sampleId}:${sessionKey}`;
-      const chunkSize = 3500;
-      for (let offset = 0; offset < text.length; offset += chunkSize) {
-        const chunk = text.slice(offset, offset + chunkSize);
-        await app.call('memory_write', {
-          kind: 'note',
-          scope,
-          text: `[${sessionKey}]${date ? ` ${date}` : ''} ${chunk}`,
-          source: `${baseSource}:part${Math.floor(offset / chunkSize) + 1}`,
-        });
-        notes += 1;
-      }
-      turns += sessionRows.length;
-    } else {
-      for (const turn of sessionRows) {
-        if (!turn?.text || !turn?.dia_id) continue;
-        const dia = String(turn.dia_id);
-        await app.call('memory_write', {
-          kind: 'note',
-          scope,
-          text: `[${dia}]${date ? ` ${date}` : ''} ${turn.speaker ?? ''}: ${turn.text}`,
-          source: `locomo:${sampleId}:${dia}`,
-        });
-        notes += 1;
-        turns += 1;
-      }
-    }
-  }
-}
+const written = await writeCorpus(app, data, { granularity, contextWindow });
+const { turns, notes } = written;
 
-if (process.argv.includes('--semantic')) {
+if (semantic) {
   await app.call('memory_reindex', { semantic: true, limit: notes });
 }
 
-function evidenceSources(sampleId, evidence) {  if (granularity === 'session') {
-    return evidence.map(dia => {
-      const session = /^D(\d+):/.exec(dia)?.[1];
-      return session ? `locomo:${sampleId}:session_${session}` : null;
-    }).filter(Boolean);
-  }
-  return evidence.map(dia => `locomo:${sampleId}:${dia}`);
-}
-
-function sampleQuestions() {
-  const rows = [];
-  for (const sample of data) {
-    const sampleId = String(sample.sample_id ?? 'unknown');
-    const scope = `proj:locomo#${sampleId}`;
-    for (const qa of sample.qa ?? []) {
-      const evidence = [...new Set((qa.evidence ?? []).map(String))];
-      if (!qa.question || !evidence.length) continue;
-      rows.push({
-        sampleId,
-        scope,
-        question: String(qa.question),
-        category: String(qa.category ?? 'unknown'),
-        evidence: evidenceSources(sampleId, evidence),
-      });
-    }
-  }
-  if (!limit || limit >= rows.length) return rows;
-  const stride = rows.length / limit;
-  return Array.from({ length: limit }, (_, index) => rows[Math.floor(index * stride)]);
-}
-
-const questions = sampleQuestions();
+const questions = subsetQuestions(allQuestions(data, { granularity }), { size: limit });
 const perCategory = new Map();
 const samples = [];
+const dumpPath = option('--dump', '');
+const diagnostics = dumpPath ? [] : null;
 
 function ncdgAtK(hits, relevant, k) {
   const dcg = hits.slice(0, k).reduce((sum, hit, index) => sum + (relevant.has(hit) ? 1 : 0) / Math.log2(index + 2), 0);
@@ -133,18 +62,27 @@ function ncdgAtK(hits, relevant, k) {
 
 const started = performance.now();
 for (const item of questions) {
-  const result = await app.call('memory_search', { query: item.question, limit: K, scope: item.scope });
+  const result = await app.call('memory_search', { query: item.question, limit: K, scope: item.scope, ...(expand ? { expand: true } : {}) });
   const hitSources = (result.value?.hits ?? [])
     .filter(hit => hit.kind === 'note' && String(hit.source ?? '').startsWith('locomo:'))
     .map(hit => granularity === 'session'
       ? String(hit.source).replace(/:part\d+$/, '')
       : String(hit.source));
-  const relevant = new Set(item.evidence);
+  const relevant = new Set(item.sources);
   const found = new Set(hitSources.filter(source => relevant.has(source)));
   const recall = found.size / relevant.size;
   const any = found.size > 0 ? 1 : 0;
   const ndcg = ncdgAtK(hitSources, relevant, K);
   samples.push({ category: item.category, recall, any, ndcg });
+  if (diagnostics) {
+    diagnostics.push({
+      question: item.question,
+      category: item.category,
+      evidence: item.sources,
+      hits: hitSources,
+      recall,
+    });
+  }
 
   const bucket = perCategory.get(item.category) ?? { count: 0, recall: 0, any: 0, ndcg: 0 };
   bucket.count += 1;
@@ -165,14 +103,18 @@ const reportByCategory = Object.fromEntries([...perCategory.entries()].map(([cat
   },
 ]));
 
+if (dumpPath && diagnostics) writeFileSync(path.resolve(dumpPath), JSON.stringify(diagnostics, null, 2));
+
 console.log(JSON.stringify({
   dataset: 'LoCoMo',
   dataPath,
-  dataSha256: createHash('sha256').update(readFileSync(dataPath)).digest('hex'),
+  dataSha256: datasetSha256(dataPath),
   samples: data.length,
   turns,
   notes,
   granularity,
+  expand,
+  contextWindow,
   questions: questions.length,
   limit: limit || null,
   k: K,

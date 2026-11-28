@@ -161,14 +161,24 @@
 - **画像侧**：`profileEligibleNote` 与 `personaEvidenceEligible` 要求 ≥4 个内容字符，既有库里的垃圾也无法花预算；不过滤搜索，`memory_search` 仍能取回。
 - **验收**：新增 `test/min-content-gate-4.6.17.test.mjs` 3 条；生产库同一调用复验，`- x` 消失、槽位回到项目规则。
 
-## 4.7.0 检索质量可证性（预置，未实装）
+## 4.7.0 本轮处理
 
-> 详见 `docs/BENCHMARKS.md` §6。这里只记取舍与触发条件，避免路线散落在报告里。
+> 状态：已完成（2026-11-28）。4.6.22 定稿后第一次功能型迭代，结构/算法改动按规则进次版本。
 
-- **做**：答题层（生成 + 规则判分 + LLM judge 双采样）与检索层分开报；固定数据集 hash、固定 top-k、三档语义分别记录；先 500 题子集（约 350 万 token）拿收敛区间，再决定全量（约 1,300–1,400 万 token）。
-- **做**：检索层进 `npm run check` 硬门（session recall@10 ≥ 0.70、turn ≥ 0.40、nDCG ≥ 0.55），答题层只记趋势。
-- **缓**：turn 粒度优化（邻句扩展 → 时间/实体重排）排在 4.7.x，先有回归证据再动权重。
-- **不做**：为分数引入 LLM 抽取型写入（改变离线属性）；把 mem0/Zep 的 J 分直接当对比结论（harness 不同）；为分数放宽 1200 预算或 top-k。
+- **turn 检索（做）**：0.3179 → 0.5124（全量 1,982 题，`--ctx 2 --expand`）。归因：功能词剔除单独就给到 0.4081，上下文拼接 + 家族重排再补约 0.10。查询侧“并新行”的两版实测都更差（±1 邻句 0.3215、session 家族 0.0336），故只保留重排，不保留加行代码。
+- **检索硬门进 check（做）**：`scripts/check-retrieval-gate.mjs` + `scripts/retrieval-gate-lib.mjs`，session 0.70 / nDCG 0.55、turn 0.40；数据集缺失时 `SKIP` 放行。
+- **答题层（做，仅确定性路径）**：`bench/locomo-qa.mjs`，固定 seed 500 题 accuracy 0.1189 / token F1 0.1138，证据 `docs/evidence/locomo-qa-4.7.0.json`。LLM 生成 + LLM judge 路径已接好（OpenAI 兼容），但本机没有任何 `OMNI_QA_API_KEY`，**本轮没有 LLM 数字**，因此不与 mem0 92.5 做任何比较。
+- **缓存项：unresolved 分支补测（做）**：4.6.22 复核 P2-2 的触发条件（测试数要变）在本轮成立，新增 1 条 `tap-evidence` 用例，把 `commitShaSource='unresolved'` 与 `commitSha=null` 锁住；测试数 589 → 604。
+- **仍缓**：多跳（category 1）turn 召回 0.1388，需要跨 session 证据聚合，排 4.7.x；三档语义分档记录（关 / 本地 / 远端）排到有远端端点时；`update(tapBytes)` 等价、vm.txt 未跟踪清单两项按 4.6.22 结论继续不修/随模板收口。
+
+## 4.7.0 检索质量可证性（历史预置，已按上节落地）
+
+> 详见 `docs/BENCHMARKS.md` §6。这里只留原始取舍记录与触发条件，避免路线散落在报告里。
+
+- **做（已完成）**：答题层（生成 + 规则判分 + LLM judge 双采样）与检索层分开报；固定数据集 hash、固定 top-k、三档语义分别记录；先 500 题子集拿收敛区间，再决定全量。
+- **做（已完成）**：检索层进 `npm run check` 硬门（session recall@10 ≥ 0.70、turn ≥ 0.40、session nDCG@10 ≥ 0.55），答题层只记趋势。
+- **做（已完成）**：turn 粒度优化，最终走的是“写入侧上下文拼接 + 查询侧家族重排”，不是原设想的邻句并入。
+- **不做**：为分数引入 LLM 抽取型写入（改变离线属性）；把 mem0/Zep 的分数直接当对比结论（harness 不同）；为分数放宽 1200 预算或 top-k。
 
 ## 4.6.16 本轮处理
 

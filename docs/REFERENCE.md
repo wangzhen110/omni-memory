@@ -368,6 +368,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 - `offset` number，默认 0，0..100；跳过前面已排序的候选，用于分页
 - `cwd` string，可选；按工作目录解析项目层，CLI `--dir` 用它
 - `scope` string，可选；`all` 表示跨所有项目
+- `expand` boolean，可选，默认 false；开启后对同一 `source` 家族的已命中行做加分重排（对话/章节类语料在 4.7.0 实测 turn recall@10 0.4575 → 0.5218），只重排、不新增行，强度可用 `OMNI_SEARCH_EXPAND_BOOST` 调整（默认 0.3）
 
 返回：`total`、`returned`、`offset`、`truncated`、`scope`、`problemKey`、`hits[]`（含完整的 `text`、`snippet`、`matchedTerms`、`score`、`why`、`recencyBoost`、可选 `staleVersion`，以及 kind/id/scope/contested/solutionStatus）。文本不再按 400 字硬截；分页用 `offset`，`truncated` 表示当前页之后还有候选。命中排序会给近期笔记很小的时间加权，并把带旧产品版本号的结论标记为 `staleVersion`、轻微降权；旧结论仍可检索，但不会盖过当前版本。
 

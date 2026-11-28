@@ -1,0 +1,399 @@
+{
+  "dataset": "LoCoMo",
+  "mode": "local-qa",
+  "dataPath": "D:\\xiangmu\\全息记忆\\bench\\data\\locomo10.json",
+  "dataSha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+  "samples": 10,
+  "turns": 5882,
+  "notes": 5882,
+  "granularity": "turn",
+  "contextWindow": 2,
+  "expand": true,
+  "k": 10,
+  "subset": {
+    "size": 500,
+    "seed": 42,
+    "sampling": "stratified-by-category"
+  },
+  "generator": {
+    "type": "extractive",
+    "model": "deterministic-span-extraction"
+  },
+  "judge": {
+    "type": "rule",
+    "model": "rule:verbatim+containment+f1>=0.6"
+  },
+  "metrics": {
+    "accuracy": 0.1189,
+    "contained": 0.0775,
+    "tokenF1": 0.1126,
+    "evidenceRecall": 0.4945
+  },
+  "excluded": {
+    "adversarial": 113,
+    "reason": "LoCoMo category 5 is scored against adversarial_answer; a rule judge cannot decide refusal, so it stays out of accuracy and is reported separately."
+  },
+  "byCategory": {
+    "1": {
+      "questions": 71,
+      "accuracy": 0,
+      "tokenF1": 0.0314
+    },
+    "2": {
+      "questions": 81,
+      "accuracy": 0.1975,
+      "tokenF1": 0.3082
+    },
+    "3": {
+      "questions": 23,
+      "accuracy": 0.0435,
+      "tokenF1": 0.02
+    },
+    "4": {
+      "questions": 212,
+      "accuracy": 0.1368,
+      "tokenF1": 0.075
+    }
+  },
+  "tokenAccounting": {
+    "prompt": 0,
+    "completion": 0,
+    "total": 0,
+    "calls": 0,
+    "note": "no LLM call: deterministic path"
+  },
+  "failures": [
+    {
+      "question": "When did Caroline go to the LGBTQ support group?",
+      "gold": "7 May 2023",
+      "answer": "2023",
+      "category": "2",
+      "hits": [
+        "locomo:conv-26:D1:3",
+        "locomo:conv-26:D1:4",
+        "locomo:conv-26:D1:1"
+      ]
+    },
+    {
+      "question": "What fields would Caroline be likely to pursue in her educaton?",
+      "gold": "Psychology, counseling certification",
+      "answer": "Caroline: Agreed, Mel!",
+      "category": "3",
+      "hits": [
+        "locomo:conv-26:D14:23",
+        "locomo:conv-26:D14:25",
+        "locomo:conv-26:D14:22"
+      ]
+    },
+    {
+      "question": "What activities does Melanie partake in?",
+      "gold": "pottery, camping, painting, swimming",
+      "answer": "Melanie: That's great.",
+      "category": "1",
+      "hits": [
+        "locomo:conv-26:D15:9",
+        "locomo:conv-26:D6:8",
+        "locomo:conv-26:D6:10"
+      ]
+    },
+    {
+      "question": "What do Melanie's kids like?",
+      "gold": "dinosaurs, nature",
+      "answer": "Sounds like you and the kids had a blast.",
+      "category": "1",
+      "hits": [
+        "locomo:conv-26:D19:1",
+        "locomo:conv-26:D19:3",
+        "locomo:conv-26:D19:2"
+      ]
+    },
+    {
+      "question": "When did Caroline have a picnic?",
+      "gold": "The week before 6 July 2023",
+      "answer": "2023",
+      "category": "2",
+      "hits": [
+        "locomo:conv-26:D5:15",
+        "locomo:conv-26:D5:14",
+        "locomo:conv-26:D5:16"
+      ]
+    },
+    {
+      "question": "When did Caroline go to the LGBTQ conference?",
+      "gold": "10 July 2023",
+      "answer": "2023",
+      "category": "2",
+      "hits": [
+        "locomo:conv-26:D14:32",
+        "locomo:conv-26:D14:34",
+        "locomo:conv-26:D9:11"
+      ]
+    },
+    {
+      "question": "What types of pottery have Melanie and her kids made?",
+      "gold": "bowls, cup",
+      "answer": "It made me think how much work we still have to do for LGBTQ rights.",
+      "category": "1",
+      "hits": [
+        "locomo:conv-26:D19:1",
+        "locomo:conv-26:D19:4",
+        "locomo:conv-26:D19:2"
+      ]
+    },
+    {
+      "question": "What has Melanie painted?",
+      "gold": "Horse, sunset, sunrise",
+      "answer": "I painted it because it was calming.",
+      "category": "1",
+      "hits": [
+        "locomo:conv-26:D17:16",
+        "locomo:conv-26:D17:13",
+        "locomo:conv-26:D17:12"
+      ]
+    },
+    {
+      "question": "When did Caroline apply to adoption agencies?",
+      "gold": "The week of 23 August 2023",
+      "answer": "decision",
+      "category": "2",
+      "hits": [
+        "locomo:conv-26:D13:2",
+        "locomo:conv-26:D13:3",
+        "locomo:conv-26:D13:17"
+      ]
+    },
+    {
+      "question": "When did Caroline draw a self-portrait?",
+      "gold": "The week before 23 August 2023",
+      "answer": "2023",
+      "category": "2",
+      "hits": [
+        "locomo:conv-26:D14:31",
+        "locomo:conv-26:D13:10",
+        "locomo:conv-26:D14:30"
+      ]
+    },
+    {
+      "question": "When did Melanie's friend adopt a child?",
+      "gold": "2022",
+      "answer": "2023",
+      "category": "2",
+      "hits": [
+        "locomo:conv-26:D6:9",
+        "locomo:conv-26:D19:10",
+        "locomo:conv-26:D19:9"
+      ]
+    },
+    {
+      "question": "How many children does Melanie have?",
+      "gold": "3",
+      "answer": "5",
+      "category": "1",
+      "hits": [
+        "locomo:conv-26:D6:12",
+        "locomo:conv-26:D6:11",
+        "locomo:conv-26:D6:9"
+      ]
+    },
+    {
+      "question": "When did Melanie go on a hike after the roadtrip?",
+      "gold": "19 October 2023",
+      "answer": "2023",
+      "category": "1",
+      "hits": [
+        "locomo:conv-26:D4:17",
+        "locomo:conv-26:D1:18",
+        "locomo:conv-26:D1:16"
+      ]
+    },
+    {
+      "question": "Would Melanie go on another roadtrip soon?",
+      "gold": "Likely no; since this one went badly",
+      "answer": "Talk to you soon!",
+      "category": "3",
+      "hits": [
+        "locomo:conv-26:D8:30",
+        "locomo:conv-26:D8:32",
+        "locomo:conv-26:D8:33"
+      ]
+    },
+    {
+      "question": "What items has Melanie bought?",
+      "gold": "Figurines, shoes",
+      "answer": "Melanie: Wow, Caroline.",
+      "category": "1",
+      "hits": [
+        "locomo:conv-26:D7:5",
+        "locomo:conv-26:D6:6",
+        "locomo:conv-26:D7:4"
+      ]
+    },
+    {
+      "question": "When did Melanie buy the figurines?",
+      "gold": "21 October 2023",
+      "answer": "2023",
+      "category": "2",
+      "hits": [
+        "locomo:conv-26:D6:6",
+        "locomo:conv-26:D5:6",
+        "locomo:conv-26:D6:5"
+      ]
+    },
+    {
+      "question": "What did the charity race raise awareness for?",
+      "gold": "mental health",
+      "answer": "Caroline: That charity race sounds great, Mel!",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D2:2",
+        "locomo:conv-26:D2:3",
+        "locomo:conv-26:D2:4"
+      ]
+    },
+    {
+      "question": "How does Melanie prioritize self-care?",
+      "gold": "by carving out some me-time each day for activities like running, reading, or playing the violin",
+      "answer": "Melanie: Sounds great!",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D6:8",
+        "locomo:conv-26:D6:12",
+        "locomo:conv-26:D6:9"
+      ]
+    },
+    {
+      "question": "What type of individuals does the adoption agency Caroline is considering support?",
+      "gold": "LGBTQ+ individuals",
+      "answer": "I passed the adoption agency interviews last Friday!",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D19:2",
+        "locomo:conv-26:D14:27",
+        "locomo:conv-26:D14:31"
+      ]
+    },
+    {
+      "question": "What is Caroline excited about in the adoption process?",
+      "gold": "creating a family for kids who need one",
+      "answer": "Anything you're excited for in the adoption process?",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D2:12",
+        "locomo:conv-26:D19:2",
+        "locomo:conv-26:D19:3"
+      ]
+    },
+    {
+      "question": "What motivated Caroline to pursue counseling?",
+      "gold": "her own journey and the support she received, and how counseling improved her life",
+      "answer": "What motivated you to pursue counseling?",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D4:12",
+        "locomo:conv-26:D4:13",
+        "locomo:conv-26:D4:14"
+      ]
+    },
+    {
+      "question": "What was Melanie's favorite book from her childhood?",
+      "gold": "\"Charlotte's Web\"",
+      "answer": "What's a favorite book you remember from your childhood?",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D6:8",
+        "locomo:conv-26:D6:11",
+        "locomo:conv-26:D6:9"
+      ]
+    },
+    {
+      "question": "What creative project do Mel and her kids do together besides pottery?",
+      "gold": "painting",
+      "answer": "What other creative projects do you do with them, besides pottery?",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D8:6",
+        "locomo:conv-26:D8:4",
+        "locomo:conv-26:D8:3"
+      ]
+    },
+    {
+      "question": "What did Caroline see at the council meeting for adoption?",
+      "gold": "many people wanting to create loving homes for children in need",
+      "answer": "Last Friday I went to a council meeting for adoption.",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D19:2",
+        "locomo:conv-26:D19:3",
+        "locomo:conv-26:D19:1"
+      ]
+    },
+    {
+      "question": "What pet does Caroline have?",
+      "gold": "guinea pig",
+      "answer": "What pet do you have?",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D7:15",
+        "locomo:conv-26:D7:13",
+        "locomo:conv-26:D7:16"
+      ]
+    },
+    {
+      "question": "What pets does Melanie have?",
+      "gold": "Two cats and a dog",
+      "answer": "Also, do you have any pets?",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D13:3",
+        "locomo:conv-26:D7:15",
+        "locomo:conv-26:D13:2"
+      ]
+    },
+    {
+      "question": "What setback did Melanie face in October 2023?",
+      "gold": "She got hurt and had to take a break from pottery.",
+      "answer": "[D18:9] 6:55 pm on 20 October, 2023 Melanie: Thanks!",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D18:7",
+        "locomo:conv-26:D18:9",
+        "locomo:conv-26:D17:4"
+      ]
+    },
+    {
+      "question": "What did the posters at the poetry reading say?",
+      "gold": "\"Trans Lives Matter\"",
+      "answer": "By the way, I went to a poetry reading last Fri - it was really powerful!",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D17:20",
+        "locomo:conv-26:D17:21",
+        "locomo:conv-26:D17:18"
+      ]
+    },
+    {
+      "question": "How do Melanie and Caroline describe their journey through life together?",
+      "gold": "An ongoing adventure of learning and growing.",
+      "answer": "Melanie: Thanks, Caroline, for letting me join your journey.",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D3:9",
+        "locomo:conv-26:D3:8",
+        "locomo:conv-26:D3:10"
+      ]
+    },
+    {
+      "question": "What happened to Melanie's son on their road trip?",
+      "gold": "He got into an accident",
+      "answer": "The kids loved it and it was a nice way to relax after the road trip.",
+      "category": "4",
+      "hits": [
+        "locomo:conv-26:D18:1",
+        "locomo:conv-26:D18:2",
+        "locomo:conv-26:D18:3"
+      ]
+    }
+  ],
+  "elapsedMs": 66551.7,
+  "capturedAt": "2026-11-28T08:47:21.987Z"
+}

@@ -28,12 +28,12 @@ const fixture = [
   '',
 ].join('\n');
 
-const run = args => {
+const run = (args, env) => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'omni-tapev-'));
   const tap = path.join(dir, 'fixture.tap');
   const out = path.join(dir, 'evidence.json');
   writeFileSync(tap, fixture);
-  execFileSync(process.execPath, [script, '--tap', tap, '--out', out, ...args], { cwd: root, stdio: 'pipe' });
+  execFileSync(process.execPath, [script, '--tap', tap, '--out', out, ...args], { cwd: root, stdio: 'pipe', env: env ?? process.env });
   return JSON.parse(readFileSync(out, 'utf8'));
 };
 
@@ -62,4 +62,13 @@ test('tap-evidence keeps the plain flag when only --commit is given', () => {
   const evidence = run(['--commit', 'deadbeef']);
   assert.equal(evidence.commitSha, 'deadbeef');
   assert.equal(evidence.commitShaSource, 'flag');
+});
+
+test('tap-evidence records an unresolved commit instead of inventing a SHA', () => {
+  // 4.6.22 复核 P2-2: the third value of commitShaSource was never asserted, so
+  // renaming 'unresolved' to anything else stayed green. Trigger this branch by
+  // hiding git from PATH, which is the real shape of a packaged/tarball run.
+  const evidence = run([], { ...process.env, PATH: '' });
+  assert.equal(evidence.commitSha, null);
+  assert.equal(evidence.commitShaSource, 'unresolved');
 });
