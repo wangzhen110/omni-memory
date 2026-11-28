@@ -1,0 +1,3694 @@
+TAP version 13
+# (node:2586) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: twenty-six loopback routes are registered
+ok 1 - twenty-six loopback routes are registered
+  ---
+  duration_ms: 119.475109
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/status and /overview expose the package version
+ok 2 - GET /omni-memory/status and /overview expose the package version
+  ---
+  duration_ms: 42.069796
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/packet surfaces the read-path version notice
+ok 3 - GET /omni-memory/packet surfaces the read-path version notice
+  ---
+  duration_ms: 51.467639
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/overview aggregates growth, health and profile signals
+ok 4 - GET /omni-memory/overview aggregates growth, health and profile signals
+  ---
+  duration_ms: 35.743492
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/overview SQL buckets match the legacy row scan
+ok 5 - GET /omni-memory/overview SQL buckets match the legacy row scan
+  ---
+  duration_ms: 47.433194
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/list returns stats and rows
+ok 6 - GET /omni-memory/list returns stats and rows
+  ---
+  duration_ms: 39.120142
+  type: 'test'
+  ...
+# Subtest: non-loopback callers are rejected with 403
+ok 7 - non-loopback callers are rejected with 403
+  ---
+  duration_ms: 9.344948
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/node returns a note body
+ok 8 - GET /omni-memory/node returns a note body
+  ---
+  duration_ms: 29.984596
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/node explains an entity through its facts
+ok 9 - GET /omni-memory/node explains an entity through its facts
+  ---
+  duration_ms: 25.543944
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/node rejects an unknown node
+ok 10 - GET /omni-memory/node rejects an unknown node
+  ---
+  duration_ms: 29.350462
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/list lists workspaces that have no memories yet
+ok 11 - GET /omni-memory/list lists workspaces that have no memories yet
+  ---
+  duration_ms: 26.759093
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/list keeps real layers ahead of empty ones
+ok 12 - GET /omni-memory/list keeps real layers ahead of empty ones
+  ---
+  duration_ms: 27.679589
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/search returns ranked hits
+ok 13 - GET /omni-memory/search returns ranked hits
+  ---
+  duration_ms: 29.490566
+  type: 'test'
+  ...
+# Subtest: D-04 POST forget works when the host already consumed the request body
+ok 14 - D-04 POST forget works when the host already consumed the request body
+  ---
+  duration_ms: 27.777591
+  type: 'test'
+  ...
+# Subtest: D-04 POST /omni-memory/forget tombstones the row
+ok 15 - D-04 POST /omni-memory/forget tombstones the row
+  ---
+  duration_ms: 26.078772
+  type: 'test'
+  ...
+# Subtest: D-04 GET forget is rejected instead of mutating
+ok 16 - D-04 GET forget is rejected instead of mutating
+  ---
+  duration_ms: 26.07221
+  type: 'test'
+  ...
+# Subtest: D-04 POST forget without id returns 400
+ok 17 - D-04 POST forget without id returns 400
+  ---
+  duration_ms: 28.22203
+  type: 'test'
+  ...
+# Subtest: D-04 POST forget rejects a non-loopback caller before touching data
+ok 18 - D-04 POST forget rejects a non-loopback caller before touching data
+  ---
+  duration_ms: 28.171953
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/search without a query returns an empty list
+ok 19 - GET /omni-memory/search without a query returns an empty list
+  ---
+  duration_ms: 23.803648
+  type: 'test'
+  ...
+# (node:2594) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: auto recall appends the closest memories to the prompt section
+ok 20 - auto recall appends the closest memories to the prompt section
+  ---
+  duration_ms: 252.035827
+  type: 'test'
+  ...
+# Subtest: OMNI_AUTO_RECALL=0 keeps recall out of the prompt
+ok 21 - OMNI_AUTO_RECALL=0 keeps recall out of the prompt
+  ---
+  duration_ms: 179.600976
+  type: 'test'
+  ...
+# Subtest: the status route reports injection statistics for the footer
+ok 22 - the status route reports injection statistics for the footer
+  ---
+  duration_ms: 179.466224
+  type: 'test'
+  ...
+# Subtest: the status route is loopback only
+ok 23 - the status route is loopback only
+  ---
+  duration_ms: 11.645142
+  type: 'test'
+  ...
+# Subtest: an empty recall race degrades to profile-only injection
+ok 24 - an empty recall race degrades to profile-only injection
+  ---
+  duration_ms: 21.396908
+  type: 'test'
+  ...
+# (node:2601) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: import rejects a snapshot written by a newer version and leaves the store untouched
+ok 25 - import rejects a snapshot written by a newer version and leaves the store untouched
+  ---
+  duration_ms: 131.934997
+  type: 'test'
+  ...
+# Subtest: import fails cleanly on truncated or malformed JSON without partial writes
+ok 26 - import fails cleanly on truncated or malformed JSON without partial writes
+  ---
+  duration_ms: 57.922904
+  type: 'test'
+  ...
+# Subtest: import rejects a snapshot with a wrong or missing format field
+ok 27 - import rejects a snapshot with a wrong or missing format field
+  ---
+  duration_ms: 57.804654
+  type: 'test'
+  ...
+# Subtest: a type-invalid note is rejected before writing and leaves every row untouched
+ok 28 - a type-invalid note is rejected before writing and leaves every row untouched
+  ---
+  duration_ms: 64.01357
+  type: 'test'
+  ...
+# Subtest: global and two project scopes survive export/import without cross-scope mixing
+ok 29 - global and two project scopes survive export/import without cross-scope mixing
+  ---
+  duration_ms: 65.936807
+  type: 'test'
+  ...
+# Subtest: a legacy-style snapshot without newer optional note fields still imports
+ok 30 - a legacy-style snapshot without newer optional note fields still imports
+  ---
+  duration_ms: 47.578454
+  type: 'test'
+  ...
+# (node:2608) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: export writes a portable snapshot that includes tombstones by default
+ok 31 - export writes a portable snapshot that includes tombstones by default
+  ---
+  duration_ms: 109.142938
+  type: 'test'
+  ...
+# Subtest: export route returns the snapshot and an attachment header on download
+ok 32 - export route returns the snapshot and an attachment header on download
+  ---
+  duration_ms: 37.191588
+  type: 'test'
+  ...
+# Subtest: import is a dry run by default and dedupes on a second pass
+ok 33 - import is a dry run by default and dedupes on a second pass
+  ---
+  duration_ms: 85.285824
+  type: 'test'
+  ...
+# Subtest: export and import keep pending candidates
+ok 34 - export and import keep pending candidates
+  ---
+  duration_ms: 78.075677
+  type: 'test'
+  ...
+# Subtest: import remaps superseded_by pointers instead of keeping stale ids
+ok 35 - import remaps superseded_by pointers instead of keeping stale ids
+  ---
+  duration_ms: 70.544296
+  type: 'test'
+  ...
+# Subtest: restore revives a tombstoned note and makes it searchable again
+ok 36 - restore revives a tombstoned note and makes it searchable again
+  ---
+  duration_ms: 27.716208
+  type: 'test'
+  ...
+# Subtest: restore route is POST-only and needs the CSRF header
+ok 37 - restore route is POST-only and needs the CSRF header
+  ---
+  duration_ms: 31.666394
+  type: 'test'
+  ...
+# Subtest: audit list exposes tombstones for the restore UI
+ok 38 - audit list exposes tombstones for the restore UI
+  ---
+  duration_ms: 25.353695
+  type: 'test'
+  ...
+# Subtest: candidateSentences strips code fences, bullets and duplicates
+ok 39 - candidateSentences strips code fences, bullets and duplicates
+  ---
+  duration_ms: 1.424944
+  type: 'test'
+  ...
+# Subtest: user hints produce candidates but weak questions do not
+ok 40 - user hints produce candidates but weak questions do not
+  ---
+  duration_ms: 0.75181
+  type: 'test'
+  ...
+# Subtest: assistant text needs a stronger signal than user text
+ok 41 - assistant text needs a stronger signal than user text
+  ---
+  duration_ms: 0.170328
+  type: 'test'
+  ...
+# Subtest: extraction is capped at three per chunk and ignores non-dialogue roles
+ok 42 - extraction is capped at three per chunk and ignores non-dialogue roles
+  ---
+  duration_ms: 1.206044
+  type: 'test'
+  ...
+# Subtest: English periods split sentences and long English transcripts are not dropped
+ok 43 - English periods split sentences and long English transcripts are not dropped
+  ---
+  duration_ms: 0.489464
+  type: 'test'
+  ...
+# (node:2622) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-04 user and assistant messages are captured into chunks
+ok 44 - FR-04 user and assistant messages are captured into chunks
+  ---
+  duration_ms: 92.77008
+  type: 'test'
+  ...
+# Subtest: FR-04 captured text is searchable and keeps its source pointer
+ok 45 - FR-04 captured text is searchable and keeps its source pointer
+  ---
+  duration_ms: 34.37121
+  type: 'test'
+  ...
+# Subtest: FR-04 identical captured text is stored once
+ok 46 - FR-04 identical captured text is stored once
+  ---
+  duration_ms: 23.040227
+  type: 'test'
+  ...
+# Subtest: FR-05 capture never throws on a malformed event
+ok 47 - FR-05 capture never throws on a malformed event
+  ---
+  duration_ms: 10.28321
+  type: 'test'
+  ...
+# Subtest: FR-05 non-message events are ignored
+ok 48 - FR-05 non-message events are ignored
+  ---
+  duration_ms: 34.967422
+  type: 'test'
+  ...
+# Subtest: FR-05 over-long messages are truncated instead of rejected
+ok 49 - FR-05 over-long messages are truncated instead of rejected
+  ---
+  duration_ms: 24.282191
+  type: 'test'
+  ...
+# (node:2629) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: a churn store is sized by live rows, not the MAX(id) tombstone gap
+ok 50 - a churn store is sized by live rows, not the MAX(id) tombstone gap
+  ---
+  duration_ms: 646.471162
+  type: 'test'
+  ...
+# (node:2636) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: project show: prints a resolved key without touching the database
+ok 51 - project show: prints a resolved key without touching the database
+  ---
+  duration_ms: 107.529139
+  type: 'test'
+  ...
+# Subtest: project init: creates .omni-project, refuses to clobber, --force rewrites
+ok 52 - project init: creates .omni-project, refuses to clobber, --force rewrites
+  ---
+  duration_ms: 307.529095
+  type: 'test'
+  ...
+# Subtest: project link: rejects non-project scopes and self-links before booting
+ok 53 - project link: rejects non-project scopes and self-links before booting
+  ---
+  duration_ms: 200.82152
+  type: 'test'
+  ...
+# Subtest: project link: preview writes nothing, --apply migrates rows and records the alias
+ok 54 - project link: preview writes nothing, --apply migrates rows and records the alias
+  ---
+  duration_ms: 371.504629
+  type: 'test'
+  ...
+# Subtest: project context/impact: a missing reference is a usage error, not a crash
+ok 55 - project context/impact: a missing reference is a usage error, not a crash
+  ---
+  duration_ms: 233.209756
+  type: 'test'
+  ...
+# Subtest: project: an unknown action exits 2 with the list of real ones
+ok 56 - project: an unknown action exits 2 with the list of real ones
+  ---
+  duration_ms: 101.492786
+  type: 'test'
+  ...
+# Subtest: rules: no file and no --create prints the text and writes nothing
+ok 57 - rules: no file and no --create prints the text and writes nothing
+  ---
+  duration_ms: 38.571965
+  type: 'test'
+  ...
+# Subtest: rules --create --write creates AGENTS.md with one managed block
+ok 58 - rules --create --write creates AGENTS.md with one managed block
+  ---
+  duration_ms: 71.387368
+  type: 'test'
+  ...
+# Subtest: rules: preview on an existing file changes nothing on disk
+ok 59 - rules: preview on an existing file changes nothing on disk
+  ---
+  duration_ms: 38.663546
+  type: 'test'
+  ...
+# Subtest: rules: a malformed marker is skipped instead of deleting prose
+ok 60 - rules: a malformed marker is skipped instead of deleting prose
+  ---
+  duration_ms: 39.234575
+  type: 'test'
+  ...
+# Subtest: project index/search/context/impact: a real indexed project answers all four
+ok 61 - project index/search/context/impact: a real indexed project answers all four
+  ---
+  duration_ms: 487.982952
+  type: 'test'
+  ...
+# Subtest: project sync: rebuilds through the same path as index
+ok 62 - project sync: rebuilds through the same path as index
+  ---
+  duration_ms: 143.017437
+  type: 'test'
+  ...
+# Subtest: project init: an unwritable target exits 2 instead of crashing
+ok 63 - project init: an unwritable target exits 2 instead of crashing
+  ---
+  duration_ms: 102.525225
+  type: 'test'
+  ...
+# Subtest: project status: reports counts for the indexed scope
+ok 64 - project status: reports counts for the indexed scope
+  ---
+  duration_ms: 248.639297
+  type: 'test'
+  ...
+# Subtest: context: query, stdin hook payload, and --json all answer without a store
+ok 65 - context: query, stdin hook payload, and --json all answer without a store
+  ---
+  duration_ms: 402.707012
+  type: 'test'
+  ...
+# Subtest: context: an empty query still answers instead of failing
+ok 66 - context: an empty query still answers instead of failing
+  ---
+  duration_ms: 132.880058
+  type: 'test'
+  ...
+# Subtest: write/search/ingest/candidates: the core CLI path works end to end
+ok 67 - write/search/ingest/candidates: the core CLI path works end to end
+  ---
+  duration_ms: 515.229914
+  type: 'test'
+  ...
+# Subtest: CLI defaults to the checkout project when cwd has no identity file
+ok 68 - CLI defaults to the checkout project when cwd has no identity file
+  ---
+  duration_ms: 108.819219
+  type: 'test'
+  ...
+# Subtest: CLI search reports bad arguments as one line and exits 2
+ok 69 - CLI search reports bad arguments as one line and exits 2
+  ---
+  duration_ms: 141.211937
+  type: 'test'
+  ...
+# Subtest: CLI write rejects an unknown kind with one line and exit 2
+ok 70 - CLI write rejects an unknown kind with one line and exit 2
+  ---
+  duration_ms: 135.733102
+  type: 'test'
+  ...
+# Subtest: CLI candidates reports an invalid status with one line and exit 2
+ok 71 - CLI candidates reports an invalid status with one line and exit 2
+  ---
+  duration_ms: 136.64165
+  type: 'test'
+  ...
+# Subtest: CLI project show reads .omni-project and write --dir binds to that layer
+ok 72 - CLI project show reads .omni-project and write --dir binds to that layer
+  ---
+  duration_ms: 641.879303
+  type: 'test'
+  ...
+# (node:2954) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: cold start: routes and prompt attach after optional services arrive
+ok 73 - cold start: routes and prompt attach after optional services arrive
+  ---
+  duration_ms: 73.144006
+  type: 'test'
+  ...
+# Subtest: cold start: service order does not matter
+ok 74 - cold start: service order does not matter
+  ---
+  duration_ms: 5.719714
+  type: 'test'
+  ...
+# (node:2961) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: memory_compact is a dry run by default
+ok 75 - memory_compact is a dry run by default
+  ---
+  duration_ms: 147.7578
+  type: 'test'
+  ...
+# Subtest: memory_compact tombstones only the excess rows
+ok 76 - memory_compact tombstones only the excess rows
+  ---
+  duration_ms: 60.239048
+  type: 'test'
+  ...
+# Subtest: memory_compact respects the minimum keep limit
+ok 77 - memory_compact respects the minimum keep limit
+  ---
+  duration_ms: 49.40102
+  type: 'test'
+  ...
+# Subtest: tombstoned chunks disappear from recall but stay auditable
+ok 78 - tombstoned chunks disappear from recall but stay auditable
+  ---
+  duration_ms: 93.50867
+  type: 'test'
+  ...
+# Subtest: D-10 the list route reports pagination metadata
+ok 79 - D-10 the list route reports pagination metadata
+  ---
+  duration_ms: 33.313071
+  type: 'test'
+  ...
+# Subtest: D-10 the list route exposes verification and contested state
+ok 80 - D-10 the list route exposes verification and contested state
+  ---
+  duration_ms: 27.350857
+  type: 'test'
+  ...
+# (node:2968) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: concurrent processes write to one store without losing rows
+ok 81 - concurrent processes write to one store without losing rows
+  ---
+  duration_ms: 542.738847
+  type: 'test'
+  ...
+# (node:3017) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: consolidation is a dry run by default and preserves the status groups
+ok 82 - consolidation is a dry run by default and preserves the status groups
+  ---
+  duration_ms: 107.098355
+  type: 'test'
+  ...
+# Subtest: apply writes one source-linked summary and supersedes the inputs
+ok 83 - apply writes one source-linked summary and supersedes the inputs
+  ---
+  duration_ms: 31.583145
+  type: 'test'
+  ...
+# Subtest: consolidation never crosses an exact scope
+ok 84 - consolidation never crosses an exact scope
+  ---
+  duration_ms: 27.093853
+  type: 'test'
+  ...
+# Subtest: consolidation rejects scope=all and reports too few notes without writing
+ok 85 - consolidation rejects scope=all and reports too few notes without writing
+  ---
+  duration_ms: 35.872269
+  type: 'test'
+  ...
+# (node:3024) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-19 an explicit contradiction marks both notes as contested
+ok 86 - FR-19 an explicit contradiction marks both notes as contested
+  ---
+  duration_ms: 95.68842
+  type: 'test'
+  ...
+# Subtest: FR-19 a near-duplicate note is flagged automatically
+ok 87 - FR-19 a near-duplicate note is flagged automatically
+  ---
+  duration_ms: 27.818048
+  type: 'test'
+  ...
+# Subtest: FR-19 unrelated notes are not flagged
+ok 88 - FR-19 unrelated notes are not flagged
+  ---
+  duration_ms: 24.620215
+  type: 'test'
+  ...
+# Subtest: FR-19 contested notes surface the flag in search results
+ok 89 - FR-19 contested notes surface the flag in search results
+  ---
+  duration_ms: 37.102134
+  type: 'test'
+  ...
+# Subtest: FR-19 an unknown contradicts id is ignored instead of throwing
+ok 90 - FR-19 an unknown contradicts id is ignored instead of throwing
+  ---
+  duration_ms: 25.388602
+  type: 'test'
+  ...
+# fatal: path 'package.json' exists on disk, but not in 'ffffffffffffffffffffffffffffffffffffffff'
+# Subtest: the signed commit, package hash and launcher bytes are checked before a fast-forward
+ok 91 - the signed commit, package hash and launcher bytes are checked before a fast-forward
+  ---
+  duration_ms: 150.3967
+  type: 'test'
+  ...
+# Subtest: a manifest with a missing signed commit is rejected before merge
+ok 92 - a manifest with a missing signed commit is rejected before merge
+  ---
+  duration_ms: 62.312935
+  type: 'test'
+  ...
+# Subtest: the default production manifest key id is still pinned
+ok 93 - the default production manifest key id is still pinned
+  ---
+  duration_ms: 0.150784
+  type: 'test'
+  ...
+# Subtest: daily-sync refuses a package that is not omni-memory
+ok 94 - daily-sync refuses a package that is not omni-memory
+  ---
+  duration_ms: 48.992842
+  type: 'test'
+  ...
+# Subtest: daily-sync reports an invalid package version as structured JSON
+ok 95 - daily-sync reports an invalid package version as structured JSON
+  ---
+  duration_ms: 48.625844
+  type: 'test'
+  ...
+# Subtest: daily-sync reports a missing package without crashing
+ok 96 - daily-sync reports a missing package without crashing
+  ---
+  duration_ms: 45.060023
+  type: 'test'
+  ...
+# Subtest: daily-sync rejects an origin whose host only contains the repo string
+ok 97 - daily-sync rejects an origin whose host only contains the repo string
+  ---
+  duration_ms: 170.215663
+  type: 'test'
+  ...
+# Subtest: daily-sync refuses a second apply while the lock is held
+ok 98 - daily-sync refuses a second apply while the lock is held
+  ---
+  duration_ms: 99.270598
+  type: 'test'
+  ...
+# Subtest: daily-sync verifies the release manifest before moving HEAD
+ok 99 - daily-sync verifies the release manifest before moving HEAD
+  ---
+  duration_ms: 297.392325
+  type: 'test'
+  ...
+# Subtest: daily-sync reports an update without applying or moving HEAD
+ok 100 - daily-sync reports an update without applying or moving HEAD
+  ---
+  duration_ms: 172.913154
+  type: 'test'
+  ...
+# Subtest: daily-sync keeps a dirty checkout on the same-day gate without restarting
+ok 101 - daily-sync keeps a dirty checkout on the same-day gate without restarting
+  ---
+  duration_ms: 244.57997
+  type: 'test'
+  ...
+# Subtest: the apply lock is keyed by the real checkout, not by --state
+ok 102 - the apply lock is keyed by the real checkout, not by --state
+  ---
+  duration_ms: 2.106684
+  type: 'test'
+  ...
+# Subtest: GitHub bearer-token gate rejects lookalike hostnames
+ok 103 - GitHub bearer-token gate rejects lookalike hostnames
+  ---
+  duration_ms: 0.191962
+  type: 'test'
+  ...
+# Subtest: rollback refuses to discard tracked changes made after merge
+ok 104 - rollback refuses to discard tracked changes made after merge
+  ---
+  duration_ms: 84.786612
+  type: 'test'
+  ...
+# Subtest: daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher
+ok 105 - daily-sync apply verifies, fast-forwards, gates syntax and installs the launcher # SKIP launcher installation is Windows-only
+  ---
+  duration_ms: 0.78232
+  type: 'test'
+  ...
+# Subtest: parseVersion accepts a leading v, prerelease and build metadata
+ok 106 - parseVersion accepts a leading v, prerelease and build metadata
+  ---
+  duration_ms: 1.403876
+  type: 'test'
+  ...
+# Subtest: compareVersions compares numeric segments and prereleases, not strings
+ok 107 - compareVersions compares numeric segments and prereleases, not strings
+  ---
+  duration_ms: 0.387699
+  type: 'test'
+  ...
+# Subtest: daily gate uses the local calendar date and only blocks a repeat
+ok 108 - daily gate uses the local calendar date and only blocks a repeat
+  ---
+  duration_ms: 0.320129
+  type: 'test'
+  ...
+# Subtest: a same-day failure never reopens the gate automatically
+ok 109 - a same-day failure never reopens the gate automatically
+  ---
+  duration_ms: 0.94456
+  type: 'test'
+  ...
+# (node:3243) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: amending a note removes the old note from every derived index
+ok 110 - amending a note removes the old note from every derived index
+  ---
+  duration_ms: 97.941439
+  type: 'test'
+  ...
+# (node:3250) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: doctor: missing repo metadata, missing data dir and skipped service checks
+ok 111 - doctor: missing repo metadata, missing data dir and skipped service checks
+  ---
+  duration_ms: 2.500162
+  type: 'test'
+  ...
+# Subtest: doctor: invalid port fails and a healthy repo passes
+ok 112 - doctor: invalid port fails and a healthy repo passes
+  ---
+  duration_ms: 6.418526
+  type: 'test'
+  ...
+# Subtest: doctor: corrupt and empty databases fail loudly
+ok 113 - doctor: corrupt and empty databases fail loudly
+  ---
+  duration_ms: 5.933921
+  type: 'test'
+  ...
+# Subtest: doctor: reachable service with a different version is a warning
+ok 114 - doctor: reachable service with a different version is a warning
+  ---
+  duration_ms: 28.006596
+  type: 'test'
+  ...
+# (node:3258) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: dream apply flags contradictions but never replaces by default
+ok 115 - dream apply flags contradictions but never replaces by default
+  ---
+  duration_ms: 104.721564
+  type: 'test'
+  ...
+# Subtest: dream commit replaces only when explicitly requested
+ok 116 - dream commit replaces only when explicitly requested
+  ---
+  duration_ms: 28.87575
+  type: 'test'
+  ...
+# Subtest: proposals surface flagged notes with the evidence that would replace them
+ok 117 - proposals surface flagged notes with the evidence that would replace them
+  ---
+  duration_ms: 25.341315
+  type: 'test'
+  ...
+# Subtest: replace requires confirm=true and is per-note
+ok 118 - replace requires confirm=true and is per-note
+  ---
+  duration_ms: 30.101631
+  type: 'test'
+  ...
+# Subtest: rollback revives the original and tombstones the generated note
+ok 119 - rollback revives the original and tombstones the generated note
+  ---
+  duration_ms: 33.010031
+  type: 'test'
+  ...
+# Subtest: rollback refuses replacements that dream did not create
+ok 120 - rollback refuses replacements that dream did not create
+  ---
+  duration_ms: 28.237278
+  type: 'test'
+  ...
+# (node:3265) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: dream timer: registered only when enabled and disposed with clearInterval
+ok 121 - dream timer: registered only when enabled and disposed with clearInterval
+  ---
+  duration_ms: 74.941409
+  type: 'test'
+  ...
+# (node:3272) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-20 a correct note is verified as supported
+ok 122 - FR-20 a correct note is verified as supported
+  ---
+  duration_ms: 94.810038
+  type: 'test'
+  ...
+# Subtest: FR-20 a note contradicted by its transcript is flagged and superseded
+ok 123 - FR-20 a note contradicted by its transcript is flagged and superseded
+  ---
+  duration_ms: 29.40289
+  type: 'test'
+  ...
+# Subtest: FR-20 a note with no evidence is reported as no_source
+ok 124 - FR-20 a note with no evidence is reported as no_source
+  ---
+  duration_ms: 23.077153
+  type: 'test'
+  ...
+# Subtest: FR-20 a superseded note is not verified twice
+ok 125 - FR-20 a superseded note is not verified twice
+  ---
+  duration_ms: 36.523788
+  type: 'test'
+  ...
+# Subtest: FR-20 dream writes an evidence pointer for every applied verdict
+ok 126 - FR-20 dream writes an evidence pointer for every applied verdict
+  ---
+  duration_ms: 24.330861
+  type: 'test'
+  ...
+# Subtest: backend selection defaults to the hashed model without env vars
+ok 127 - backend selection defaults to the hashed model without env vars
+  ---
+  duration_ms: 0.862328
+  type: 'test'
+  ...
+# Subtest: backend selection switches to remote when a URL is configured
+ok 128 - backend selection switches to remote when a URL is configured
+  ---
+  duration_ms: 0.174794
+  type: 'test'
+  ...
+# Subtest: provider presets fill url and model when only the provider is set
+ok 129 - provider presets fill url and model when only the provider is set
+  ---
+  duration_ms: 0.192487
+  type: 'test'
+  ...
+# Subtest: normalize returns a unit vector and tolerates zeros
+ok 130 - normalize returns a unit vector and tolerates zeros
+  ---
+  duration_ms: 0.712981
+  type: 'test'
+  ...
+# Subtest: embedRemote normalises vectors and preserves order
+ok 131 - embedRemote normalises vectors and preserves order
+  ---
+  duration_ms: 0.597639
+  type: 'test'
+  ...
+# Subtest: embedRemote rejects a permanent non-ok response without retrying
+ok 132 - embedRemote rejects a permanent non-ok response without retrying
+  ---
+  duration_ms: 0.489223
+  type: 'test'
+  ...
+# Subtest: embedRemote rejects a shape mismatch instead of returning garbage
+ok 133 - embedRemote rejects a shape mismatch instead of returning garbage
+  ---
+  duration_ms: 0.27022
+  type: 'test'
+  ...
+# Subtest: a 429 is retried with backoff and the batch eventually succeeds
+ok 134 - a 429 is retried with backoff and the batch eventually succeeds
+  ---
+  duration_ms: 1036.413464
+  type: 'test'
+  ...
+# Subtest: inputs are split into provider-sized batches
+ok 135 - inputs are split into provider-sized batches
+  ---
+  duration_ms: 12.531019
+  type: 'test'
+  ...
+# Subtest: embedRemote stops after the retry limit on persistent 5xx and calls fetch retries+1 times
+ok 136 - embedRemote stops after the retry limit on persistent 5xx and calls fetch retries+1 times
+  ---
+  duration_ms: 1000.340234
+  type: 'test'
+  ...
+# Subtest: embedRemote aborts the whole call when one batch fails (no partial results)
+ok 137 - embedRemote aborts the whole call when one batch fails (no partial results)
+  ---
+  duration_ms: 0.616212
+  type: 'test'
+  ...
+# Subtest: embedRemote surfaces an AbortError from a real AbortSignal timeout
+ok 138 - embedRemote surfaces an AbortError from a real AbortSignal timeout
+  ---
+  duration_ms: 21.310247
+  type: 'test'
+  ...
+# Subtest: tokenize splits CJK into bigrams and keeps latin words
+ok 139 - tokenize splits CJK into bigrams and keeps latin words
+  ---
+  duration_ms: 0.959095
+  type: 'test'
+  ...
+# Subtest: embedText is deterministic
+ok 140 - embedText is deterministic
+  ---
+  duration_ms: 2.125186
+  type: 'test'
+  ...
+# Subtest: embedText returns a normalised vector of the declared dimension
+ok 141 - embedText returns a normalised vector of the declared dimension
+  ---
+  duration_ms: 0.291951
+  type: 'test'
+  ...
+# Subtest: empty text yields a zero vector instead of NaN
+ok 142 - empty text yields a zero vector instead of NaN
+  ---
+  duration_ms: 0.230693
+  type: 'test'
+  ...
+# Subtest: similar text scores higher than unrelated text
+ok 143 - similar text scores higher than unrelated text
+  ---
+  duration_ms: 1.152639
+  type: 'test'
+  ...
+# Subtest: dot of a vector with itself is 1
+ok 144 - dot of a vector with itself is 1
+  ---
+  duration_ms: 0.202196
+  type: 'test'
+  ...
+# Subtest: blob round trip preserves the vector
+ok 145 - blob round trip preserves the vector
+  ---
+  duration_ms: 0.328888
+  type: 'test'
+  ...
+# (node:3294) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: entity names are normalised at write time
+ok 146 - entity names are normalised at write time
+  ---
+  duration_ms: 92.271818
+  type: 'test'
+  ...
+# Subtest: link entity is a dry run until apply=true
+ok 147 - link entity is a dry run until apply=true
+  ---
+  duration_ms: 25.042003
+  type: 'test'
+  ...
+# Subtest: link entity merges facts and edges into the canonical name
+ok 148 - link entity merges facts and edges into the canonical name
+  ---
+  duration_ms: 27.181197
+  type: 'test'
+  ...
+# Subtest: profile shows every active value of a multi-valued relation
+ok 149 - profile shows every active value of a multi-valued relation
+  ---
+  duration_ms: 29.626537
+  type: 'test'
+  ...
+# (node:3301) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: strict: unreadable or already-consumed request fails closed
+ok 150 - strict: unreadable or already-consumed request fails closed
+  ---
+  duration_ms: 1.425445
+  type: 'test'
+  ...
+# Subtest: strict: allowMissing still tolerates a request with no readable body
+ok 151 - strict: allowMissing still tolerates a request with no readable body
+  ---
+  duration_ms: 0.655286
+  type: 'test'
+  ...
+# Subtest: lenient default: every failure degrades to an empty object
+ok 152 - lenient default: every failure degrades to an empty object
+  ---
+  duration_ms: 6.121429
+  type: 'test'
+  ...
+# Subtest: strict: empty body is body_empty / 400
+ok 153 - strict: empty body is body_empty / 400
+  ---
+  duration_ms: 0.545053
+  type: 'test'
+  ...
+# Subtest: strict: invalid JSON is body_invalid_json / 400
+ok 154 - strict: invalid JSON is body_invalid_json / 400
+  ---
+  duration_ms: 0.690856
+  type: 'test'
+  ...
+# Subtest: strict: non-object payloads are body_invalid_object / 400
+ok 155 - strict: non-object payloads are body_invalid_object / 400
+  ---
+  duration_ms: 2.132864
+  type: 'test'
+  ...
+# Subtest: strict: oversize body is body_too_large / 413 and drains the stream
+ok 156 - strict: oversize body is body_too_large / 413 and drains the stream
+  ---
+  duration_ms: 0.628161
+  type: 'test'
+  ...
+# Subtest: strict: a stream error is body_unavailable / 400
+ok 157 - strict: a stream error is body_unavailable / 400
+  ---
+  duration_ms: 0.543403
+  type: 'test'
+  ...
+# Subtest: strict: valid object resolves as-is, string chunks are buffered too
+ok 158 - strict: valid object resolves as-is, string chunks are buffered too
+  ---
+  duration_ms: 0.823348
+  type: 'test'
+  ...
+# Subtest: strict: a settled request ignores trailing data and errors
+ok 159 - strict: a settled request ignores trailing data and errors
+  ---
+  duration_ms: 0.445872
+  type: 'test'
+  ...
+# (node:3308) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: routes diagnostic: pending before mount, mounted (count 1) after, and visible in the prompt
+ok 160 - routes diagnostic: pending before mount, mounted (count 1) after, and visible in the prompt
+  ---
+  duration_ms: 28.124985
+  type: 'test'
+  ...
+# Subtest: prompt diagnostics: at / auto / chars / recall all carry real values
+ok 161 - prompt diagnostics: at / auto / chars / recall all carry real values
+  ---
+  duration_ms: 4.682342
+  type: 'test'
+  ...
+# Subtest: dream timer: non-numeric and non-positive intervals are inert
+ok 162 - dream timer: non-numeric and non-positive intervals are inert
+  ---
+  duration_ms: 192.462645
+  type: 'test'
+  ...
+# Subtest: dream timer: a broken store never escapes into the host
+ok 163 - dream timer: a broken store never escapes into the host
+  ---
+  duration_ms: 120.806598
+  type: 'test'
+  ...
+# (node:3315) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-02 a newer fact invalidates the previous one instead of deleting it
+ok 164 - FR-02 a newer fact invalidates the previous one instead of deleting it
+  ---
+  duration_ms: 95.422388
+  type: 'test'
+  ...
+# Subtest: FR-12 timeline keeps both the invalidated and the active row
+ok 165 - FR-12 timeline keeps both the invalidated and the active row
+  ---
+  duration_ms: 25.513807
+  type: 'test'
+  ...
+# Subtest: FR-12 timeline for an unknown entity is empty
+ok 166 - FR-12 timeline for an unknown entity is empty
+  ---
+  duration_ms: 25.308207
+  type: 'test'
+  ...
+# Subtest: FR-12 timeline merges facts and notes about the entity in time order
+ok 167 - FR-12 timeline merges facts and notes about the entity in time order
+  ---
+  duration_ms: 30.077914
+  type: 'test'
+  ...
+# Subtest: FR-12 timeline requires an entity
+ok 168 - FR-12 timeline requires an entity
+  ---
+  duration_ms: 22.751721
+  type: 'test'
+  ...
+# Subtest: facts are searchable by subject and by object
+ok 169 - facts are searchable by subject and by object
+  ---
+  duration_ms: 32.231299
+  type: 'test'
+  ...
+# (node:3322) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 删除 notes_fts 后 memory_search 退化为字面召回，结果合法且其他读路由可用
+ok 170 - 删除 notes_fts 后 memory_search 退化为字面召回，结果合法且其他读路由可用
+  ---
+  duration_ms: 107.632474
+  type: 'test'
+  ...
+# Subtest: notes_fts 被破坏为普通表后 memory_search 不抛未捕获异常
+ok 171 - notes_fts 被破坏为普通表后 memory_search 不抛未捕获异常
+  ---
+  duration_ms: 29.804213
+  type: 'test'
+  ...
+# Subtest: 删除 bigrams 与 vectors 后 memory_search 退化为纯字面召回且不崩
+ok 172 - 删除 bigrams 与 vectors 后 memory_search 退化为纯字面召回且不崩
+  ---
+  duration_ms: 30.51847
+  type: 'test'
+  ...
+# Subtest: 删除 edges 后 /graph 与 /node 仍返回合法图数据，search 的图扩展安全跳过
+ok 173 - 删除 edges 后 /graph 与 /node 仍返回合法图数据，search 的图扩展安全跳过
+  ---
+  duration_ms: 32.469818
+  type: 'test'
+  ...
+# Subtest: 第二个连接持有写锁时写入在短 busy_timeout 内受控失败，释放后恢复
+ok 174 - 第二个连接持有写锁时写入在短 busy_timeout 内受控失败，释放后恢复
+  ---
+  duration_ms: 77.006538
+  type: 'test'
+  ...
+# Subtest: 删除 semantic_vectors 后 /omni-memory/status 仍返回完整状态
+ok 175 - 删除 semantic_vectors 后 /omni-memory/status 仍返回完整状态
+  ---
+  duration_ms: 36.028332
+  type: 'test'
+  ...
+# (node:3329) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: superseded notes leave search and the profile immediately
+ok 176 - superseded notes leave search and the profile immediately
+  ---
+  duration_ms: 97.551057
+  type: 'test'
+  ...
+# Subtest: expired facts leave search and keep their validity span
+ok 177 - expired facts leave search and keep their validity span
+  ---
+  duration_ms: 37.273012
+  type: 'test'
+  ...
+# Subtest: a project fact never invalidates a global fact
+ok 178 - a project fact never invalidates a global fact
+  ---
+  duration_ms: 25.12728
+  type: 'test'
+  ...
+# Subtest: bare HTTP search returns the global layer only
+ok 179 - bare HTTP search returns the global layer only
+  ---
+  duration_ms: 32.747612
+  type: 'test'
+  ...
+# Subtest: scope=all is rejected for writes
+ok 180 - scope=all is rejected for writes
+  ---
+  duration_ms: 23.952741
+  type: 'test'
+  ...
+# Subtest: tool writes fall back to global without context and use the caller project with context
+ok 181 - tool writes fall back to global without context and use the caller project with context
+  ---
+  duration_ms: 29.100286
+  type: 'test'
+  ...
+# Subtest: forget is POST-only and requires the CSRF header
+ok 182 - forget is POST-only and requires the CSRF header
+  ---
+  duration_ms: 32.54487
+  type: 'test'
+  ...
+# Subtest: a tombstoned transcript can be captured again
+ok 183 - a tombstoned transcript can be captured again
+  ---
+  duration_ms: 25.52428
+  type: 'test'
+  ...
+# Subtest: identical transcripts in two projects are both kept
+ok 184 - identical transcripts in two projects are both kept
+  ---
+  duration_ms: 25.598004
+  type: 'test'
+  ...
+# Subtest: memory_reindex rebuilds missing vectors for the hashed backend
+ok 185 - memory_reindex rebuilds missing vectors for the hashed backend
+  ---
+  duration_ms: 32.36458
+  type: 'test'
+  ...
+# Subtest: schema v6 databases migrate to v11 without losing rows
+ok 186 - schema v6 databases migrate to v11 without losing rows
+  ---
+  duration_ms: 47.030434
+  type: 'test'
+  ...
+# Subtest: fuzz: MCP dispatcher survives arbitrary JSON-RPC values
+ok 187 - fuzz: MCP dispatcher survives arbitrary JSON-RPC values
+  ---
+  duration_ms: 35.961384
+  type: 'test'
+  ...
+# Subtest: fuzz: tools/call with arbitrary names returns a contained result
+ok 188 - fuzz: tools/call with arbitrary names returns a contained result
+  ---
+  duration_ms: 14.641624
+  type: 'test'
+  ...
+# Subtest: fuzz: candidateSentences holds its output contract
+ok 189 - fuzz: candidateSentences holds its output contract
+  ---
+  duration_ms: 9.370438
+  type: 'test'
+  ...
+# Subtest: fuzz: extractCandidateTexts respects role, cap and score bounds
+ok 190 - fuzz: extractCandidateTexts respects role, cap and score bounds
+  ---
+  duration_ms: 2.824478
+  type: 'test'
+  ...
+# Subtest: check-test-results accepts a complete TAP summary
+ok 191 - check-test-results accepts a complete TAP summary
+  ---
+  duration_ms: 54.780376
+  type: 'test'
+  ...
+# Subtest: check-test-results rejects a repeated \# tests summary
+ok 192 - check-test-results rejects a repeated \# tests summary
+  ---
+  duration_ms: 53.429497
+  type: 'test'
+  ...
+# Subtest: check-test-results rejects a plan that disagrees with \# tests
+ok 193 - check-test-results rejects a plan that disagrees with \# tests
+  ---
+  duration_ms: 48.394327
+  type: 'test'
+  ...
+# Subtest: check-test-results rejects multiple plan lines
+ok 194 - check-test-results rejects multiple plan lines
+  ---
+  duration_ms: 40.306886
+  type: 'test'
+  ...
+# Subtest: check-docs refuses a TAP file with no \# tests summary
+ok 195 - check-docs refuses a TAP file with no \# tests summary
+  ---
+  duration_ms: 256.419363
+  type: 'test'
+  ...
+# Subtest: check-docs refuses a TAP run below the declared test count
+ok 196 - check-docs refuses a TAP run below the declared test count
+  ---
+  duration_ms: 177.692315
+  type: 'test'
+  ...
+# Subtest: check-docs refuses an explicit --tap path that does not exist
+ok 197 - check-docs refuses an explicit --tap path that does not exist
+  ---
+  duration_ms: 34.738642
+  type: 'test'
+  ...
+# Subtest: DESIGN test hook contract rejects the old wording and accepts the current one
+ok 198 - DESIGN test hook contract rejects the old wording and accepts the current one
+  ---
+  duration_ms: 0.183085
+  type: 'test'
+  ...
+# (node:3399) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: global budget: an oversized note cannot starve shorter rules
+ok 199 - global budget: an oversized note cannot starve shorter rules
+  ---
+  duration_ms: 137.257752
+  type: 'test'
+  ...
+# Subtest: global budget: separators count, and trimmed rows are reported as omitted
+ok 200 - global budget: separators count, and trimmed rows are reported as omitted
+  ---
+  duration_ms: 45.118473
+  type: 'test'
+  ...
+# Subtest: global budget: a newest oversized note no longer drops the whole section
+ok 201 - global budget: a newest oversized note no longer drops the whole section
+  ---
+  duration_ms: 56.603175
+  type: 'test'
+  ...
+# Subtest: global budget: a short row survives beside an oversized first row when only the short row fits
+ok 202 - global budget: a short row survives beside an oversized first row when only the short row fits
+  ---
+  duration_ms: 46.724683
+  type: 'test'
+  ...
+# Subtest: global budget: a section that cannot open still reports every note
+ok 203 - global budget: a section that cannot open still reports every note
+  ---
+  duration_ms: 35.766258
+  type: 'test'
+  ...
+# Subtest: global budget: a pointer cannot take the room a pending short row needs
+ok 204 - global budget: a pointer cannot take the room a pending short row needs
+  ---
+  duration_ms: 51.507069
+  type: 'test'
+  ...
+# Subtest: capProfileLines trims the tail, strips a stranded heading, and reports owners
+ok 205 - capProfileLines trims the tail, strips a stranded heading, and reports owners
+  ---
+  duration_ms: 0.589755
+  type: 'test'
+  ...
+# Subtest: memory_write hints when a global note is long enough to crowd others out
+ok 206 - memory_write hints when a global note is long enough to crowd others out
+  ---
+  duration_ms: 25.762276
+  type: 'test'
+  ...
+# (node:3406) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-29 the graph route turns facts into entity stars and edges
+ok 207 - FR-29 the graph route turns facts into entity stars and edges
+  ---
+  duration_ms: 95.378279
+  type: 'test'
+  ...
+# Subtest: FR-29 notes are attached to the entities they mention
+ok 208 - FR-29 notes are attached to the entities they mention
+  ---
+  duration_ms: 27.431377
+  type: 'test'
+  ...
+# Subtest: FR-29 the graph stays bounded and never returns dangling links
+ok 209 - FR-29 the graph stays bounded and never returns dangling links
+  ---
+  duration_ms: 42.652963
+  type: 'test'
+  ...
+# Subtest: FR-29 an empty memory returns an empty graph instead of failing
+ok 210 - FR-29 an empty memory returns an empty graph instead of failing
+  ---
+  duration_ms: 28.655989
+  type: 'test'
+  ...
+# Subtest: FR-29 the graph route is loopback only
+ok 211 - FR-29 the graph route is loopback only
+  ---
+  duration_ms: 7.721826
+  type: 'test'
+  ...
+# Subtest: FR-29 the graph keeps a global map and one map per project
+ok 212 - FR-29 the graph keeps a global map and one map per project
+  ---
+  duration_ms: 33.563116
+  type: 'test'
+  ...
+# (node:3413) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-18 a neighbouring link is recalled through the graph route
+ok 213 - FR-18 a neighbouring link is recalled through the graph route
+  ---
+  duration_ms: 107.105301
+  type: 'test'
+  ...
+# Subtest: FR-18 the graph route stops at the configured hop limit
+ok 214 - FR-18 the graph route stops at the configured hop limit
+  ---
+  duration_ms: 32.53941
+  type: 'test'
+  ...
+# Subtest: FR-18 OMNI_DISABLE_GRAPH removes the association route
+ok 215 - FR-18 OMNI_DISABLE_GRAPH removes the association route
+  ---
+  duration_ms: 31.318933
+  type: 'test'
+  ...
+# Subtest: FR-18 a scoped link is not leaked through the graph route
+ok 216 - FR-18 a scoped link is not leaked through the graph route
+  ---
+  duration_ms: 27.467687
+  type: 'test'
+  ...
+# (node:3420) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: hashed-vector sweep deletes orphan rows and keeps the live fallback
+ok 217 - hashed-vector sweep deletes orphan rows and keeps the live fallback
+  ---
+  duration_ms: 52.246236
+  type: 'test'
+  ...
+# (node:3427) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: GET /omni-memory/packet returns a prompt-ready profile and task hits
+ok 218 - GET /omni-memory/packet returns a prompt-ready profile and task hits
+  ---
+  duration_ms: 104.311212
+  type: 'test'
+  ...
+# Subtest: packet text mode and project scope do not leak another project
+ok 219 - packet text mode and project scope do not leak another project
+  ---
+  duration_ms: 32.460587
+  type: 'test'
+  ...
+# Subtest: GET /omni-memory/openapi.json publishes the adapter surface
+ok 220 - GET /omni-memory/openapi.json publishes the adapter surface
+  ---
+  duration_ms: 7.853194
+  type: 'test'
+  ...
+# Subtest: POST /omni-memory/tool bridges writes and reads, but rejects maintenance tools
+ok 221 - POST /omni-memory/tool bridges writes and reads, but rejects maintenance tools
+  ---
+  duration_ms: 26.43974
+  type: 'test'
+  ...
+# (node:3434) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: ephemeral port -> health -> close -> restart on the same concrete port
+ok 222 - ephemeral port -> health -> close -> restart on the same concrete port
+  ---
+  duration_ms: 124.214447
+  type: 'test'
+  ...
+# Subtest: occupied port: second startHttpServer rejects in a controlled way, first stays healthy
+ok 223 - occupied port: second startHttpServer rejects in a controlled way, first stays healthy
+  ---
+  duration_ms: 14.049311
+  type: 'test'
+  ...
+# Subtest: HTTP /tool resolves the boot workdir project layer, same as MCP
+ok 224 - HTTP /tool resolves the boot workdir project layer, same as MCP
+  ---
+  duration_ms: 41.553951
+  type: 'test'
+  ...
+# Subtest: sequential instances share one home: A writes, closes, B recalls the data
+ok 225 - sequential instances share one home: A writes, closes, B recalls the data
+  ---
+  duration_ms: 46.486032
+  type: 'test'
+  ...
+# (node:3442) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: forged Host cannot read the export or search surfaces
+ok 226 - forged Host cannot read the export or search surfaces
+  ---
+  duration_ms: 126.15954
+  type: 'test'
+  ...
+# Subtest: export is a GET-only surface
+ok 227 - export is a GET-only surface
+  ---
+  duration_ms: 2.270209
+  type: 'test'
+  ...
+# Subtest: a request without Host is rejected at the protocol or guard layer
+ok 228 - a request without Host is rejected at the protocol or guard layer
+  ---
+  duration_ms: 4.294724
+  type: 'test'
+  ...
+# Subtest: health, metrics, rules and static pages reject non-loopback peers
+ok 229 - health, metrics, rules and static pages reject non-loopback peers
+  ---
+  duration_ms: 5.112297
+  type: 'test'
+  ...
+# Subtest: static path traversal variants are rejected without leaking project files
+ok 230 - static path traversal variants are rejected without leaking project files
+  ---
+  duration_ms: 14.24105
+  type: 'test'
+  ...
+# Subtest: non-loopback POST mutation is refused before any data change
+ok 231 - non-loopback POST mutation is refused before any data change
+  ---
+  duration_ms: 28.572731
+  type: 'test'
+  ...
+# Subtest: CSRF/Origin variants: only same-origin plus x-omni-csrf mutates
+ok 232 - CSRF/Origin variants: only same-origin plus x-omni-csrf mutates
+  ---
+  duration_ms: 19.913264
+  type: 'test'
+  ...
+# Subtest: forged Host cannot authenticate a matching Origin
+ok 233 - forged Host cannot authenticate a matching Origin
+  ---
+  duration_ms: 16.9038
+  type: 'test'
+  ...
+# Subtest: malformed and oversized bodies are contained; server stays healthy
+ok 234 - malformed and oversized bodies are contained; server stays healthy
+  ---
+  duration_ms: 48.566849
+  type: 'test'
+  ...
+# 超大 body 结果：connection dropped: TypeError: fetch failed（实现为超限即断连，非显式 4xx）
+# (node:3454) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: http adapter: routes mount, MCP over HTTP works, panel is served
+ok 235 - http adapter: routes mount, MCP over HTTP works, panel is served
+  ---
+  duration_ms: 1001.002239
+  type: 'test'
+  ...
+# (node:3466) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: memory_ingest stores a transcript and parks pending candidates
+ok 236 - memory_ingest stores a transcript and parks pending candidates
+  ---
+  duration_ms: 95.170475
+  type: 'test'
+  ...
+# Subtest: scope=all guard is case-insensitive for transcripts
+ok 237 - scope=all guard is case-insensitive for transcripts
+  ---
+  duration_ms: 23.809434
+  type: 'test'
+  ...
+# Subtest: candidate acceptance writes a normal note with provenance
+ok 238 - candidate acceptance writes a normal note with provenance
+  ---
+  duration_ms: 36.106049
+  type: 'test'
+  ...
+# Subtest: candidate rejection leaves the transcript but keeps notes empty
+ok 239 - candidate rejection leaves the transcript but keeps notes empty
+  ---
+  duration_ms: 31.396209
+  type: 'test'
+  ...
+# Subtest: candidate visibility stays inside the selected project
+ok 240 - candidate visibility stays inside the selected project
+  ---
+  duration_ms: 24.183981
+  type: 'test'
+  ...
+# Subtest: duplicate ingest is deduped and does not duplicate the queue
+ok 241 - duplicate ingest is deduped and does not duplicate the queue
+  ---
+  duration_ms: 29.710769
+  type: 'test'
+  ...
+# Subtest: POST /omni-memory/ingest is loopback + CSRF guarded
+ok 242 - POST /omni-memory/ingest is loopback + CSRF guarded
+  ---
+  duration_ms: 29.7877
+  type: 'test'
+  ...
+# Subtest: POST /omni-memory/ingest accepts a JSON body when the host has not consumed it
+ok 243 - POST /omni-memory/ingest accepts a JSON body when the host has not consumed it
+  ---
+  duration_ms: 23.255835
+  type: 'test'
+  ...
+# Subtest: install summary never prints undefined for the data root
+ok 244 - install summary never prints undefined for the data root
+  ---
+  duration_ms: 0.802222
+  type: 'test'
+  ...
+# Subtest: install summary falls back to plan.home when result.home is absent
+ok 245 - install summary falls back to plan.home when result.home is absent
+  ---
+  duration_ms: 0.139599
+  type: 'test'
+  ...
+# Subtest: install summary says so plainly when no data root can be resolved
+ok 246 - install summary says so plainly when no data root can be resolved
+  ---
+  duration_ms: 0.096804
+  type: 'test'
+  ...
+# Subtest: fact errors keep the four documented messages
+ok 247 - fact errors keep the four documented messages
+  ---
+  duration_ms: 82.826535
+  type: 'test'
+  ...
+# Subtest: a valid fact still writes after the message assertions
+ok 248 - a valid fact still writes after the message assertions
+  ---
+  duration_ms: 27.831041
+  type: 'test'
+  ...
+# Subtest: install-launcher stages a content-addressed binary and a sidecar config
+ok 249 - install-launcher stages a content-addressed binary and a sidecar config # SKIP launcher installation is Windows-only
+  ---
+  duration_ms: 0.790944
+  type: 'test'
+  ...
+# Subtest: install-launcher refuses a commit whose package hash disagrees with the bytes
+ok 250 - install-launcher refuses a commit whose package hash disagrees with the bytes
+  ---
+  duration_ms: 86.038742
+  type: 'test'
+  ...
+# (node:3496) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: installed package works outside the repository layout
+ok 251 - installed package works outside the repository layout
+  ---
+  duration_ms: 4745.838813
+  type: 'test'
+  ...
+# tarball: /tmp/omni-install-smoke-pack-V5k9xX/local-omni-memory-4.6.20.tgz
+# write+search OK via dynamic-import (id=1)
+# Subtest: install smoke: only path-like import errors fall back to MCP
+ok 252 - install smoke: only path-like import errors fall back to MCP
+  ---
+  duration_ms: 0.420839
+  type: 'test'
+  ...
+# (node:3527) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: lifecycle matrix: search never returns superseded, tombstoned or out-of-scope notes
+ok 253 - lifecycle matrix: search never returns superseded, tombstoned or out-of-scope notes
+  ---
+  duration_ms: 117.834493
+  type: 'test'
+  ...
+# Subtest: lifecycle matrix: panel pseudo-scope project spans every project, not global
+ok 254 - lifecycle matrix: panel pseudo-scope project spans every project, not global
+  ---
+  duration_ms: 37.974227
+  type: 'test'
+  ...
+# Subtest: lifecycle matrix: profile excludes contested and superseded notes
+ok 255 - lifecycle matrix: profile excludes contested and superseded notes
+  ---
+  duration_ms: 35.817634
+  type: 'test'
+  ...
+# Subtest: lifecycle matrix: expired facts leave search, timeline keeps the history
+ok 256 - lifecycle matrix: expired facts leave search, timeline keeps the history
+  ---
+  duration_ms: 34.287908
+  type: 'test'
+  ...
+# Subtest: lifecycle matrix: contested facts stay out of profile and persona evidence
+ok 257 - lifecycle matrix: contested facts stay out of profile and persona evidence
+  ---
+  duration_ms: 24.385413
+  type: 'test'
+  ...
+# Subtest: lifecycle matrix: graph and node routes respect active state and scope
+ok 258 - lifecycle matrix: graph and node routes respect active state and scope
+  ---
+  duration_ms: 47.533132
+  type: 'test'
+  ...
+# Subtest: lifecycle matrix: list route hides tombstoned rows and scopes project chunks
+ok 259 - lifecycle matrix: list route hides tombstoned rows and scopes project chunks
+  ---
+  duration_ms: 34.423513
+  type: 'test'
+  ...
+# Subtest: lifecycle matrix: a re-captured transcript is searchable, the tombstone is not
+ok 260 - lifecycle matrix: a re-captured transcript is searchable, the tombstone is not
+  ---
+  duration_ms: 27.521801
+  type: 'test'
+  ...
+# Subtest: lifecycle matrix: written rows carry a resolvable scope in the database
+ok 261 - lifecycle matrix: written rows carry a resolvable scope in the database
+  ---
+  duration_ms: 36.058347
+  type: 'test'
+  ...
+# Subtest: stdio: a dispatch failure on a frame WITH id answers -32603 and keeps the id
+ok 262 - stdio: a dispatch failure on a frame WITH id answers -32603 and keeps the id
+  ---
+  duration_ms: 40.204732
+  type: 'test'
+  ...
+# Subtest: stdio: a dispatch failure without id logs but writes no frame
+ok 263 - stdio: a dispatch failure without id logs but writes no frame
+  ---
+  duration_ms: 34.558488
+  type: 'test'
+  ...
+# Subtest: stdio: initialize answers a real protocol frame and only frames go to stdout
+ok 264 - stdio: initialize answers a real protocol frame and only frames go to stdout
+  ---
+  duration_ms: 42.537386
+  type: 'test'
+  ...
+# Subtest: stdio: invalid JSON gets a parse error with a null id
+ok 265 - stdio: invalid JSON gets a parse error with a null id
+  ---
+  duration_ms: 37.726358
+  type: 'test'
+  ...
+# Subtest: stdio: unknown method answers -32601, notifications answer nothing
+ok 266 - stdio: unknown method answers -32601, notifications answer nothing
+  ---
+  duration_ms: 36.306899
+  type: 'test'
+  ...
+# Subtest: stdio: tools/call success and tool failure both answer in order
+ok 267 - stdio: tools/call success and tool failure both answer in order
+  ---
+  duration_ms: 38.727895
+  type: 'test'
+  ...
+# Subtest: stdio: a frame that cannot be dispatched is logged and does not hang the chain
+ok 268 - stdio: a frame that cannot be dispatched is logged and does not hang the chain
+  ---
+  duration_ms: 36.10188
+  type: 'test'
+  ...
+# Subtest: stdio: SIGINT resolves closed and stop() exits cleanly
+ok 269 - stdio: SIGINT resolves closed and stop() exits cleanly
+  ---
+  duration_ms: 306.409512
+  type: 'test'
+  ...
+# Subtest: bin.mjs smoke: real entry boots, answers initialize, and keeps stderr clean
+ok 270 - bin.mjs smoke: real entry boots, answers initialize, and keeps stderr clean
+  ---
+  duration_ms: 147.116815
+  type: 'test'
+  ...
+# Subtest: MCP: id:null is a request and notifications never receive a frame
+ok 271 - MCP: id:null is a request and notifications never receive a frame
+  ---
+  duration_ms: 1.509549
+  type: 'test'
+  ...
+# Subtest: mcp adapter: handshake, tool listing, write, recall, error path
+ok 272 - mcp adapter: handshake, tool listing, write, recall, error path
+  ---
+  duration_ms: 826.43247
+  type: 'test'
+  ...
+# (node:3625) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: memory quality: 120 deterministic update/conflict/scope/forget cases
+ok 273 - memory quality: 120 deterministic update/conflict/scope/forget cases
+  ---
+  duration_ms: 725.32586
+  type: 'test'
+  ...
+# (node:3632) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: a v9 database upgrades to v11 with the persona table and solution columns
+ok 274 - a v9 database upgrades to v11 with the persona table and solution columns
+  ---
+  duration_ms: 111.775909
+  type: 'test'
+  ...
+# Subtest: a database whose marker is v10 but lacks persona is repaired
+ok 275 - a database whose marker is v10 but lacks persona is repaired
+  ---
+  duration_ms: 42.454725
+  type: 'test'
+  ...
+# (node:3639) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: a v7 database upgrades to v11 with the cardinality column and relations table
+ok 276 - a v7 database upgrades to v11 with the cardinality column and relations table
+  ---
+  duration_ms: 124.041425
+  type: 'test'
+  ...
+# Subtest: a database whose marker claims v10 but lacks the column is repaired
+ok 277 - a database whose marker claims v10 but lacks the column is repaired
+  ---
+  duration_ms: 38.175714
+  type: 'test'
+  ...
+# (node:3646) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: D-08 a fresh database records the current schema version
+ok 278 - D-08 a fresh database records the current schema version
+  ---
+  duration_ms: 37.550249
+  type: 'test'
+  ...
+# Subtest: D-08 fresh databases already carry the scope columns
+ok 279 - D-08 fresh databases already carry the scope columns
+  ---
+  duration_ms: 32.674662
+  type: 'test'
+  ...
+# Subtest: v18 bigram index is WITHOUT ROWID and keeps two-character recall
+ok 280 - v18 bigram index is WITHOUT ROWID and keeps two-character recall
+  ---
+  duration_ms: 44.042661
+  type: 'test'
+  ...
+# Subtest: D-08 an unversioned legacy database is migrated in place
+ok 281 - D-08 an unversioned legacy database is migrated in place
+  ---
+  duration_ms: 39.945499
+  type: 'test'
+  ...
+# Subtest: D-08 v6 turns legacy manual project scopes into the global layer
+ok 282 - D-08 v6 turns legacy manual project scopes into the global layer
+  ---
+  duration_ms: 45.778313
+  type: 'test'
+  ...
+# Subtest: D-03 note and fact FTS tables are created and populated
+ok 283 - D-03 note and fact FTS tables are created and populated
+  ---
+  duration_ms: 23.236412
+  type: 'test'
+  ...
+# Subtest: D-03 backfill indexes rows that predate the FTS tables
+ok 284 - D-03 backfill indexes rows that predate the FTS tables
+  ---
+  duration_ms: 35.803007
+  type: 'test'
+  ...
+# Subtest: a real schema upgrade writes a verified pre-migration backup first
+ok 285 - a real schema upgrade writes a verified pre-migration backup first
+  ---
+  duration_ms: 28.834839
+  type: 'test'
+  ...
+# Subtest: a fresh database does not create a pointless migration backup
+ok 286 - a fresh database does not create a pointless migration backup
+  ---
+  duration_ms: 23.403954
+  type: 'test'
+  ...
+# Subtest: P0 concurrent first opens share one migration owner and keep a verified backup
+ok 287 - P0 concurrent first opens share one migration owner and keep a verified backup
+  ---
+  duration_ms: 291.217486
+  type: 'test'
+  ...
+# Subtest: P1 a backup failure blocks migration by default and only explicit degrade skips it
+ok 288 - P1 a backup failure blocks migration by default and only explicit degrade skips it
+  ---
+  duration_ms: 390.820505
+  type: 'test'
+  ...
+# Subtest: P1 shared backup pruning only removes backups of the current database
+ok 289 - P1 shared backup pruning only removes backups of the current database
+  ---
+  duration_ms: 143.95235
+  type: 'test'
+  ...
+# Subtest: v17 backfills in batches, indexes the empty probe and keeps collisions distinct
+ok 290 - v17 backfills in batches, indexes the empty probe and keeps collisions distinct
+  ---
+  duration_ms: 191.749872
+  type: 'test'
+  ...
+# (node:3702) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: min content: degenerate notes are rejected at the door
+ok 291 - min content: degenerate notes are rejected at the door
+  ---
+  duration_ms: 113.15848
+  type: 'test'
+  ...
+# Subtest: min content: amend cannot shrink a real note into junk
+ok 292 - min content: amend cannot shrink a real note into junk
+  ---
+  duration_ms: 27.74597
+  type: 'test'
+  ...
+# Subtest: min content: a pre-existing thin row cannot take a profile slot
+ok 293 - min content: a pre-existing thin row cannot take a profile slot
+  ---
+  duration_ms: 42.502728
+  type: 'test'
+  ...
+# Subtest: min content: zero-width, symbols, emoji and marks are not letters
+ok 294 - min content: zero-width, symbols, emoji and marks are not letters
+  ---
+  duration_ms: 25.754035
+  type: 'test'
+  ...
+# Subtest: min content: 59 sub-floor rows cannot crowd a real rule out (E-02)
+ok 295 - min content: 59 sub-floor rows cannot crowd a real rule out (E-02)
+  ---
+  duration_ms: 56.093613
+  type: 'test'
+  ...
+# Subtest: min content: 60 sub-floor rows cannot crowd a real rule out (E-02)
+ok 296 - min content: 60 sub-floor rows cannot crowd a real rule out (E-02)
+  ---
+  duration_ms: 59.372057
+  type: 'test'
+  ...
+# Subtest: min content: 61 sub-floor rows cannot crowd a real rule out (E-02)
+ok 297 - min content: 61 sub-floor rows cannot crowd a real rule out (E-02)
+  ---
+  duration_ms: 56.363813
+  type: 'test'
+  ...
+# Subtest: min content: 200 sub-floor rows cannot crowd a real rule out (E-02)
+ok 298 - min content: 200 sub-floor rows cannot crowd a real rule out (E-02)
+  ---
+  duration_ms: 98.690919
+  type: 'test'
+  ...
+# Subtest: min content: a fact needs both ends of its tuple
+ok 299 - min content: a fact needs both ends of its tuple
+  ---
+  duration_ms: 27.495442
+  type: 'test'
+  ...
+# Subtest: min content: forty sub-floor facts cannot empty the facts section (E-18-01)
+ok 300 - min content: forty sub-floor facts cannot empty the facts section (E-18-01)
+  ---
+  duration_ms: 50.176071
+  type: 'test'
+  ...
+# Subtest: min content: a symbol-only fact subject is rejected and not rendered
+ok 301 - min content: a symbol-only fact subject is rejected and not rendered
+  ---
+  duration_ms: 24.934009
+  type: 'test'
+  ...
+# Subtest: min content: circled numbers and roman numerals are not decimal digits
+ok 302 - min content: circled numbers and roman numerals are not decimal digits
+  ---
+  duration_ms: 22.440985
+  type: 'test'
+  ...
+# Subtest: min content: NUL-terminated text is truncated on read, so length() cannot hide a rule
+ok 303 - min content: NUL-terminated text is truncated on read, so length() cannot hide a rule
+  ---
+  duration_ms: 22.740354
+  type: 'test'
+  ...
+# Subtest: min content: candidate accept shares the floor and leaves the queue intact
+ok 304 - min content: candidate accept shares the floor and leaves the queue intact
+  ---
+  duration_ms: 22.898513
+  type: 'test'
+  ...
+# (node:3709) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: single-valued relations still expire the previous value
+ok 305 - single-valued relations still expire the previous value
+  ---
+  duration_ms: 100.736574
+  type: 'test'
+  ...
+# Subtest: multi-valued relations keep several active values
+ok 306 - multi-valued relations keep several active values
+  ---
+  duration_ms: 34.044653
+  type: 'test'
+  ...
+# Subtest: multi-valued duplicate value is deduped, not duplicated
+ok 307 - multi-valued duplicate value is deduped, not duplicated
+  ---
+  duration_ms: 25.70884
+  type: 'test'
+  ...
+# Subtest: multi-valued facts stay isolated by scope
+ok 308 - multi-valued facts stay isolated by scope
+  ---
+  duration_ms: 32.070668
+  type: 'test'
+  ...
+# (node:3716) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: a second opener waits past the old 5s lease window instead of failing
+ok 309 - a second opener waits past the old 5s lease window instead of failing
+  ---
+  duration_ms: 6134.997539
+  type: 'test'
+  ...
+# Subtest: LICENSE is AGPL-3.0 and package metadata agrees
+ok 310 - LICENSE is AGPL-3.0 and package metadata agrees
+  ---
+  duration_ms: 6.020589
+  type: 'test'
+  ...
+# Subtest: governance and onboarding files exist
+ok 311 - governance and onboarding files exist
+  ---
+  duration_ms: 0.682453
+  type: 'test'
+  ...
+# Subtest: setup defaults to release verification and keeps a dev escape hatch
+ok 312 - setup defaults to release verification and keeps a dev escape hatch
+  ---
+  duration_ms: 1.006504
+  type: 'test'
+  ...
+# Subtest: install help documents the fail-closed release path
+ok 313 - install help documents the fail-closed release path
+  ---
+  duration_ms: 50.875618
+  type: 'test'
+  ...
+# (node:3744) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: ADR-020 p95 budget: 10k rows < 300ms with real hits
+ok 314 - ADR-020 p95 budget: 10k rows < 300ms with real hits
+  ---
+  duration_ms: 4252.084564
+  type: 'test'
+  ...
+# 10k rows: seed=509ms p95=172.2ms max=180.1ms hitTotal=200 total=4182ms
+# Subtest: ADR-020 p95 budget: 100k rows < 300ms with real hits
+ok 315 - ADR-020 p95 budget: 100k rows < 300ms with real hits
+  ---
+  duration_ms: 9453.547752
+  type: 'test'
+  ...
+# 100k rows: seed=5698ms p95=184.6ms max=186.5ms hitTotal=200 total=9448ms
+# (node:3751) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: persona refresh extracts settings from facts and notes with rules
+ok 316 - persona refresh extracts settings from facts and notes with rules
+  ---
+  duration_ms: 115.803447
+  type: 'test'
+  ...
+# Subtest: implementation notes and technical fragments are not treated as persona
+ok 317 - implementation notes and technical fragments are not treated as persona
+  ---
+  duration_ms: 28.553139
+  type: 'test'
+  ...
+# Subtest: recent user utterances are the primary evidence
+ok 318 - recent user utterances are the primary evidence
+  ---
+  duration_ms: 33.286961
+  type: 'test'
+  ...
+# Subtest: directive sentences from the user become preferences, technical ones do not
+ok 319 - directive sentences from the user become preferences, technical ones do not
+  ---
+  duration_ms: 26.803398
+  type: 'test'
+  ...
+# Subtest: persona refresh uses the host model only when explicitly requested
+ok 320 - persona refresh uses the host model only when explicitly requested
+  ---
+  duration_ms: 24.163188
+  type: 'test'
+  ...
+# Subtest: persona refresh defaults to offline rules and preserves unknown fields
+ok 321 - persona refresh defaults to offline rules and preserves unknown fields
+  ---
+  duration_ms: 23.987875
+  type: 'test'
+  ...
+# Subtest: persona refresh route needs POST and CSRF
+ok 322 - persona refresh route needs POST and CSRF
+  ---
+  duration_ms: 30.635634
+  type: 'test'
+  ...
+# (node:3758) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: persona can be set and read through the tool
+ok 323 - persona can be set and read through the tool
+  ---
+  duration_ms: 92.381202
+  type: 'test'
+  ...
+# Subtest: persona rejects oversized values
+ok 324 - persona rejects oversized values
+  ---
+  duration_ms: 22.948524
+  type: 'test'
+  ...
+# Subtest: persona HTTP route needs POST + CSRF and round-trips the values
+ok 325 - persona HTTP route needs POST + CSRF and round-trips the values
+  ---
+  duration_ms: 24.267537
+  type: 'test'
+  ...
+# Subtest: persona is injected into the system prompt section
+ok 326 - persona is injected into the system prompt section
+  ---
+  duration_ms: 29.306809
+  type: 'test'
+  ...
+# Subtest: clearing all persona fields removes the block
+ok 327 - clearing all persona fields removes the block
+  ---
+  duration_ms: 34.742211
+  type: 'test'
+  ...
+# (node:3765) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: doctor on a fresh home is warning-only and never creates a database
+ok 328 - doctor on a fresh home is warning-only and never creates a database
+  ---
+  duration_ms: 8.379054
+  type: 'test'
+  ...
+# Subtest: doctor treats a tiny main database file as a warning, not a failure
+ok 329 - doctor treats a tiny main database file as a warning, not a failure
+  ---
+  duration_ms: 5.693003
+  type: 'test'
+  ...
+# Subtest: extensionless product entry points resolve to real static files
+ok 330 - extensionless product entry points resolve to real static files
+  ---
+  duration_ms: 0.1993
+  type: 'test'
+  ...
+# Subtest: launcher dry-run plans a task without writing or creating it
+ok 331 - launcher dry-run plans a task without writing or creating it
+  ---
+  duration_ms: 181.303564
+  type: 'test'
+  ...
+# Subtest: launcher refuses to guess when the task probe is inconclusive
+ok 332 - launcher refuses to guess when the task probe is inconclusive
+  ---
+  duration_ms: 167.332666
+  type: 'test'
+  ...
+# Subtest: noTask never calls the scheduled-task probe
+ok 333 - noTask never calls the scheduled-task probe
+  ---
+  duration_ms: 77.668174
+  type: 'test'
+  ...
+# (node:3788) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: schema 20 exposes the five derived tables and can clear one scope
+ok 334 - schema 20 exposes the five derived tables and can clear one scope
+  ---
+  duration_ms: 3.205418
+  type: 'test'
+  ...
+# Subtest: JS/TS reader extracts exports, classes, methods, docs and imports
+ok 335 - JS/TS reader extracts exports, classes, methods, docs and imports
+  ---
+  duration_ms: 4.513657
+  type: 'test'
+  ...
+# Subtest: JS reader recognizes Express, Fastify and Next.js route shapes
+ok 336 - JS reader recognizes Express, Fastify and Next.js route shapes
+  ---
+  duration_ms: 1.650856
+  type: 'test'
+  ...
+# Subtest: OpenAPI JSON reader extracts operation contracts and schemas
+ok 337 - OpenAPI JSON reader extracts operation contracts and schemas
+  ---
+  duration_ms: 1.051825
+  type: 'test'
+  ...
+# Subtest: OpenAPI YAML reader extracts paths, errors and component schemas
+ok 338 - OpenAPI YAML reader extracts paths, errors and component schemas
+  ---
+  duration_ms: 1.687573
+  type: 'test'
+  ...
+# Subtest: GraphQL SDL reader turns Query/Mutation fields into API contracts
+ok 339 - GraphQL SDL reader turns Query/Mutation fields into API contracts
+  ---
+  duration_ms: 1.306858
+  type: 'test'
+  ...
+# Subtest: generic reader covers Python decorators and Go handlers
+ok 340 - generic reader covers Python decorators and Go handlers
+  ---
+  duration_ms: 2.348297
+  type: 'test'
+  ...
+# Subtest: ctags JSON stream converts to symbol rows with paths and lines
+ok 341 - ctags JSON stream converts to symbol rows with paths and lines
+  ---
+  duration_ms: 0.438246
+  type: 'test'
+  ...
+# Subtest: indexProject builds modules, symbols, APIs and edges in one pass
+ok 342 - indexProject builds modules, symbols, APIs and edges in one pass
+  ---
+  duration_ms: 11.377214
+  type: 'test'
+  ...
+# Subtest: indexProject is incremental and leaves unchanged rows alone
+ok 343 - indexProject is incremental and leaves unchanged rows alone
+  ---
+  duration_ms: 7.469006
+  type: 'test'
+  ...
+# Subtest: a content change is detected even when mtime and size are preserved
+ok 344 - a content change is detected even when mtime and size are preserved
+  ---
+  duration_ms: 9.850329
+  type: 'test'
+  ...
+# Subtest: removed files are cleaned from files, symbols, APIs and edges
+ok 345 - removed files are cleaned from files, symbols, APIs and edges
+  ---
+  duration_ms: 6.012196
+  type: 'test'
+  ...
+# Subtest: full rebuild parses every file and drops old rows
+ok 346 - full rebuild parses every file and drops old rows
+  ---
+  duration_ms: 7.640258
+  type: 'test'
+  ...
+# Subtest: index never stores a function body or source text
+ok 347 - index never stores a function body or source text
+  ---
+  duration_ms: 4.770634
+  type: 'test'
+  ...
+# Subtest: search returns exact symbol fields with sourceRef, line and sha
+ok 348 - search returns exact symbol fields with sourceRef, line and sha
+  ---
+  duration_ms: 5.206008
+  type: 'test'
+  ...
+# Subtest: search filters API by method and route
+ok 349 - search filters API by method and route
+  ---
+  duration_ms: 11.652122
+  type: 'test'
+  ...
+# Subtest: search clamps negative and non-numeric limits before SQL
+ok 350 - search clamps negative and non-numeric limits before SQL
+  ---
+  duration_ms: 4.55608
+  type: 'test'
+  ...
+# Subtest: context is bounded and carries sourceRef, line, sha and stale
+ok 351 - context is bounded and carries sourceRef, line, sha and stale
+  ---
+  duration_ms: 3.88486
+  type: 'test'
+  ...
+# Subtest: impact walks reverse static imports and test links
+ok 352 - impact walks reverse static imports and test links
+  ---
+  duration_ms: 3.622332
+  type: 'test'
+  ...
+# Subtest: module context reports responsibility, imports and public surface
+ok 353 - module context reports responsibility, imports and public surface
+  ---
+  duration_ms: 3.830902
+  type: 'test'
+  ...
+# Subtest: monorepo manifests become separate modules
+ok 354 - monorepo manifests become separate modules
+  ---
+  duration_ms: 3.807097
+  type: 'test'
+  ...
+# Subtest: status reports stale and missing files
+ok 355 - status reports stale and missing files
+  ---
+  duration_ms: 3.572902
+  type: 'test'
+  ...
+# Subtest: resolving a symbol name returns its context
+ok 356 - resolving a symbol name returns its context
+  ---
+  duration_ms: 4.353513
+  type: 'test'
+  ...
+# Subtest: 1,000 files cold index under 30s and warm sync within the disk-relative budget
+ok 357 - 1,000 files cold index under 30s and warm sync within the disk-relative budget
+  ---
+  duration_ms: 204.290505
+  type: 'test'
+  ...
+# 1000-file cold 100ms · warm 43ms · budget 2000ms
+# Subtest: memory_context appends a bounded project packet only when a reference resolves
+ok 358 - memory_context appends a bounded project packet only when a reference resolves
+  ---
+  duration_ms: 10.671604
+  type: 'test'
+  ...
+# (node:3795) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: startup repair migrates rows behind an already-recorded alias
+ok 359 - startup repair migrates rows behind an already-recorded alias
+  ---
+  duration_ms: 124.497149
+  type: 'test'
+  ...
+# (node:3802) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: literal migration moves rows behind an existing alias
+ok 360 - literal migration moves rows behind an existing alias
+  ---
+  duration_ms: 94.766898
+  type: 'test'
+  ...
+# Subtest: attachSession follows an existing alias instead of returning the legacy key
+ok 361 - attachSession follows an existing alias instead of returning the legacy key # SKIP case-insensitive path keys only split on Windows/macOS
+  ---
+  duration_ms: 0.220325
+  type: 'test'
+  ...
+# Subtest: literal migration is a no-op when source already equals target
+ok 362 - literal migration is a no-op when source already equals target
+  ---
+  duration_ms: 23.7297
+  type: 'test'
+  ...
+# (node:3809) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: the list route reports every project layer with transcripts counted
+ok 363 - the list route reports every project layer with transcripts counted
+  ---
+  duration_ms: 98.077396
+  type: 'test'
+  ...
+# Subtest: an exact project view lists its own transcripts
+ok 364 - an exact project view lists its own transcripts
+  ---
+  duration_ms: 28.214482
+  type: 'test'
+  ...
+# Subtest: a project with transcripts and no notes still shows up
+ok 365 - a project with transcripts and no notes still shows up
+  ---
+  duration_ms: 24.902525
+  type: 'test'
+  ...
+# (node:3816) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: prompt section: persona-only context injects and records diagnostics
+ok 366 - prompt section: persona-only context injects and records diagnostics
+  ---
+  duration_ms: 40.189705
+  type: 'test'
+  ...
+# Subtest: prompt section: project scope injects the project line
+ok 367 - prompt section: project scope injects the project line
+  ---
+  duration_ms: 4.536624
+  type: 'test'
+  ...
+# Subtest: prompt section: contested and superseded hits never reach the prompt
+ok 368 - prompt section: contested and superseded hits never reach the prompt
+  ---
+  duration_ms: 4.374452
+  type: 'test'
+  ...
+# Subtest: prompt section: over-budget text drops the recall block and stays under budget
+ok 369 - prompt section: over-budget text drops the recall block and stays under budget
+  ---
+  duration_ms: 4.11149
+  type: 'test'
+  ...
+# Subtest: prompt section: a broken store cannot break the host
+ok 370 - prompt section: a broken store cannot break the host
+  ---
+  duration_ms: 3.769867
+  type: 'test'
+  ...
+# Subtest: dream timer: off by default, runs under a lease when enabled, and cleans up
+ok 371 - dream timer: off by default, runs under a lease when enabled, and cleans up
+  ---
+  duration_ms: 151.832477
+  type: 'test'
+  ...
+# (node:3823) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-09 the prompt section is registered under omni-memory
+ok 372 - FR-09 the prompt section is registered under omni-memory
+  ---
+  duration_ms: 70.88075
+  type: 'test'
+  ...
+# Subtest: FR-09 an empty store injects no characters at all
+ok 373 - FR-09 an empty store injects no characters at all
+  ---
+  duration_ms: 34.697708
+  type: 'test'
+  ...
+# Subtest: FR-09 the injected text stays within the 1200 character budget
+ok 374 - FR-09 the injected text stays within the 1200 character budget
+  ---
+  duration_ms: 29.347825
+  type: 'test'
+  ...
+# Subtest: FR-10 a write invalidates the cached profile immediately
+ok 375 - FR-10 a write invalidates the cached profile immediately
+  ---
+  duration_ms: 28.819466
+  type: 'test'
+  ...
+# Subtest: FR-10 a forgotten note disappears from the injected profile
+ok 376 - FR-10 a forgotten note disappears from the injected profile
+  ---
+  duration_ms: 25.099292
+  type: 'test'
+  ...
+# Subtest: NFR-02 repeated reads reuse the cache instead of re-reading notes
+ok 377 - NFR-02 repeated reads reuse the cache instead of re-reading notes
+  ---
+  duration_ms: 25.444989
+  type: 'test'
+  ...
+# (node:3830) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: prop: concurrent same-key writes persist without loss
+ok 378 - prop: concurrent same-key writes persist without loss
+  ---
+  duration_ms: 150.918026
+  type: 'test'
+  ...
+# Subtest: prop: concurrent feedback votes have no lost updates
+ok 379 - prop: concurrent feedback votes have no lost updates
+  ---
+  duration_ms: 188.154523
+  type: 'test'
+  ...
+# Subtest: prop: concurrent cross-scope writes stay isolated
+ok 380 - prop: concurrent cross-scope writes stay isolated
+  ---
+  duration_ms: 634.29318
+  type: 'test'
+  ...
+# Subtest: prop: mixed concurrent operations keep the store consistent
+ok 381 - prop: mixed concurrent operations keep the store consistent
+  ---
+  duration_ms: 992.991702
+  type: 'test'
+  ...
+# (node:3837) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: prop: exact problemKey hits are ordered verified > unverified > failed
+ok 382 - prop: exact problemKey hits are ordered verified > unverified > failed
+  ---
+  duration_ms: 116.527669
+  type: 'test'
+  ...
+# Subtest: prop: exact problemKey hit outranks lexical query hits
+ok 383 - prop: exact problemKey hit outranks lexical query hits
+  ---
+  duration_ms: 208.030295
+  type: 'test'
+  ...
+# Subtest: prop: useful votes lift score and misleading votes lower it
+ok 384 - prop: useful votes lift score and misleading votes lower it
+  ---
+  duration_ms: 54.361361
+  type: 'test'
+  ...
+# Subtest: prop: status filter restricts to the requested real outcome
+ok 385 - prop: status filter restricts to the requested real outcome
+  ---
+  duration_ms: 62.884284
+  type: 'test'
+  ...
+# Subtest: prop: repeated searches return a stable order
+ok 386 - prop: repeated searches return a stable order
+  ---
+  duration_ms: 1191.650562
+  type: 'test'
+  ...
+# (node:3844) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: prop: amend removes every derived index for the old note
+ok 387 - prop: amend removes every derived index for the old note
+  ---
+  duration_ms: 138.822887
+  type: 'test'
+  ...
+# Subtest: prop: tombstoned notes stay clean across store reopen
+ok 388 - prop: tombstoned notes stay clean across store reopen
+  ---
+  duration_ms: 647.324406
+  type: 'test'
+  ...
+# Subtest: prop: mixed mutations keep the store consistent
+ok 389 - prop: mixed mutations keep the store consistent
+  ---
+  duration_ms: 272.965
+  type: 'test'
+  ...
+# (node:3851) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: prop: project key is casing-correct per platform
+ok 390 - prop: project key is casing-correct per platform
+  ---
+  duration_ms: 367.581326
+  type: 'test'
+  ...
+# Subtest: prop: legacy key preserves casing and collapses for lowercase paths
+ok 391 - prop: legacy key preserves casing and collapses for lowercase paths
+  ---
+  duration_ms: 4.388969
+  type: 'test'
+  ...
+# Subtest: prop: migrateScopeAlias is idempotent and lossless
+ok 392 - prop: migrateScopeAlias is idempotent and lossless
+  ---
+  duration_ms: 193.519589
+  type: 'test'
+  ...
+# Subtest: prop: cyclic alias graphs terminate without hanging
+ok 393 - prop: cyclic alias graphs terminate without hanging
+  ---
+  duration_ms: 1134.903315
+  type: 'test'
+  ...
+# (node:3858) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: prop: write -> problemKey recall returns the same row
+ok 394 - prop: write -> problemKey recall returns the same row
+  ---
+  duration_ms: 101.898182
+  type: 'test'
+  ...
+# Subtest: prop: project scope does not leak across projects
+ok 395 - prop: project scope does not leak across projects
+  ---
+  duration_ms: 57.135419
+  type: 'test'
+  ...
+# Subtest: prop: forgotten note is no longer recallable
+ok 396 - prop: forgotten note is no longer recallable
+  ---
+  duration_ms: 77.59904
+  type: 'test'
+  ...
+# Subtest: prop: arbitrary text is stored safely and invalid bounds are rejected
+ok 397 - prop: arbitrary text is stored safely and invalid bounds are rejected
+  ---
+  duration_ms: 52.778603
+  type: 'test'
+  ...
+# (node:3865) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: schema v12 exposes recall-quality counters on notes and facts
+ok 398 - schema v12 exposes recall-quality counters on notes and facts
+  ---
+  duration_ms: 96.912422
+  type: 'test'
+  ...
+# Subtest: memory_feedback records useful and misleading signals
+ok 399 - memory_feedback records useful and misleading signals
+  ---
+  duration_ms: 26.305108
+  type: 'test'
+  ...
+# Subtest: feedback changes recall order without deleting either note
+ok 400 - feedback changes recall order without deleting either note
+  ---
+  duration_ms: 35.252152
+  type: 'test'
+  ...
+# Subtest: memory_get expands a compact hit and reports missing ids
+ok 401 - memory_get expands a compact hit and reports missing ids
+  ---
+  duration_ms: 29.230373
+  type: 'test'
+  ...
+# Subtest: memory_amend creates a superseding revision and hides the old row
+ok 402 - memory_amend creates a superseding revision and hides the old row
+  ---
+  duration_ms: 65.326015
+  type: 'test'
+  ...
+# Subtest: memory_amend preserves contested, verification, source and feedback counters
+ok 403 - memory_amend preserves contested, verification, source and feedback counters
+  ---
+  duration_ms: 28.217808
+  type: 'test'
+  ...
+# Subtest: feedback and amend reject another project by default
+ok 404 - feedback and amend reject another project by default
+  ---
+  duration_ms: 32.537623
+  type: 'test'
+  ...
+# (node:3872) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: dream routes: replace/rollback round-trip and their refusals
+ok 405 - dream routes: replace/rollback round-trip and their refusals
+  ---
+  duration_ms: 185.632383
+  type: 'test'
+  ...
+# (node:3880) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: recovery drill: export -> fresh store import -> searchable
+ok 406 - recovery drill: export -> fresh store import -> searchable
+  ---
+  duration_ms: 141.187562
+  type: 'test'
+  ...
+# (node:3887) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: memory_reindex bigrams rebuilds the whole CJK index in one call
+ok 407 - memory_reindex bigrams rebuilds the whole CJK index in one call
+  ---
+  duration_ms: 109.437918
+  type: 'test'
+  ...
+# Subtest: release delta: a git failure on merge-base is not reported as "not a descendant"
+ok 408 - release delta: a git failure on merge-base is not reported as "not a descendant"
+  ---
+  duration_ms: 109.934594
+  type: 'test'
+  ...
+# Subtest: release delta: merge-base exit 1 still means "not an ancestor"
+ok 409 - release delta: merge-base exit 1 still means "not an ancestor"
+  ---
+  duration_ms: 0.215194
+  type: 'test'
+  ...
+# Subtest: install: launcher bytes come from the release commit even when HEAD is ahead
+ok 410 - install: launcher bytes come from the release commit even when HEAD is ahead
+  ---
+  duration_ms: 139.585174
+  type: 'test'
+  ...
+# Subtest: install: a launcher hash that disagrees with the release commit is refused
+ok 411 - install: a launcher hash that disagrees with the release commit is refused
+  ---
+  duration_ms: 114.179233
+  type: 'test'
+  ...
+# Subtest: install: a package.json hash that disagrees with the release commit is refused
+ok 412 - install: a package.json hash that disagrees with the release commit is refused
+  ---
+  duration_ms: 104.423154
+  type: 'test'
+  ...
+# Subtest: release delta: HEAD equal to the signed commit is allowed
+ok 413 - release delta: HEAD equal to the signed commit is allowed
+  ---
+  duration_ms: 76.019126
+  type: 'test'
+  ...
+# Subtest: release delta: docs-only descendants are allowed and counted
+ok 414 - release delta: docs-only descendants are allowed and counted
+  ---
+  duration_ms: 141.185005
+  type: 'test'
+  ...
+# Subtest: release delta: a source change after the release is refused
+ok 415 - release delta: a source change after the release is refused
+  ---
+  duration_ms: 134.893705
+  type: 'test'
+  ...
+# Subtest: release delta: renaming a doc out of docs/ is not treated as documentation
+ok 416 - release delta: renaming a doc out of docs/ is not treated as documentation
+  ---
+  duration_ms: 125.236274
+  type: 'test'
+  ...
+# Subtest: release delta: empty commit arguments are refused instead of guessed
+ok 417 - release delta: empty commit arguments are refused instead of guessed
+  ---
+  duration_ms: 65.558335
+  type: 'test'
+  ...
+# (node:4024) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: host guard accepts loopback names and rejects a rebinding host
+ok 418 - host guard accepts loopback names and rejects a rebinding host
+  ---
+  duration_ms: 0.972343
+  type: 'test'
+  ...
+# Subtest: host guard treats only loopback sockets as local
+ok 419 - host guard treats only loopback sockets as local
+  ---
+  duration_ms: 0.154397
+  type: 'test'
+  ...
+# Subtest: test-only daily-sync hooks need both the mode flag and a test runner
+ok 420 - test-only daily-sync hooks need both the mode flag and a test runner
+  ---
+  duration_ms: 0.210572
+  type: 'test'
+  ...
+# Subtest: plugin read routes fail closed when Host is missing
+ok 421 - plugin read routes fail closed when Host is missing
+  ---
+  duration_ms: 21.191083
+  type: 'test'
+  ...
+# Subtest: a failed cross-scope audit is logged instead of swallowed
+ok 422 - a failed cross-scope audit is logged instead of swallowed
+  ---
+  duration_ms: 0.345285
+  type: 'test'
+  ...
+# (node:4031) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: remote provider: probe persists the dimension across a restart
+ok 423 - remote provider: probe persists the dimension across a restart
+  ---
+  duration_ms: 159.95313
+  type: 'test'
+  ...
+# Subtest: remote provider: writes queue vectors and search flushes them
+ok 424 - remote provider: writes queue vectors and search flushes them
+  ---
+  duration_ms: 49.455695
+  type: 'test'
+  ...
+# Subtest: remote provider: an unreachable endpoint degrades to lexical without hanging
+ok 425 - remote provider: an unreachable endpoint degrades to lexical without hanging
+  ---
+  duration_ms: 38.774523
+  type: 'test'
+  ...
+# (node:4039) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: rerank is disabled without a configured endpoint
+ok 426 - rerank is disabled without a configured endpoint
+  ---
+  duration_ms: 1.672124
+  type: 'test'
+  ...
+# Subtest: rerankRemote sends documents and maps provider scores by index
+ok 427 - rerankRemote sends documents and maps provider scores by index
+  ---
+  duration_ms: 1.012575
+  type: 'test'
+  ...
+# Subtest: negative rerank logits are normalized instead of silently skipped
+ok 428 - negative rerank logits are normalized instead of silently skipped
+  ---
+  duration_ms: 136.823311
+  type: 'test'
+  ...
+# Subtest: an exact problemKey hit is not buried by a reranker preference
+ok 429 - an exact problemKey hit is not buried by a reranker preference
+  ---
+  duration_ms: 52.637586
+  type: 'test'
+  ...
+# Subtest: memory_search applies the optional reranker before finalizing hits
+ok 430 - memory_search applies the optional reranker before finalizing hits
+  ---
+  duration_ms: 36.218917
+  type: 'test'
+  ...
+# Subtest: rerankRemote rejects when fetchImpl throws or the timeout aborts the signal
+ok 431 - rerankRemote rejects when fetchImpl throws or the timeout aborts the signal
+  ---
+  duration_ms: 21.857352
+  type: 'test'
+  ...
+# Subtest: memory_search falls back to the fused order when rerank times out (AbortError)
+ok 432 - memory_search falls back to the fused order when rerank times out (AbortError)
+  ---
+  duration_ms: 543.882645
+  type: 'test'
+  ...
+# Subtest: memory_search falls back to the fused order when rerank returns 500
+ok 433 - memory_search falls back to the fused order when rerank returns 500
+  ---
+  duration_ms: 40.726006
+  type: 'test'
+  ...
+# Subtest: memory_search falls back to the fused order on malformed JSON or missing results
+ok 434 - memory_search falls back to the fused order on malformed JSON or missing results
+  ---
+  duration_ms: 47.478237
+  type: 'test'
+  ...
+# Subtest: all-zero rerank scores carry no ranking signal and keep the original order
+ok 435 - all-zero rerank scores carry no ranking signal and keep the original order
+  ---
+  duration_ms: 43.97758
+  type: 'test'
+  ...
+# (node:4047) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: NFR-07 a failing capture never propagates to the caller
+ok 436 - NFR-07 a failing capture never propagates to the caller
+  ---
+  duration_ms: 68.566237
+  type: 'test'
+  ...
+# Subtest: NFR-07 the prompt section returns a string even when nothing is stored
+ok 437 - NFR-07 the prompt section returns a string even when nothing is stored
+  ---
+  duration_ms: 30.947211
+  type: 'test'
+  ...
+# Subtest: NFR-07 a search for punctuation-only input does not throw
+ok 438 - NFR-07 a search for punctuation-only input does not throw
+  ---
+  duration_ms: 25.100652
+  type: 'test'
+  ...
+# Subtest: NFR-07 the store survives repeated writes and reads in one session
+ok 439 - NFR-07 the store survives repeated writes and reads in one session
+  ---
+  duration_ms: 86.772057
+  type: 'test'
+  ...
+# Subtest: NFR-07 an unknown tool argument kind is rejected, not silently downgraded
+ok 440 - NFR-07 an unknown tool argument kind is rejected, not silently downgraded
+  ---
+  duration_ms: 23.587848
+  type: 'test'
+  ...
+# (node:4054) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: an exact match older than the recent window is still retrievable
+ok 441 - an exact match older than the recent window is still retrievable
+  ---
+  duration_ms: 218.543368
+  type: 'test'
+  ...
+# Subtest: project scope still filters rows that the window never scanned
+ok 442 - project scope still filters rows that the window never scanned
+  ---
+  duration_ms: 113.60432
+  type: 'test'
+  ...
+# (node:4061) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: HTTP forget and restore respect the project scope instead of global
+ok 443 - HTTP forget and restore respect the project scope instead of global
+  ---
+  duration_ms: 105.465309
+  type: 'test'
+  ...
+# Subtest: a restored note really becomes visible again after being superseded
+ok 444 - a restored note really becomes visible again after being superseded
+  ---
+  duration_ms: 36.512612
+  type: 'test'
+  ...
+# Subtest: import sanitizes verification, importance and dangling lineage
+ok 445 - import sanitizes verification, importance and dangling lineage
+  ---
+  duration_ms: 28.392742
+  type: 'test'
+  ...
+# Subtest: link_entity rewrites object facts as well as subject facts
+ok 446 - link_entity rewrites object facts as well as subject facts
+  ---
+  duration_ms: 28.288665
+  type: 'test'
+  ...
+# Subtest: readJsonBody preserves UTF-8 split across chunks
+ok 447 - readJsonBody preserves UTF-8 split across chunks
+  ---
+  duration_ms: 23.371889
+  type: 'test'
+  ...
+# (node:4068) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: restoring a fact cannot create two active values for a single-valued relation
+ok 448 - restoring a fact cannot create two active values for a single-valued relation
+  ---
+  duration_ms: 97.487075
+  type: 'test'
+  ...
+# Subtest: restoring an old note refuses when the same text is active again
+ok 449 - restoring an old note refuses when the same text is active again
+  ---
+  duration_ms: 26.604448
+  type: 'test'
+  ...
+# Subtest: persona rejects empty and invalid bodies without clearing existing values
+ok 450 - persona rejects empty and invalid bodies without clearing existing values
+  ---
+  duration_ms: 24.097529
+  type: 'test'
+  ...
+# Subtest: persona rejects an oversized value before touching the stored profile
+ok 451 - persona rejects an oversized value before touching the stored profile
+  ---
+  duration_ms: 26.488274
+  type: 'test'
+  ...
+# Subtest: persona clears only when action=clear is explicit
+ok 452 - persona clears only when action=clear is explicit
+  ---
+  duration_ms: 32.097904
+  type: 'test'
+  ...
+# Subtest: ingest accepts a long Chinese body and rejects one over the byte cap with 413
+ok 453 - ingest accepts a long Chinese body and rejects one over the byte cap with 413
+  ---
+  duration_ms: 29.326479
+  type: 'test'
+  ...
+# (node:4075) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: profile facts never cross into an unknown project
+ok 454 - profile facts never cross into an unknown project
+  ---
+  duration_ms: 94.605887
+  type: 'test'
+  ...
+# Subtest: activeOnly export excludes superseded notes and expired facts
+ok 455 - activeOnly export excludes superseded notes and expired facts
+  ---
+  duration_ms: 37.640885
+  type: 'test'
+  ...
+# Subtest: import restores cardinality, relations, aliases and persona
+ok 456 - import restores cardinality, relations, aliases and persona
+  ---
+  duration_ms: 53.956516
+  type: 'test'
+  ...
+# Subtest: chunk restore returns a structured conflict instead of a UNIQUE crash
+ok 457 - chunk restore returns a structured conflict instead of a UNIQUE crash
+  ---
+  duration_ms: 26.320383
+  type: 'test'
+  ...
+# Subtest: memory_reindex hashed mode respects the row limit
+ok 458 - memory_reindex hashed mode respects the row limit
+  ---
+  duration_ms: 28.365919
+  type: 'test'
+  ...
+# Subtest: HTTP project scope searches every project but never global
+ok 459 - HTTP project scope searches every project but never global
+  ---
+  duration_ms: 41.431731
+  type: 'test'
+  ...
+# Subtest: list stats count active notes, not superseded history
+ok 460 - list stats count active notes, not superseded history
+  ---
+  duration_ms: 27.824374
+  type: 'test'
+  ...
+# Subtest: rules: writing the block twice leaves the file byte-identical
+ok 461 - rules: writing the block twice leaves the file byte-identical
+  ---
+  duration_ms: 1.015927
+  type: 'test'
+  ...
+# Subtest: rules: the block is appended after existing content, not over it
+ok 462 - rules: the block is appended after existing content, not over it
+  ---
+  duration_ms: 0.229773
+  type: 'test'
+  ...
+# Subtest: rules: an outdated block is replaced in place
+ok 463 - rules: an outdated block is replaced in place
+  ---
+  duration_ms: 0.127736
+  type: 'test'
+  ...
+# Subtest: rules: unpaired managed markers fail closed instead of swallowing prose
+ok 464 - rules: unpaired managed markers fail closed instead of swallowing prose
+  ---
+  duration_ms: 0.525719
+  type: 'test'
+  ...
+# Subtest: rules: the exported text stays self-consistent
+ok 465 - rules: the exported text stays self-consistent
+  ---
+  duration_ms: 0.126756
+  type: 'test'
+  ...
+# (node:4089) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: cased workspace paths share a key on Windows and macOS, case stays significant on Linux
+ok 466 - cased workspace paths share a key on Windows and macOS, case stays significant on Linux
+  ---
+  duration_ms: 72.37936
+  type: 'test'
+  ...
+# Subtest: opening a legacy cased project merges its rows into the canonical scope
+ok 467 - opening a legacy cased project merges its rows into the canonical scope
+  ---
+  duration_ms: 34.930858
+  type: 'test'
+  ...
+# Subtest: a duplicate active chunk is tombstoned at the source, never duplicated
+ok 468 - a duplicate active chunk is tombstoned at the source, never duplicated
+  ---
+  duration_ms: 26.848807
+  type: 'test'
+  ...
+# (node:4096) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-27 project wording is written to the project layer
+ok 469 - FR-27 project wording is written to the project layer
+  ---
+  duration_ms: 97.061282
+  type: 'test'
+  ...
+# Subtest: FR-27 cross-project rules go to the global layer
+ok 470 - FR-27 cross-project rules go to the global layer
+  ---
+  duration_ms: 26.596909
+  type: 'test'
+  ...
+# Subtest: FR-27 an ambiguous statement defaults to the project it was said in
+ok 471 - FR-27 an ambiguous statement defaults to the project it was said in
+  ---
+  duration_ms: 32.60613
+  type: 'test'
+  ...
+# Subtest: FR-27 an explicit scope always wins
+ok 472 - FR-27 an explicit scope always wins
+  ---
+  duration_ms: 30.315665
+  type: 'test'
+  ...
+# Subtest: FR-27 without a known project everything is global
+ok 473 - FR-27 without a known project everything is global
+  ---
+  duration_ms: 24.199966
+  type: 'test'
+  ...
+# Subtest: FR-27 facts follow the same judgement
+ok 474 - FR-27 facts follow the same judgement
+  ---
+  duration_ms: 29.125941
+  type: 'test'
+  ...
+# Subtest: FR-27 search defaults to the current project instead of every layer
+ok 475 - FR-27 search defaults to the current project instead of every layer
+  ---
+  duration_ms: 46.116132
+  type: 'test'
+  ...
+# Subtest: FR-27 the requested scope string is echoed back for traceability
+ok 476 - FR-27 the requested scope string is echoed back for traceability
+  ---
+  duration_ms: 27.962149
+  type: 'test'
+  ...
+# (node:4103) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-26 capture derives the project layer from the session workspace
+ok 477 - FR-26 capture derives the project layer from the session workspace
+  ---
+  duration_ms: 98.493093
+  type: 'test'
+  ...
+# Subtest: FR-26 a session without a workspace stays global
+ok 478 - FR-26 a session without a workspace stays global
+  ---
+  duration_ms: 24.79481
+  type: 'test'
+  ...
+# Subtest: FR-26 the profile shows global notes plus the current project only
+ok 479 - FR-26 the profile shows global notes plus the current project only
+  ---
+  duration_ms: 44.86819
+  type: 'test'
+  ...
+# Subtest: FR-26 project search includes the global layer but not another project
+ok 480 - FR-26 project search includes the global layer but not another project
+  ---
+  duration_ms: 43.17311
+  type: 'test'
+  ...
+# Subtest: FR-26 scope=all searches every layer
+ok 481 - FR-26 scope=all searches every layer
+  ---
+  duration_ms: 32.778558
+  type: 'test'
+  ...
+# Subtest: FR-26 the list route filters layers and reports both counts
+ok 482 - FR-26 the list route filters layers and reports both counts
+  ---
+  duration_ms: 29.183187
+  type: 'test'
+  ...
+# (node:4110) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-28 an ambiguous note is re-classified by the model and moved
+ok 483 - FR-28 an ambiguous note is re-classified by the model and moved
+  ---
+  duration_ms: 348.945784
+  type: 'test'
+  ...
+# Subtest: FR-28 a high-confidence rule is not re-checked in auto mode
+ok 484 - FR-28 a high-confidence rule is not re-checked in auto mode
+  ---
+  duration_ms: 280.379991
+  type: 'test'
+  ...
+# Subtest: FR-28 an explicit scope is never overruled by the model
+ok 485 - FR-28 an explicit scope is never overruled by the model
+  ---
+  duration_ms: 281.410754
+  type: 'test'
+  ...
+# Subtest: FR-28 without a project the model is not called
+ok 486 - FR-28 without a project the model is not called
+  ---
+  duration_ms: 284.111774
+  type: 'test'
+  ...
+# Subtest: FR-28 always mode judges every write
+ok 487 - FR-28 always mode judges every write
+  ---
+  duration_ms: 287.362046
+  type: 'test'
+  ...
+# Subtest: FR-28 off mode keeps the rule verdict and never calls the model
+ok 488 - FR-28 off mode keeps the rule verdict and never calls the model
+  ---
+  duration_ms: 285.469711
+  type: 'test'
+  ...
+# Subtest: FR-28 a judge failure keeps the write and the rule verdict
+ok 489 - FR-28 a judge failure keeps the write and the rule verdict
+  ---
+  duration_ms: 279.653073
+  type: 'test'
+  ...
+# Subtest: FR-28 without an llm service writes still succeed
+ok 490 - FR-28 without an llm service writes still succeed
+  ---
+  duration_ms: 132.059494
+  type: 'test'
+  ...
+# Subtest: FR-28 the status route reports the last model verdict
+ok 491 - FR-28 the status route reports the last model verdict
+  ---
+  duration_ms: 288.747112
+  type: 'test'
+  ...
+# (node:4117) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: agent to project mapping survives a plugin reload
+ok 492 - agent to project mapping survives a plugin reload
+  ---
+  duration_ms: 120.133652
+  type: 'test'
+  ...
+# Subtest: an unknown agent still fails closed to global after reload
+ok 493 - an unknown agent still fails closed to global after reload
+  ---
+  duration_ms: 27.388131
+  type: 'test'
+  ...
+# (node:4124) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: D-06 a scoped fact is excluded from another scope query
+ok 494 - D-06 a scoped fact is excluded from another scope query
+  ---
+  duration_ms: 103.675441
+  type: 'test'
+  ...
+# Subtest: D-06 an unscoped fact stays visible under any scope
+ok 495 - D-06 an unscoped fact stays visible under any scope
+  ---
+  duration_ms: 28.589871
+  type: 'test'
+  ...
+# Subtest: D-06 a scoped episode is excluded from another scope query
+ok 496 - D-06 a scoped episode is excluded from another scope query
+  ---
+  duration_ms: 27.554473
+  type: 'test'
+  ...
+# Subtest: D-06 captured transcripts carry no scope and stay visible
+ok 497 - D-06 captured transcripts carry no scope and stay visible
+  ---
+  duration_ms: 30.043644
+  type: 'test'
+  ...
+# Subtest: notes remain isolated per scope after the change
+ok 498 - notes remain isolated per scope after the change
+  ---
+  duration_ms: 30.070427
+  type: 'test'
+  ...
+# (node:4131) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-06 CJK substring is found without spaces (bigram tokenisation)
+ok 499 - FR-06 CJK substring is found without spaces (bigram tokenisation)
+  ---
+  duration_ms: 111.222052
+  type: 'test'
+  ...
+# Subtest: FR-07 an English identifier is matched exactly
+ok 500 - FR-07 an English identifier is matched exactly
+  ---
+  duration_ms: 28.355628
+  type: 'test'
+  ...
+# Subtest: FR-08 one query spans notes, facts and transcripts
+ok 501 - FR-08 one query spans notes, facts and transcripts
+  ---
+  duration_ms: 41.907433
+  type: 'test'
+  ...
+# Subtest: identical text across layers is reported once
+ok 502 - identical text across layers is reported once
+  ---
+  duration_ms: 30.829058
+  type: 'test'
+  ...
+# Subtest: an empty query returns no hits without throwing
+ok 503 - an empty query returns no hits without throwing
+  ---
+  duration_ms: 23.664245
+  type: 'test'
+  ...
+# Subtest: hits are ordered by score descending
+ok 504 - hits are ordered by score descending
+  ---
+  duration_ms: 29.229916
+  type: 'test'
+  ...
+# Subtest: scope narrows notes when an exact scope exists
+ok 505 - scope narrows notes when an exact scope exists
+  ---
+  duration_ms: 33.591252
+  type: 'test'
+  ...
+# Subtest: limit is clamped and respected
+ok 506 - limit is clamped and respected
+  ---
+  duration_ms: 33.869317
+  type: 'test'
+  ...
+# (node:4138) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: export/import only accept a basename inside the backup directory
+ok 507 - export/import only accept a basename inside the backup directory
+  ---
+  duration_ms: 90.814324
+  type: 'test'
+  ...
+# backup directory: /tmp/omni-test-tQUoZ5/memory/backups
+# Subtest: a symlinked backup name is refused instead of followed
+ok 508 - a symlinked backup name is refused instead of followed
+  ---
+  duration_ms: 25.538978
+  type: 'test'
+  ...
+# Subtest: by-id writes stay inside the caller project; another project is refused
+ok 509 - by-id writes stay inside the caller project; another project is refused
+  ---
+  duration_ms: 24.915566
+  type: 'test'
+  ...
+# Subtest: import closes the previous active fact for the same single-valued key
+ok 510 - import closes the previous active fact for the same single-valued key
+  ---
+  duration_ms: 37.098854
+  type: 'test'
+  ...
+# Subtest: dream cites the matching turn, not the first chunk of a session
+ok 511 - dream cites the matching turn, not the first chunk of a session
+  ---
+  duration_ms: 25.298542
+  type: 'test'
+  ...
+# Subtest: test boot never inherits a caller OMNI_HOME
+ok 512 - test boot never inherits a caller OMNI_HOME
+  ---
+  duration_ms: 24.531576
+  type: 'test'
+  ...
+# boot() pinned OMNI_HOME to its own temp directory
+# (node:4145) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: GC 失败元数据写入 meta 后与 status 一致，清空后恢复为空
+ok 513 - GC 失败元数据写入 meta 后与 status 一致，清空后恢复为空
+  ---
+  duration_ms: 96.419791
+  type: 'test'
+  ...
+# Subtest: embedding 与 semantic 的丢弃计数字段存在且初值为 0/null
+ok 514 - embedding 与 semantic 的丢弃计数字段存在且初值为 0/null
+  ---
+  duration_ms: 25.01301
+  type: 'test'
+  ...
+# Subtest: scope-alias CLI 预览不迁移，--apply 迁移并在 scope_aliases 留痕
+ok 515 - scope-alias CLI 预览不迁移，--apply 迁移并在 scope_aliases 留痕
+  ---
+  duration_ms: 494.484635
+  type: 'test'
+  ...
+# Subtest: 冷却期早退后未完成的语义回填仍会恢复
+ok 516 - 冷却期早退后未完成的语义回填仍会恢复
+  ---
+  duration_ms: 1814.140196
+  type: 'test'
+  ...
+# (node:4180) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-21 a paraphrase with zero shared characters recalls the note
+ok 517 - FR-21 a paraphrase with zero shared characters recalls the note
+  ---
+  duration_ms: 129.153528
+  type: 'test'
+  ...
+# Subtest: FR-21 the same query finds nothing on the hashed backend
+ok 518 - FR-21 the same query finds nothing on the hashed backend
+  ---
+  duration_ms: 48.38041
+  type: 'test'
+  ...
+# Subtest: FR-21 the bundled local model recalls a paraphrase with zero shared characters
+ok 519 - FR-21 the bundled local model recalls a paraphrase with zero shared characters
+  ---
+  duration_ms: 644.638687
+  type: 'test'
+  ...
+# Subtest: FR-41 the background worker drains more than one semantic batch
+ok 520 - FR-41 the background worker drains more than one semantic batch
+  ---
+  duration_ms: 386.878285
+  type: 'test'
+  ...
+# Subtest: FR-41 an upgraded store backfills rows written before the model existed
+ok 521 - FR-41 an upgraded store backfills rows written before the model existed
+  ---
+  duration_ms: 1087.653952
+  type: 'test'
+  ...
+# Subtest: FR-21 the remote backend still answers when the endpoint is down
+ok 522 - FR-21 the remote backend still answers when the endpoint is down
+  ---
+  duration_ms: 30.041713
+  type: 'test'
+  ...
+# Subtest: FR-41 forgetting and amending remove stale semantic rows
+ok 523 - FR-41 forgetting and amending remove stale semantic rows
+  ---
+  duration_ms: 137.533637
+  type: 'test'
+  ...
+# Subtest: FR-41 an amend during the first flush is not swallowed by the old snapshot
+ok 524 - FR-41 an amend during the first flush is not swallowed by the old snapshot
+  ---
+  duration_ms: 109.658896
+  type: 'test'
+  ...
+# Subtest: sign-release binds a commit and the launcher bytes into a verifiable manifest
+ok 525 - sign-release binds a commit and the launcher bytes into a verifiable manifest
+  ---
+  duration_ms: 248.005374
+  type: 'test'
+  ...
+# (node:4228) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: a note can carry a normalized problem fingerprint and real solution status
+ok 526 - a note can carry a normalized problem fingerprint and real solution status
+  ---
+  duration_ms: 98.14555
+  type: 'test'
+  ...
+# Subtest: verified solutions rank above failed attempts for the same query
+ok 527 - verified solutions rank above failed attempts for the same query
+  ---
+  duration_ms: 33.702586
+  type: 'test'
+  ...
+# Subtest: status and kind filters narrow the result set without leaking other layers
+ok 528 - status and kind filters narrow the result set without leaking other layers
+  ---
+  duration_ms: 31.307471
+  type: 'test'
+  ...
+# Subtest: solution report closes the loop: success verifies, later failure downgrades
+ok 529 - solution report closes the loop: success verifies, later failure downgrades
+  ---
+  duration_ms: 28.012208
+  type: 'test'
+  ...
+# Subtest: solution report rejects unknown or inactive notes
+ok 530 - solution report rejects unknown or inactive notes
+  ---
+  duration_ms: 26.908827
+  type: 'test'
+  ...
+# Subtest: rewriting an existing note can attach experience metadata without a new row
+ok 531 - rewriting an existing note can attach experience metadata without a new row
+  ---
+  duration_ms: 25.224793
+  type: 'test'
+  ...
+# Subtest: backup export and import preserve solution fields
+ok 532 - backup export and import preserve solution fields
+  ---
+  duration_ms: 60.602894
+  type: 'test'
+  ...
+# Subtest: problem metadata is note-only
+ok 533 - problem metadata is note-only
+  ---
+  duration_ms: 24.507633
+  type: 'test'
+  ...
+# Subtest: the list route exposes solution fields for the UI
+ok 534 - the list route exposes solution fields for the UI
+  ---
+  duration_ms: 37.587058
+  type: 'test'
+  ...
+# Subtest: failed and expired attempts never enter the always-on profile
+ok 535 - failed and expired attempts never enter the always-on profile
+  ---
+  duration_ms: 31.143672
+  type: 'test'
+  ...
+# (node:4235) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: NFR-04 committed rows survive a fresh handle on the same database
+ok 536 - NFR-04 committed rows survive a fresh handle on the same database
+  ---
+  duration_ms: 111.407996
+  type: 'test'
+  ...
+# Subtest: NFR-04 the database file lives under DSH_HOME/memory
+ok 537 - NFR-04 the database file lives under DSH_HOME/memory
+  ---
+  duration_ms: 24.452975
+  type: 'test'
+  ...
+# Subtest: NFR-06 forgetting keeps the audit row reachable by id
+ok 538 - NFR-06 forgetting keeps the audit row reachable by id
+  ---
+  duration_ms: 28.575678
+  type: 'test'
+  ...
+# (node:4242) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: all twenty-eight model tools are registered
+ok 539 - all twenty-eight model tools are registered
+  ---
+  duration_ms: 69.189336
+  type: 'test'
+  ...
+# Subtest: FR-11 profile reports the budget and store statistics
+ok 540 - FR-11 profile reports the budget and store statistics
+  ---
+  duration_ms: 31.270824
+  type: 'test'
+  ...
+# Subtest: FR-13 forget tombstones a note and hides it from recall
+ok 541 - FR-13 forget tombstones a note and hides it from recall
+  ---
+  duration_ms: 40.563866
+  type: 'test'
+  ...
+# Subtest: FR-13 forgetting twice reports nothing to forget
+ok 542 - FR-13 forgetting twice reports nothing to forget
+  ---
+  duration_ms: 29.305037
+  type: 'test'
+  ...
+# Subtest: FR-13 forget rejects an unknown kind
+ok 543 - FR-13 forget rejects an unknown kind
+  ---
+  duration_ms: 23.814482
+  type: 'test'
+  ...
+# Subtest: uninstall-launcher only removes launcher-owned files and never the memory database
+ok 544 - uninstall-launcher only removes launcher-owned files and never the memory database
+  ---
+  duration_ms: 3.904342
+  type: 'test'
+  ...
+# Subtest: uninstall-launcher refuses to modify a task action outside the omni home
+ok 545 - uninstall-launcher refuses to modify a task action outside the omni home
+  ---
+  duration_ms: 0.449962
+  type: 'test'
+  ...
+# Subtest: the pinned update public key matches its documented fingerprint
+ok 546 - the pinned update public key matches its documented fingerprint
+  ---
+  duration_ms: 1.674332
+  type: 'test'
+  ...
+# Subtest: a signed manifest verifies and any field change breaks the signature
+ok 547 - a signed manifest verifies and any field change breaks the signature
+  ---
+  duration_ms: 2.794625
+  type: 'test'
+  ...
+# Subtest: unknown fields, wrong key, malformed fields and mismatched versions are rejected
+ok 548 - unknown fields, wrong key, malformed fields and mismatched versions are rejected
+  ---
+  duration_ms: 0.902234
+  type: 'test'
+  ...
+# Subtest: an old or future manifest issuedAt cannot be replayed
+ok 549 - an old or future manifest issuedAt cannot be replayed
+  ---
+  duration_ms: 0.681819
+  type: 'test'
+  ...
+# Subtest: the v1 manifest remains verifiable for old clients during bootstrap
+ok 550 - the v1 manifest remains verifiable for old clients during bootstrap
+  ---
+  duration_ms: 0.731602
+  type: 'test'
+  ...
+# Subtest: a manifest signed for another version can never be used for this release
+ok 551 - a manifest signed for another version can never be used for this release
+  ---
+  duration_ms: 0.789231
+  type: 'test'
+  ...
+# (node:4263) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: memory_write rejects an unknown kind instead of silently writing a note
+ok 552 - memory_write rejects an unknown kind instead of silently writing a note
+  ---
+  duration_ms: 94.140668
+  type: 'test'
+  ...
+# Subtest: profile excludes imported knowledge but keeps ordinary active notes
+ok 553 - profile excludes imported knowledge but keeps ordinary active notes
+  ---
+  duration_ms: 30.957112
+  type: 'test'
+  ...
+# Subtest: search preserves full text, reports total, supports offset and explains hits
+ok 554 - search preserves full text, reports total, supports offset and explains hits
+  ---
+  duration_ms: 35.141882
+  type: 'test'
+  ...
+# Subtest: search flags a stale product version and keeps the current one unflagged
+ok 555 - search flags a stale product version and keeps the current one unflagged
+  ---
+  duration_ms: 33.97599
+  type: 'test'
+  ...
+# Subtest: HTTP search returns total and paging metadata
+ok 556 - HTTP search returns total and paging metadata
+  ---
+  duration_ms: 31.2827
+  type: 'test'
+  ...
+# Subtest: overview exposes one pending total and the coverage fields
+ok 557 - overview exposes one pending total and the coverage fields
+  ---
+  duration_ms: 29.38746
+  type: 'test'
+  ...
+# Subtest: kb-migrate moves only knowledge-source notes and is a dry run by default
+ok 558 - kb-migrate moves only knowledge-source notes and is a dry run by default
+  ---
+  duration_ms: 40.745002
+  type: 'test'
+  ...
+# (node:4270) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: remote 向量队列写满后 dropped/lastDropAt 生效，搜索可 flush
+ok 559 - remote 向量队列写满后 dropped/lastDropAt 生效，搜索可 flush
+  ---
+  duration_ms: 9338.03155
+  type: 'test'
+  ...
+# 只写不搜 4101 条耗时 9046ms
+# (node:4278) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: writing a note stores exactly one vector row
+ok 560 - writing a note stores exactly one vector row
+  ---
+  duration_ms: 120.414043
+  type: 'test'
+  ...
+# Subtest: facts and episodes are vectorised too
+ok 561 - facts and episodes are vectorised too
+  ---
+  duration_ms: 27.763713
+  type: 'test'
+  ...
+# Subtest: legacy rows receive vectors during migration backfill
+ok 562 - legacy rows receive vectors during migration backfill
+  ---
+  duration_ms: 34.130509
+  type: 'test'
+  ...
+# Subtest: a forgotten row is excluded from the vector route
+ok 563 - a forgotten row is excluded from the vector route
+  ---
+  duration_ms: 33.282184
+  type: 'test'
+  ...
+# Subtest: hybrid hits carry both lexical and vector signals when both routes match
+ok 564 - hybrid hits carry both lexical and vector signals when both routes match
+  ---
+  duration_ms: 28.159827
+  type: 'test'
+  ...
+# Subtest: an unrelated query produces no vector-only hits
+ok 565 - an unrelated query produces no vector-only hits
+  ---
+  duration_ms: 25.617136
+  type: 'test'
+  ...
+# Subtest: the vector route respects scope
+ok 566 - the vector route respects scope
+  ---
+  duration_ms: 45.847871
+  type: 'test'
+  ...
+# Subtest: verify-release accepts a signed release and checks the bound package/launcher
+ok 567 - verify-release accepts a signed release and checks the bound package/launcher
+  ---
+  duration_ms: 22.974672
+  type: 'test'
+  ...
+# Subtest: verify-release rejects a tampered manifest even when the release endpoint is healthy
+ok 568 - verify-release rejects a tampered manifest even when the release endpoint is healthy
+  ---
+  duration_ms: 1.816569
+  type: 'test'
+  ...
+# Subtest: verify-release rejects a launcher whose bytes do not match the signed hash
+ok 569 - verify-release rejects a launcher whose bytes do not match the signed hash
+  ---
+  duration_ms: 2.618375
+  type: 'test'
+  ...
+# Subtest: verify-release compares a separately downloaded launcher and fails closed
+ok 570 - verify-release compares a separately downloaded launcher and fails closed
+  ---
+  duration_ms: 4.280469
+  type: 'test'
+  ...
+# Subtest: formatUpdateNotice stays silent unless a newer valid version is known
+ok 571 - formatUpdateNotice stays silent unless a newer valid version is known
+  ---
+  duration_ms: 1.285993
+  type: 'test'
+  ...
+# Subtest: checkForUpdate reads the contents API once and reuses the daily cache
+ok 572 - checkForUpdate reads the contents API once and reuses the daily cache
+  ---
+  duration_ms: 22.66548
+  type: 'test'
+  ...
+# Subtest: checkForUpdate falls back to raw and never throws on network failure
+ok 573 - checkForUpdate falls back to raw and never throws on network failure
+  ---
+  duration_ms: 2.007379
+  type: 'test'
+  ...
+# Subtest: a cache rewritten by another process is read without a second network call
+ok 574 - a cache rewritten by another process is read without a second network call
+  ---
+  duration_ms: 1.640112
+  type: 'test'
+  ...
+# Subtest: concurrent readers share one cross-process probe lock
+ok 575 - concurrent readers share one cross-process probe lock
+  ---
+  duration_ms: 52.056726
+  type: 'test'
+  ...
+# Subtest: an injected cache cannot reach the prompt and a failed probe clears stale remote data
+ok 576 - an injected cache cannot reach the prompt and a failed probe clears stale remote data
+  ---
+  duration_ms: 1.490217
+  type: 'test'
+  ...
+# Subtest: memory_context reads a cached newer version without a network probe
+ok 577 - memory_context reads a cached newer version without a network probe
+  ---
+  duration_ms: 4.236887
+  type: 'test'
+  ...
+# (node:4301) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FR-01 writes a note and returns its id
+ok 578 - FR-01 writes a note and returns its id
+  ---
+  duration_ms: 91.986546
+  type: 'test'
+  ...
+# Subtest: FR-01 duplicate note text in the same scope is deduplicated
+ok 579 - FR-01 duplicate note text in the same scope is deduplicated
+  ---
+  duration_ms: 24.110756
+  type: 'test'
+  ...
+# Subtest: FR-01 same text in a different scope is a separate row
+ok 580 - FR-01 same text in a different scope is a separate row
+  ---
+  duration_ms: 24.688763
+  type: 'test'
+  ...
+# Subtest: FR-03 episode lands in the transcript layer
+ok 581 - FR-03 episode lands in the transcript layer
+  ---
+  duration_ms: 27.714236
+  type: 'test'
+  ...
+# Subtest: INV-01 identical episode text is stored once
+ok 582 - INV-01 identical episode text is stored once
+  ---
+  duration_ms: 22.931384
+  type: 'test'
+  ...
+# Subtest: memory_write rejects an empty text
+ok 583 - memory_write rejects an empty text
+  ---
+  duration_ms: 23.116929
+  type: 'test'
+  ...
+# Subtest: memory_write rejects a fact without a subject
+ok 584 - memory_write rejects a fact without a subject
+  ---
+  duration_ms: 31.2689
+  type: 'test'
+  ...
+1..584
+# tests 584
+# suites 0
+# pass 581
+# fail 0
+# cancelled 0
+# skipped 3
+# todo 0
+# duration_ms 90486.474218
