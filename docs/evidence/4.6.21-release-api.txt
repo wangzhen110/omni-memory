@@ -1,0 +1,229 @@
+4.6.21 release API evidence (captured 2026-11-28, repo wangzhen110/omni-memory)
+
+## GET /git/ref/tags/v4.6.21  (http 200)
+{
+  "ref": "refs/tags/v4.6.21",
+  "node_id": "REF_kwDOVvRz1LFyZWZzL3RhZ3MvdjQuNi4yMQ",
+  "url": "https://api.github.com/repos/wangzhen110/omni-memory/git/refs/tags/v4.6.21",
+  "object": {
+    "sha": "8517a6375008a90082b8f22f7e8b2841b1bac283",
+    "type": "tag",
+    "url": "https://api.github.com/repos/wangzhen110/omni-memory/git/tags/8517a6375008a90082b8f22f7e8b2841b1bac283"
+  }
+}
+
+
+## GET /releases/tags/v4.6.21  (http 200)
+{
+  "url": "https://api.github.com/repos/wangzhen110/omni-memory/releases/461342009",
+  "assets_url": "https://api.github.com/repos/wangzhen110/omni-memory/releases/461342009/assets",
+  "upload_url": "https://uploads.github.com/repos/wangzhen110/omni-memory/releases/461342009/assets{?name,label}",
+  "html_url": "https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.21",
+  "id": 461342009,
+  "author": {
+    "login": "wangzhen110",
+    "id": 256335272,
+    "node_id": "U_kgDOD0ddqA",
+    "avatar_url": "https://avatars.githubusercontent.com/u/256335272?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/wangzhen110",
+    "html_url": "https://github.com/wangzhen110",
+    "followers_url": "https://api.github.com/users/wangzhen110/followers",
+    "following_url": "https://api.github.com/users/wangzhen110/following{/other_user}",
+    "gists_url": "https://api.github.com/users/wangzhen110/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/wangzhen110/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/wangzhen110/subscriptions",
+    "organizations_url": "https://api.github.com/users/wangzhen110/orgs",
+    "repos_url": "https://api.github.com/users/wangzhen110/repos",
+    "events_url": "https://api.github.com/users/wangzhen110/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/wangzhen110/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "node_id": "RE_kwDOVvRz1M4bf4U5",
+  "tag_name": "v4.6.21",
+  "target_commitish": "c9cda4830efddd054be64e3a5192547e4d99da0e",
+  "name": "v4.6.21",
+  "draft": false,
+  "immutable": false,
+  "prerelease": false,
+  "created_at": "2026-11-28T06:03:45Z",
+  "updated_at": "2026-11-28T06:04:09Z",
+  "published_at": "2026-11-28T06:04:02Z",
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/wangzhen110/omni-memory/releases/assets/803454761",
+      "id": 803454761,
+      "node_id": "RA_kwDOVvRz1M4v478p",
+      "name": "omni-update-manifest-v2.json",
+      "label": "",
+      "uploader": {
+        "login": "wangzhen110",
+        "id": 256335272,
+        "node_id": "U_kgDOD0ddqA",
+        "avatar_url": "https://avatars.githubusercontent.com/u/256335272?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/wangzhen110",
+        "html_url": "https://github.com/wangzhen110",
+        "followers_url": "https://api.github.com/users/wangzhen110/followers",
+        "following_url": "https://api.github.com/users/wangzhen110/following{/other_user}",
+        "gists_url": "https://api.github.com/users/wangzhen110/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/wangzhen110/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/wangzhen110/subscriptions",
+        "organizations_url": "https://api.github.com/users/wangzhen110/orgs",
+        "repos_url": "https://api.github.com/users/wangzhen110/repos",
+        "events_url": "https://api.github.com/users/wangzhen110/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/wangzhen110/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "content_type": "application/json",
+      "state": "uploaded",
+      "size": 632,
+      "digest": "sha256:480e1f26131fc08b94916fcc8f940dc6715063f1b97e156e45f9547cc8920698",
+      "download_count": 0,
+      "created_at": "2026-11-28T06:04:08Z",
+      "updated_at": "2026-11-28T06:04:08Z",
+      "browser_download_url": "https://github.com/wangzhen110/omni-memory/releases/download/v4.6.21/omni-update-manifest-v2.json"
+    },
+    {
+      "url": "https://api.github.com/repos/wangzhen110/omni-memory/releases/assets/803454822",
+      "id": 803454822,
+      "node_id": "RA_kwDOVvRz1M4v479m",
+      "name": "omni-update-manifest.json",
+      "label": "",
+      "uploader": {
+        "login": "wangzhen110",
+        "id": 256335272,
+        "node_id": "U_kgDOD0ddqA",
+        "avatar_url": "https://avatars.githubusercontent.com/u/256335272?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/wangzhen110",
+        "html_url": "https://github.com/wangzhen110",
+        "followers_url": "https://api.github.com/users/wangzhen110/followers",
+        "following_url": "https://api.github.com/users/wangzhen110/following{/other_user}",
+        "gists_url": "https://api.github.com/users/wangzhen110/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/wangzhen110/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/wangzhen110/subscriptions",
+        "organizations_url": "https://api.github.com/users/wangzhen110/orgs",
+        "repos_url": "https://api.github.com/users/wangzhen110/repos",
+        "events_url": "https://api.github.com/users/wangzhen110/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/wangzhen110/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "content_type": "application/json",
+      "state": "uploaded",
+      "size": 485,
+      "digest": "sha256:5c5b19cfeae56cb81b57842b0c7df6dcfbaec33a5f51c685158c6d70b04d43b9",
+      "download_count": 0,
+      "created_at": "2026-11-28T06:04:09Z",
+      "updated_at": "2026-11-28T06:04:09Z",
+      "browser_download_url": "https://github.com/wangzhen110/omni-memory/releases/download/v4.6.21/omni-update-manifest.json"
+    }
+  ],
+  "tarball_url": "https://api.github.com/repos/wangzhen110/omni-memory/tarball/v4.6.21",
+  "zipball_url": "https://api.github.com/repos/wangzhen110/omni-memory/zipball/v4.6.21",
+  "body": "修 4.6.20 复核四条 P1：install 回退断言假阳性、发布 HEAD 门禁、清单规则 1/3；TAP 绑定提交。测试 585/585。"
+}
+
+
+## GET /releases/461342009/assets  (http 200)
+[
+  {
+    "url": "https://api.github.com/repos/wangzhen110/omni-memory/releases/assets/803454761",
+    "id": 803454761,
+    "node_id": "RA_kwDOVvRz1M4v478p",
+    "name": "omni-update-manifest-v2.json",
+    "label": "",
+    "uploader": {
+      "login": "wangzhen110",
+      "id": 256335272,
+      "node_id": "U_kgDOD0ddqA",
+      "avatar_url": "https://avatars.githubusercontent.com/u/256335272?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/wangzhen110",
+      "html_url": "https://github.com/wangzhen110",
+      "followers_url": "https://api.github.com/users/wangzhen110/followers",
+      "following_url": "https://api.github.com/users/wangzhen110/following{/other_user}",
+      "gists_url": "https://api.github.com/users/wangzhen110/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/wangzhen110/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/wangzhen110/subscriptions",
+      "organizations_url": "https://api.github.com/users/wangzhen110/orgs",
+      "repos_url": "https://api.github.com/users/wangzhen110/repos",
+      "events_url": "https://api.github.com/users/wangzhen110/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/wangzhen110/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "content_type": "application/json",
+    "state": "uploaded",
+    "size": 632,
+    "digest": "sha256:480e1f26131fc08b94916fcc8f940dc6715063f1b97e156e45f9547cc8920698",
+    "download_count": 0,
+    "created_at": "2026-11-28T06:04:08Z",
+    "updated_at": "2026-11-28T06:04:08Z",
+    "browser_download_url": "https://github.com/wangzhen110/omni-memory/releases/download/v4.6.21/omni-update-manifest-v2.json"
+  },
+  {
+    "url": "https://api.github.com/repos/wangzhen110/omni-memory/releases/assets/803454822",
+    "id": 803454822,
+    "node_id": "RA_kwDOVvRz1M4v479m",
+    "name": "omni-update-manifest.json",
+    "label": "",
+    "uploader": {
+      "login": "wangzhen110",
+      "id": 256335272,
+      "node_id": "U_kgDOD0ddqA",
+      "avatar_url": "https://avatars.githubusercontent.com/u/256335272?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/wangzhen110",
+      "html_url": "https://github.com/wangzhen110",
+      "followers_url": "https://api.github.com/users/wangzhen110/followers",
+      "following_url": "https://api.github.com/users/wangzhen110/following{/other_user}",
+      "gists_url": "https://api.github.com/users/wangzhen110/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/wangzhen110/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/wangzhen110/subscriptions",
+      "organizations_url": "https://api.github.com/users/wangzhen110/orgs",
+      "repos_url": "https://api.github.com/users/wangzhen110/repos",
+      "events_url": "https://api.github.com/users/wangzhen110/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/wangzhen110/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "content_type": "application/json",
+    "state": "uploaded",
+    "size": 485,
+    "digest": "sha256:5c5b19cfeae56cb81b57842b0c7df6dcfbaec33a5f51c685158c6d70b04d43b9",
+    "download_count": 0,
+    "created_at": "2026-11-28T06:04:09Z",
+    "updated_at": "2026-11-28T06:04:09Z",
+    "browser_download_url": "https://github.com/wangzhen110/omni-memory/releases/download/v4.6.21/omni-update-manifest.json"
+  }
+]
+
+
+## POST /repos/wangzhen110/omni-memory/keys  -> http 201, id 171384441, title temp-4621-evidence, read_only=false
+## DELETE /repos/wangzhen110/omni-memory/keys/171384441  -> http 204
+
+## npm run verify:release -- --tag v4.6.21
+
+> @local/omni-memory@4.6.21 verify:release
+> node scripts/verify-release.mjs --tag v4.6.21
+
+Release v4.6.21  https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.21
+  schema       omni-update-manifest-v2
+  version      4.6.21
+  commit       c9cda4830efddd054be64e3a5192547e4d99da0e
+  key          omni-ed25519-2026-01  76:f3:5c:2d:c5:d6:f7:7e:a8:4d:9b:03:26:c0:7f:fc:d5:94:70:50:8c:bf:c4:41:75:a5:59:c1:67:a9:10:f1
+  package.json 5043a6247ff87f60a2fab56c27c7ae952d721ea19b8474c6d357be0226efeedc
+  launcher     d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4  15360 bytes
+OK: signature, package hash, and launcher hash are consistent
+
+
+## git ref cleanup: DELETE /git/refs/heads/evidence%2F4.6.21 -> http 204

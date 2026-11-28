@@ -57,4 +57,14 @@ evidence 绑定 `commitSha c7da8cfb`（`commitShaSource: flag (remote sha after 
 
 ## 9 发布链
 
-见发版后补写；按清单第 4 节顺序执行，最终 HEAD 的 `npm run check` 必须 exit 0。
+按清单第 4 节顺序执行完毕，全部取值见 `docs/evidence/4.6.21-release-api.txt`（API 回执原文）、`docs/evidence/4.6.21-pack.json`（干净包数）、`docs/evidence/4.6.21-vm.txt`（云主机复跑）。
+
+- 内容提交 `91d9b76b` → 远端 `c7da8cfb`；证据文档提交 `cc0a580` → `2cca83a2`；rebind `ce081b6a` → `8a0c834e`；两次 update-log `ea555463` → `62e3e9a5`、`28705885` → 最终远端 main `c9cda4830efddd054be64e3a5192547e4d99da0e`。中间 SHA 变化来自 push 工具改写，最终 HEAD 以远端为准。
+- 最终 HEAD `c9cda483` 上 `npm run check` exit 0（`update log covers 185 recorded commit hashes`），即 P1-B 的处置在本版自身生效。
+- tag `v4.6.21` → tag object `8517a6375008a90082b8f22f7e8b2841b1bac283`，指向 `c9cda483`；Release `461342009`（`https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.21`）。
+- 资产：`omni-update-manifest-v2.json` id `803454761` 632 B；`omni-update-manifest.json` id `803454822` 485 B。
+- `npm run verify:release -- --tag v4.6.21` 输出 `OK: signature, package hash, and launcher hash are consistent`；`package.json` sha256 `5043a6247ff87f60a2fab56c27c7ae952d721ea19b8474c6d357be0226efeedc`，launcher `d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4` 15360 B。
+- `npm run setup` 装到本机生产：4.6.21、2152 notes / 35 facts，`/health` 返回 `version 4.6.21`。
+- 云主机在 `c9cda483` 干净检出上复跑：585 tests / 582 pass / 3 skip，`# duration_ms 90800.536855`，TAP sha256 `8e65d8cdaaa615213349bc3f2f7474fbd1ab5853d6b66733e6bbf21259cb28c3`（129,125 B）。3 条 SKIP 与 4.6.20 同型（launcher Windows-only ×2、路径键 Windows/macOS ×1）。
+- 干净包数（云主机 `git archive c9cda483` 后 `npm pack --dry-run --json`）：245 files / 20,473,931 B，原始 JSON 在 `docs/evidence/4.6.21-pack.json`。
+- 证据回传：临时 deploy key `171384441`（title `temp-4621-evidence`）→ 云主机推 `evidence/4.6.21` → 本机按 API 取回三个文件并校验 TAP sha256 → 删远端分支 ref（204）、删 key（204）。
