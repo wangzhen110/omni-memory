@@ -353,7 +353,7 @@ MCP / HTTP 适配器在启动时会额外注册 `memory_context` 与 `memory_rul
 - `scope` string，可选；`all` 会被拒绝；写入未出现过的项目层会返回 `scopeNew:true` 提醒
 - `importance` number，0..1，默认 0.35；越界或非数字直接报错
 - `source` string，可选，如 `session:xxx#3` 或文件路径
-- fact 专用：`subject`（必填且至少 1 个内容字符）、`relation`（必填且至少 1 个内容字符，默认 `is`）、`object`（必填且至少 1 个内容字符，或由非空 `text` 派生）、`cardinality`（`single|multi`）。缺 `subject`/`object`/`relation` 会分别报 `subject is required for kind=fact (it must contain a letter or digit)` / `object is required for kind=fact` / `relation is required for kind=fact`，不会落一条渲染成 `- 实体 · is：` 的空事实（4.6.18 起；subject 的内容字符校验 4.6.19 补齐）
+- fact 专用：`subject`（必填且至少 1 个内容字符）、`relation`（必填且至少 1 个内容字符，默认 `is`）、`object`（必填且至少 1 个内容字符，或由非空 `text` 派生）、`cardinality`（`single|multi`）。报错文案按代码分支逐字列：`subject` 为空报 `subject is required for kind=fact`，`subject` 有值但没有内容字符（如 `★★`）报 `subject is required for kind=fact (it must contain a letter or digit)`；`relation` 为空或无内容字符报 `relation is required for kind=fact`；`object` 为空或无内容字符报 `object is required for kind=fact (pass object or a non-empty text)`。不会落一条渲染成 `- 实体 · is：` 的空事实（4.6.18 起；subject 的内容字符校验与文案 4.6.19 对齐）
 - note 专用：`contradicts`（number[]，旧笔记 id；无法解析的 id 会出现在 `contradictsIgnored`）、`problemKey`、`solutionStatus`（`verified|unverified|failed|expired`）、`evidence`
 
 返回：`id`、`kind`、`scope`、`scopeReason`、`deduped`、`contradictsIgnored`（如有）、`scopeNew`（如有）。

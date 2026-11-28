@@ -33,7 +33,7 @@
 
 ## 3 文档类 P2
 
-- **P1-04 生产复验落证**：新增 `docs/evidence/4.6.17-context.txt`，含命令、生产库路径、`db-sha256`、抓取时间与 `omni context` 全文；并在文件头写明这是 4.6.18 时的补采、不是安装当时输出。CHANGELOG 与 4.6.17 完成报告同步收窄为“画像无 `- x` 条目；note#1315 仍可搜”。
+- **P1-04 生产复验落证**：新增 `docs/evidence/4.6.17-context.txt`，含命令、生产库路径、`db-sha256`、抓取时间与 `omni context` 全文；并在文件头写明这是 4.6.18 时的补采、不是安装当时输出。CHANGELOG 与 4.6.17 完成报告同步收窄为“画像无 `- x` 条目；note#1315 仍在库中（按 id，单字查询不进 top-5，不声称可搜）”。
 - **P1-05 包数**：干净快照 `git archive` + `npm pack --dry-run` 实测：发布提交 `7b8c0ad` = 220 items / 20,389,322 B；最终 HEAD `0dd49cd` = 222 items / 20,389,794 B；工作树 224 是多了两份未跟踪 preview。4.6.17 报告、CHANGELOG 与汇总按 220/222 修正。
 - **P2-03/04/05/06 基准可证性**：`docs/BENCHMARKS.md` 标注 3.12.0 基线、补齐 `locomo10.json` 全量 SHA-256、把 mem0/Zep 数字换成有出处的写法并声明不可跨 harness 比较、§6 拆“已落地/待补”。顺带重跑并归档 4.6.18 的 session 与 turn 两档结果。
 - **P2-07/12/13**：DESIGN 版本行与 §6.24 同步；COMPLETION-4.6.17 修正包数与证据清单；update-log 的 171 是记录数而非 commit 数，在汇总里写明口径。

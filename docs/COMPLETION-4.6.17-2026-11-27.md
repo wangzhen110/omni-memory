@@ -17,7 +17,7 @@
 1. **写入侧**：`memory_write` 的 note/episode 与 `memory_amend` 要求 ≥2 个“内容字符”（空白、标点、分隔符不计），不足抛 `text is too short (N content characters)`。facts 豁免，因为其正文可由 subject/relation/object 派生。
 2. **候选旁路**：`writeCandidateNoteInTransaction`（`memory_candidate` accept 的真实落库路径）同门槛，避免转录候选绕过 `memory_write` 把 `x` 写进来。
 3. **画像侧**：`profileEligibleNote` 与 `personaEvidenceEligible` 要求 ≥4 个内容字符。因此**已入库**的 note#1315 不再占常驻额度，不需要改库、不需要软删。
-4. **不删数据**：被门槛挡住的记录仍可 `memory_search` 取回；是否清理由用户显式 `memory_forget` 决定。
+4. **不删数据**：被门槛挡住的记录仍在库里（按 id 存在）；但单字符查询不保证把它排进 `memory_search` top-5，故这里只保证“不删除”，不保证“可搜”。是否清理由用户显式 `memory_forget` 决定。
 
 ### 2.3 生产复验（口径更正见 4.6.18）
 
@@ -47,7 +47,7 @@
 
 1. 退化文本 `x / 中 / ... / · / ?` 被 `memory_write` 拒绝；`ab`（2 内容字符）通过边界；episode 同门；fact 豁免。
 2. `memory_amend` 不能把真笔记缩成 `x`。
-3. 直接向库插入一条旧版遗留的 `x`（模拟 note#1315），`memory_profile` 只纳入真规则（`included.length === 1`），且 `- x` 不渲染；`memory_search` 仍能搜到该行（过滤≠删除）。
+3. 直接向库插入一条旧版遗留的 `x`（模拟 note#1315），`memory_profile` 只纳入真规则（`included.length === 1`），且 `- x` 不渲染；该行仍留在库里（此隔离小库的查询能命中；生产大库单字查询不进 top-5，过滤≠删除但也不等于可搜）。
 
 `property.test.mjs` 两处夹具从 `x` 改为有意义文本，恢复它们原本要验证的 `importance` / `scope=all` 校验意图（否则新门槛会让它们“因错误原因通过”）。
 

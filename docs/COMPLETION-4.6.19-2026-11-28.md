@@ -42,7 +42,7 @@
 
 ## 3 文档类 P2
 
-- **契约统一（#1/#9）**：DESIGN §6.24 标题补到 4.6.19，正文写清四类源的页大小与上限、“读页次数线性、扫描量随行号增长”；REFERENCE 5.3 的 subject 校验、`\p{Nd}` 口径与代码对齐。
+- **契约统一（#1/#9）**：DESIGN §6.24 标题补到 4.6.19，正文写清五处取数（画像 notes、画像 facts、persona notes、persona facts、persona utterances）的页大小与上限、“读页次数线性、扫描量随行号增长”；REFERENCE 5.3 的 subject 校验、`\p{Nd}` 口径与代码对齐。
 - **BENCHMARKS（#2）**：分类型表拆成“3.12.0 历史口径”与“4.6.18 复跑”两张，各标版本，不再让读者以为一张表横跨两个版本。
 - **LoCoMo 归档（#8）**：`bench/public-retrieval.mjs` 自己在输出末尾写 `capturedAt`（ISO 时间）；本轮重跑并直接以脚本 stdout 归档，不再手工补 `codeVersion`/`machine`/`note`。
 - **A-04 note#1315（#3）**：`4.6.17-context.txt` 追加只读 retention probe（`id=1315`、`text='x'`、`deleted_at=null`、`text='x'` 计数 1），并记录 `omni search "x" --limit 5` 的结果（12 候选、top-5 全是规则、note#1315 不在其中）。据此把三处“仍可搜”收窄为“仍在库中（按 id）、单字查询不进 top-5”。
@@ -79,7 +79,7 @@ dataSha256 79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4
 ## 6 契约（4.6.19 更新）
 
 1. **内容字符 = `\p{L}` 或 `\p{Nd}`**；`Nl`/`No`（圈码、罗马数字）、符号、标点、零宽、组合符都不计。
-2. **四类画像源全部“先过滤后截断”**：notes 60/60、facts 40/40、persona facts 80/40、utterances 100/100；排序必须带 `id DESC` 兜底。
+2. **五处取数全部“先过滤后截断”**：画像 notes 60/60、画像 facts 40/40、persona notes 40/40、persona facts 80/40、persona utterances 100/100；排序必须带 `id DESC` 兜底。
 3. **fact 三元组**：subject/relation/object 三者都要至少 1 个内容字符；legacy 不合格行不渲染、不删除。
 4. **诊断**：`OMNI_PROFILE_DEBUG=1` 才输出扫描统计，默认静默。
 

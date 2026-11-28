@@ -82,6 +82,17 @@
 
 > 状态：已完成（2026-11-28）。来源是 4.6.18 的外部复核（P0 0 / P1 4 / P2 13，去重后 P1 四条）。评审结论先逐条复核事实，再按裁决直接修。
 
+**4.6.19 复核收口（2026-11-28，不出新版本）**
+
+> 输入 `review/4.6.19/CONSOLIDATED-REVIEW.md`：P0 0 / P1 1 / P2 5。四条上轮 P1 被判真修（主理人独立探针 + 变异验证逐项对上），唯一 P1 是本轮汇总自己新写的“云主机已 reset 到 `2617a5aa`”无落证——与 QA-01 同型第三次。
+
+- **P1-1 QA-01'（做，补落证）**：VM 实跑 `git rev-parse HEAD` + `git log -1 --format` + `git status --porcelain`，输出追加在 `docs/evidence/4.6.19-vm.txt` 末尾（HEAD=`2617a5aa`、status 空）。汇总同句改为引用该证据。此后只追加 docs 提交，不改内容。
+- **P2-A1 报错文案失配（做，改文档）**：`REFERENCE.md` 5.3 按代码分支逐字列出四条文案；缺 subject 不带括号、符号 subject 带括号、缺 object 带 `(pass object or a non-empty text)`。
+- **P2-A2 漏列 persona notes（做）**：DESIGN §6.24 与 COMPLETION-4.6.19 的“四类源”改“五处取数”，补 persona notes 40/40。
+- **P2-A3/Q2 note#1315 旧口径（做）**：DESIGN §6.24、COMPLETION-4.6.17 第 20/50 行、COMPLETION-4.6.18 第 36 行统一改成“仍在库中、单字查询不进 top-5、不声称可搜”。
+- **P2-Q3 SKIP 措辞（做）**：汇总不再把三条跳过统称 Windows 专用；356 是 Windows/macOS 路径键。
+- **P2-Q1 install.mjs mtime 与回退路径无回归锁（排 4.6.20）**：mtime 晚于 TAP 属于形式判据（`git hash-object` 与 f95d088 一致、内容零变化），本轮不动；`数据根目录` 回退分支需要一条测试锁，归入 4.6.20 代码批次，不在 docs 批次里塞测试。
+
 - **E-18-02 回归恒真（P1，做）**：原植入串 `a00..a59` 原文字长 3，被 SQL `length(trim(text))>=4` 预筛排除，把分页循环改回单页仍全绿。改法：植入 `★★★★`（raw 4 / 内容字符 0），`59/60/61/200` 参数化并断言首屏 60 行；变异验证已做，单页变异使 60/61/200 三条转红。
 - **E-18-01 facts 饥饿（P1，做）**：`profileFactLines` 40、persona facts 80、utterances 100 全部改为页式过滤（页 40/40/100），排序补 `id DESC`；新增“40 条 3 字符 high-confidence fact 不清空真 fact”用例。
 - **QA-01 云主机 reset 无落证（P1，做）**：`docs/evidence/4.6.18-vm.txt` 追加最终 HEAD 与干净状态；COMPLETION-4.6.18 §9 改为已覆盖。

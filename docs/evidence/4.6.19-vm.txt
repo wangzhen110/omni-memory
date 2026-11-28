@@ -21,3 +21,12 @@ ok 356 - attachSession follows an existing alias instead of returning the legacy
 
 # the three skips are platform-gated (Windows-only launcher install x2, Windows/macOS path keys x1);
 # the same suite on the Windows host reports 579/579 with 0 skipped.
+# --- final-HEAD reset proof (added 2026-11-28 for review 4.6.19 P1-1 / QA-01') ---
+# The block above proves the VM sat on the content commit f95bd088 when the suite ran.
+# This block proves the later step: the VM was fast-forwarded to the final 4.6.19 HEAD
+# (docs-only updates on top of f95bd088) and left clean, so the summary line
+# "cloud host reset to 2617a5aa" has raw output behind it.
+# command: cd /home/user/omni-memory-vm && git rev-parse HEAD && git log -1 --format='%H %s' && git status --porcelain
+# HEAD=2617a5aa11fbda02601805e7c29d2714d689204b
+# LOG=2617a5aa11fbda02601805e7c29d2714d689204b docs: update per-commit update log
+# git status --porcelain -> (empty, no output)
