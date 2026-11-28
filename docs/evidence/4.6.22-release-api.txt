@@ -102,3 +102,12 @@ Release v4.6.22  https://github.com/wangzhen110/omni-memory/releases/tag/v4.6.22
   launcher     d7ba3e7696b2113c24c2f22f8f535b27ae38e7dd5e6cf5f7df237d0d4bb6dce4  15360 bytes
 OK: signature, package hash, and launcher hash are consistent
 
+
+## deploy key and evidence transfer (status lines from this run; response bodies not archived)
+POST /repos/wangzhen110/omni-memory/keys  -> http 201 (id 171386645, title temp-4622-evidence, read_only=false)
+DELETE /repos/wangzhen110/omni-memory/keys/171386645  -> http 204
+DELETE /repos/wangzhen110/omni-memory/git/refs/heads/evidence%2F4.6.22  -> http 204
+GET /repos/.../contents/docs/evidence/4.6.22-vm.txt?ref=evidence/4.6.22    -> http 200, 1,075 B decoded
+GET /repos/.../contents/docs/evidence/4.6.22-vm.tap?ref=evidence/4.6.22    -> http 200, 129,998 B decoded
+GET /repos/.../contents/docs/evidence/4.6.22-pack.json?ref=evidence/4.6.22 -> http 200, 27,291 B decoded
+sha256(4.6.22-vm.tap, local after decode) = 338a35e65dd2e6567e4e8dfe40c1a42bfc6535249e6ba443de824e2d449ac201  (matches VM-side value in 4.6.22-vm.txt)

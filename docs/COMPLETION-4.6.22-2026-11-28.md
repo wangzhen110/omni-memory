@@ -61,4 +61,4 @@
 - 干净包数（`git archive 09fcd382` 后 `npm pack --dry-run --json`）：251 files / 20,509,966 B / unpacked 44,242,166 B，原始 JSON 在 `docs/evidence/4.6.22-pack.json`。
 - 证据回传：临时 deploy key `171386645` → 云主机推 `evidence/4.6.22` → 本机按 Contents API 取回并校验 TAP sha256 → 删分支 ref（204）、删 key（204）；云主机随后切回 main 并 `reset --hard origin/main`。
 
-本报告不对「最终 HEAD」下结论：上表是发行提交的时点事实，之后若再有 docs 提交，只按清单第 5 节的写法描述。
+本报告不写「最终 HEAD」。按清单第 5 节正向要求补充时点事实：发行提交之后 main 只追加了 docs 提交——证据入库 `afef2ead`、update-log `a3683a2b`，以及本次文字修正；`git diff 09fcd382..a3683a2b -- lib/ test/ scripts/ package.json package-lock.json` 为空，`npm run check` 在 `a3683a2b` 上 exit 0（`update log covers 189 recorded commit hashes`）。若后续还有 docs 提交，按同一口径只写时点与 diff 为空，不再写「最终」。
